@@ -1,0 +1,30 @@
+{
+  "build_systems":
+  [
+    {
+      "file_regex": "(?:..\/)*([a-zA-Z\/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
+      "name": "Pixel Pusher Build All",
+      "shell_cmd": "(cmake ../ -G Ninja && ninja && ./source/pixelpusher)",
+      "working_dir": "${project_path}/build",
+      "shell": true,
+    },
+    {
+      "name": "Pixel Pusher Setup Xcode",
+      "shell_cmd": "(cmake ../../ -G Xcode)",
+      "working_dir": "${project_path}/build/xcode",
+      "shell": true,
+    },
+  ],
+  "folders":
+  [
+    {
+      "folder_exclude_patterns":
+      [
+        "build",
+      ],
+      "follow_symlinks": false,
+      "name": "Pixel Pusher",
+      "path": "."
+    }
+  ]
+}

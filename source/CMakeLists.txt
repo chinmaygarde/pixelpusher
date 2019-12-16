@@ -6,10 +6,9 @@ add_executable(pixelpusher
 target_link_libraries(pixelpusher
   PRIVATE
     glfw
-    vk_swiftshader
 )
 
 target_include_directories(pixelpusher
   PRIVATE
-    ../third_party/swiftshader/include
+    /usr/local/include
 )
