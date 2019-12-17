@@ -2,7 +2,7 @@
   "build_systems":
   [
     {
-      "file_regex": "(?:..\/)*([a-zA-Z\/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
+      "file_regex": "([a-zA-Z\/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
       "name": "Pixel Pusher Build All",
       "shell_cmd": "(cmake ../ -G Ninja && ninja && ./source/machine/machine)",
       "working_dir": "${project_path}/build",
