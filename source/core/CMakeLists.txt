@@ -1,11 +1,11 @@
 
 add_library(core
-  macros.h
-  macros.cc
+  auto_closure.h
   logging.cc
   logging.h
+  macros.cc
+  macros.h
 )
 
 target_include_directories(core PUBLIC .)
 
-# target_link_libraries(core PUBLIC absl)
