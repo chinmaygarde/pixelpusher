@@ -26,16 +26,18 @@ int Main(int argc, char const* argv[]) {
 
   glfwSetErrorCallback(&OnGLFWError);
 
-  if (!InitVulkan()) {
+  auto window = glfwCreateWindow(640, 480, "Machine", NULL, NULL);
+
+  if (!window) {
+    P_ERROR << "Could not create GLFW window.";
+    return EXIT_FAILURE;
+  }
+  
+  if (!InitVulkan(window)) {
     P_ERROR << "Vulkan could not be initialized.";
     return EXIT_FAILURE;
   }
 
-  auto window = glfwCreateWindow(640, 480, "Machine", NULL, NULL);
-
-  if (!window) {
-    return EXIT_FAILURE;
-  }
 
   AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
 

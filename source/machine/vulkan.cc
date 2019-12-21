@@ -9,7 +9,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace pixel {
 
-bool InitVulkan() {
+bool InitVulkan(GLFWwindow* glfw_window) {
   if (glfwVulkanSupported() != GLFW_TRUE) {
     P_ERROR << "GLFW could not setup Vulkan.";
     return false;
@@ -79,7 +79,19 @@ bool InitVulkan() {
   
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
   
+  VkSurfaceKHR vk_surface = {};
   
+  if (glfwCreateWindowSurface(static_cast<VkInstance>(instance.get()), glfw_window, nullptr, &vk_surface) != VK_SUCCESS) {
+    P_ERROR << "Could not create Vulkan Surface";
+    return false;
+  }
+  
+  vk::UniqueSurfaceKHR surface(vk_surface);
+  
+  if (!surface.get()) {
+    P_ERROR << "Could not create Window surface.";
+    return false;
+  }
   
   return true;
 }

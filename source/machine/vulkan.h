@@ -9,6 +9,6 @@
 
 namespace pixel {
 
-bool InitVulkan();
+bool InitVulkan(GLFWwindow* window);
 
 }  // namespace pixel
