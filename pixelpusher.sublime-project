@@ -25,6 +25,10 @@
       "follow_symlinks": false,
       "name": "Pixel Pusher",
       "path": "."
+    },
+    {
+      "path": "/usr/local/include/vulkan",
+      "follow_symlinks": false,
     }
   ]
 }

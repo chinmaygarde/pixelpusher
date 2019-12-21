@@ -6,6 +6,7 @@
 
 #include "auto_closure.h"
 #include "logging.h"
+#include "vulkan.h"
 
 namespace pixel {
 
@@ -15,7 +16,7 @@ void OnGLFWError(int error_code, const char* description) {
 
 int Main(int argc, char const* argv[]) {
   if (!glfwInit()) {
-    std::cerr << "Could not initialize GLFW." << std::endl;
+    P_ERROR << "GLFW could not be initialized.";
     return EXIT_FAILURE;
   }
 
@@ -25,8 +26,8 @@ int Main(int argc, char const* argv[]) {
 
   glfwSetErrorCallback(&OnGLFWError);
 
-  if (glfwVulkanSupported() != GLFW_TRUE) {
-    std::cerr << "GLFW does not support Vulkan." << std::endl;
+  if (!InitVulkan()) {
+    P_ERROR << "Vulkan could not be initialized.";
     return EXIT_FAILURE;
   }
 
