@@ -1,5 +1,7 @@
 #include "vulkan.h"
 
+#include <optional>
+
 #include "macros.h"
 #include "logging.h"
 
@@ -26,7 +28,6 @@ bool InitVulkan() {
   uint32_t required_extensions_count = 0;
   const char** required_extensions = glfwGetRequiredInstanceExtensions(&required_extensions_count);
   
-  
   vk::InstanceCreateInfo instance_create_info;
   instance_create_info.setPpEnabledExtensionNames(required_extensions);
   instance_create_info.setEnabledExtensionCount(required_extensions_count);
@@ -47,13 +48,38 @@ bool InitVulkan() {
     return false;
   }
   
+  const auto& physical_device = physical_devices[0];
+    
+  std::optional<uint32_t> queue_family_index;
+  const auto& queue_family_properties = physical_device.getQueueFamilyProperties();
+  for (uint32_t i = 0; i < queue_family_properties.size(); i++) {
+    const auto& queue_family_property = queue_family_properties[i];
+    if (queue_family_property.queueFlags & vk::QueueFlagBits::eGraphics) {
+      queue_family_index = i;
+    }
+  }
+  
+  if (!queue_family_index.has_value()) {
+    P_ERROR << "Selected device was not graphics capable.";
+    return false;
+  }
+  
+  vk::DeviceQueueCreateInfo queue_create_info;
+  queue_create_info.setQueueFamilyIndex(queue_family_index.value());
+  
   vk::DeviceCreateInfo device_create_info;
+  device_create_info.setPQueueCreateInfos(&queue_create_info);
+  device_create_info.setQueueCreateInfoCount(1u);
   
   auto [r3, device] = physical_devices[0].createDeviceUnique(device_create_info);
   if (!device.get()) {
     P_ERROR << "Could not create logical device.";
     return false;
   }
+  
+  VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
+  
+  
   
   return true;
 }
