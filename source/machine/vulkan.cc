@@ -9,10 +9,12 @@ bool InitVulkan() {
     return false;
   }
 
-  vk::DynamicLoader step1_loader;
-  auto get_proc_address =
-      step1_loader.getProcAddress<PFN_vkGetInstanceProcAddr>(
-          "vkGetInstanceProcAddr");
+  // vk::DynamicLoader step1_loader;
+  // auto get_proc_address =
+  //     step1_loader.getProcAddress<PFN_vkGetInstanceProcAddr>(
+  //         "vkGetInstanceProcAddr");
+  //
+  return true;
 }
 
 }  // namespace pixel

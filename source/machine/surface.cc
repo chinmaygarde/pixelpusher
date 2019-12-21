@@ -9,22 +9,22 @@
 namespace pixel {
 
 Surface::Surface() {
-  vk::ApplicationInfo application_info;
-  application_info.setPApplicationName("machine");
-  application_info.setApplicationVersion(VK_MAKE_VERSION(1, 0, 0));
-  application_info.setPEngineName("machine");
-  application_info.setEngineVersion(VK_MAKE_VERSION(1, 0, 0));
-  application_info.setApiVersion(VK_MAKE_VERSION(1, 0, 0));
+  // vk::ApplicationInfo application_info;
+  // application_info.setPApplicationName("machine");
+  // application_info.setApplicationVersion(VK_MAKE_VERSION(1, 0, 0));
+  // application_info.setPEngineName("machine");
+  // application_info.setEngineVersion(VK_MAKE_VERSION(1, 0, 0));
+  // application_info.setApiVersion(VK_MAKE_VERSION(1, 0, 0));
 
-  vk::InstanceCreateInfo instance_create_info;
+  // vk::InstanceCreateInfo instance_create_info;
 
-  PFN_vkGetInstanceProcAddr vkGetInstanceProcAddrPtr =
-      reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-          glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
+  // PFN_vkGetInstanceProcAddr vkGetInstanceProcAddrPtr =
+  //     reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+  //         glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
 
-  vk::DispatchLoaderDynamic loader(vkGetInstanceProcAddrPtr);
+  // vk::DispatchLoaderDynamic loader(vkGetInstanceProcAddrPtr);
 
-  vk::UniqueInstance instance;
+  // vk::UniqueInstance instance;
 }
 
 Surface::~Surface() {}

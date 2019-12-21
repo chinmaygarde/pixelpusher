@@ -1,14 +1,13 @@
 
-add_executable(pixelpusher
-  main.cc
+add_compile_options(
+  -Wall
+  -Wextra
+  -pedantic
+  -Werror
+
+  -Wno-unused-parameter
 )
 
-target_link_libraries(pixelpusher
-  PRIVATE
-    glfw
-)
-
-target_include_directories(pixelpusher
-  PRIVATE
-    /usr/local/include
-)
+add_subdirectory(core)
+add_subdirectory(machine)
+add_subdirectory(test)
