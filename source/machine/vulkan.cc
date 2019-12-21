@@ -9,6 +9,68 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace pixel {
 
+struct DeviceSelection {
+  std::optional<uint32_t> queue_family_index;
+  std::optional<uint32_t> present_family_index;
+  
+  operator bool() const {
+    return queue_family_index.has_value() && present_family_index.has_value();
+  }
+};
+
+static vk::UniqueSurfaceKHR CreateSurface(const vk::Instance& instance, GLFWwindow* window) {
+  VkSurfaceKHR vk_surface = {};
+  
+  if (glfwCreateWindowSurface(static_cast<VkInstance>(instance), window, nullptr, &vk_surface) != VK_SUCCESS) {
+    P_ERROR << "Could not create Vulkan Surface";
+    return {};
+  }
+  
+  vk::UniqueSurfaceKHR surface(vk_surface);
+  
+  if (!surface.get()) {
+    P_ERROR << "Could not create Window surface.";
+    return {};
+  }
+  
+  return surface;
+}
+
+static DeviceSelection IsDeviceSuitable(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) {
+  DeviceSelection selection;
+  const auto& queue_family_properties = device.getQueueFamilyProperties();
+  for (uint32_t i = 0; i < queue_family_properties.size(); i++) {
+    const auto& queue_family_property = queue_family_properties[i];
+    if (!(queue_family_property.queueFlags & vk::QueueFlagBits::eGraphics)) {
+      continue;
+    }
+    
+    selection.queue_family_index = i;
+
+    const auto surface_supported = device.getSurfaceSupportKHR(i, surface);
+    if (surface_supported.result != vk::Result::eSuccess) {
+      continue;
+    }
+
+    if (!surface_supported.value) {
+      continue;
+    }
+    
+    selection.present_family_index = surface_supported.value;
+    break;
+  }
+  return selection;
+}
+
+static DeviceSelection PickSuitableDevice(const std::vector<vk::PhysicalDevice>& devices, const vk::SurfaceKHR& surface) {
+  for (const auto& device : devices) {
+    if (auto selection = IsDeviceSuitable(device, surface)) {
+      return selection;
+    }
+  }
+  return {};
+}
+
 bool InitVulkan(GLFWwindow* glfw_window) {
   if (glfwVulkanSupported() != GLFW_TRUE) {
     P_ERROR << "GLFW could not setup Vulkan.";
@@ -42,30 +104,28 @@ bool InitVulkan(GLFWwindow* glfw_window) {
   
   VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
   
+  auto surface = CreateSurface(instance.get(), glfw_window);
+  
+  if (!surface) {
+    P_ERROR << "Could not create surface.";
+    return false;
+  }
+  
   auto [r2, physical_devices] = instance->enumeratePhysicalDevices();
   if (physical_devices.size() == 0) {
     P_ERROR << "Instance has no devices.";
     return false;
   }
   
-  const auto& physical_device = physical_devices[0];
-    
-  std::optional<uint32_t> queue_family_index;
-  const auto& queue_family_properties = physical_device.getQueueFamilyProperties();
-  for (uint32_t i = 0; i < queue_family_properties.size(); i++) {
-    const auto& queue_family_property = queue_family_properties[i];
-    if (queue_family_property.queueFlags & vk::QueueFlagBits::eGraphics) {
-      queue_family_index = i;
-    }
-  }
+  auto selection = PickSuitableDevice(physical_devices, surface.get());
   
-  if (!queue_family_index.has_value()) {
-    P_ERROR << "Selected device was not graphics capable.";
+  if (!selection) {
+    P_ERROR << "No suitable device available.";
     return false;
   }
   
   vk::DeviceQueueCreateInfo queue_create_info;
-  queue_create_info.setQueueFamilyIndex(queue_family_index.value());
+  queue_create_info.setQueueFamilyIndex(selection.queue_family_index.value());
   
   vk::DeviceCreateInfo device_create_info;
   device_create_info.setPQueueCreateInfos(&queue_create_info);
@@ -78,20 +138,6 @@ bool InitVulkan(GLFWwindow* glfw_window) {
   }
   
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
-  
-  VkSurfaceKHR vk_surface = {};
-  
-  if (glfwCreateWindowSurface(static_cast<VkInstance>(instance.get()), glfw_window, nullptr, &vk_surface) != VK_SUCCESS) {
-    P_ERROR << "Could not create Vulkan Surface";
-    return false;
-  }
-  
-  vk::UniqueSurfaceKHR surface(vk_surface);
-  
-  if (!surface.get()) {
-    P_ERROR << "Could not create Window surface.";
-    return false;
-  }
   
   return true;
 }
