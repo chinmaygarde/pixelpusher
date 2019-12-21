@@ -8,4 +8,4 @@ add_library(core
 
 target_include_directories(core PUBLIC .)
 
-target_link_libraries(core PUBLIC absl)
+# target_link_libraries(core PUBLIC absl)

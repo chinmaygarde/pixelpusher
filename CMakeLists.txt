@@ -14,5 +14,4 @@ add_subdirectory(third_party/glfw)
 
 add_subdirectory(source/core)
 add_subdirectory(source/machine)
-add_subdirectory(source/vulkan)
 add_subdirectory(test)

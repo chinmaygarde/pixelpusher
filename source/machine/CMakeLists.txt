@@ -9,7 +9,6 @@ target_link_libraries(machine
   PRIVATE
     glfw
     core
-    vulkan
 )
 
 target_include_directories(machine
