@@ -3,8 +3,8 @@ add_executable(machine
   main.cc
   surface.h
   surface.cc
-  vulkan.cc
-  vulkan.h
+  vulkan_connection.cc
+  vulkan_connection.h
 )
 
 target_link_libraries(machine

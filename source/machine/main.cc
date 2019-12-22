@@ -6,7 +6,7 @@
 
 #include "auto_closure.h"
 #include "logging.h"
-#include "vulkan.h"
+#include "vulkan_connection.h"
 
 namespace pixel {
 
@@ -33,7 +33,9 @@ int Main(int argc, char const* argv[]) {
     return EXIT_FAILURE;
   }
   
-  if (!InitVulkan(window)) {
+  auto vulkan_connection = std::make_unique<VulkanConnection>(window);
+  
+  if (!vulkan_connection->IsValid()) {
     P_ERROR << "Vulkan could not be initialized.";
     return EXIT_FAILURE;
   }
