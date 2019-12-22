@@ -1,6 +1,8 @@
 #include "vulkan_connection.h"
 
 #include <optional>
+#include <set>
+#include <string>
 
 #include "logging.h"
 #include "macros.h"
@@ -9,14 +11,27 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace pixel {
 
-struct DeviceSelection {
+static const std::vector<const char*> kRequiredDeviceExtensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
+struct SwapchainDetails {
+  VkSurfaceCapabilitiesKHR capabilities = {};
+  std::vector<vk::SurfaceFormatKHR> surface_formats;
+  std::vector<vk::PresentModeKHR> present_modes;
+};
+
+struct PhysicalDeviceSelection {
   std::optional<uint32_t> device_index;
-  std::optional<uint32_t> queue_family_index;
+  std::optional<uint32_t> graphics_family_index;
   std::optional<uint32_t> present_family_index;
+  bool has_required_extensions = false;
+  std::optional<SwapchainDetails> swapchain_details;
 
   operator bool() const {
-    return queue_family_index.has_value() && present_family_index.has_value() &&
-           device_index.has_value();
+    return graphics_family_index.has_value() &&
+           present_family_index.has_value() && device_index.has_value() &&
+           has_required_extensions && swapchain_details.has_value();
   }
 };
 
@@ -40,20 +55,41 @@ static vk::UniqueSurfaceKHR CreateSurface(const vk::Instance& instance,
   return surface;
 }
 
-static DeviceSelection IsDeviceSuitable(uint32_t device_index,
-                                        const vk::PhysicalDevice& device,
-                                        const vk::SurfaceKHR& surface) {
-  DeviceSelection selection;
-  selection.device_index = device_index;
+static bool DeviceHasRequiredExtensions(const vk::PhysicalDevice& device) {
+  auto device_extensions = device.enumerateDeviceExtensionProperties();
+  if (device_extensions.result != vk::Result::eSuccess) {
+    return false;
+  }
+
+  std::set<std::string> required_extensions(kRequiredDeviceExtensions.begin(),
+                                            kRequiredDeviceExtensions.end());
+  ;
+
+  for (const auto& extension : device_extensions.value) {
+    required_extensions.erase(extension.extensionName);
+  }
+
+  return required_extensions.empty();
+}
+
+static PhysicalDeviceSelection IsDeviceSuitable(
+    uint32_t device_index,
+    const vk::PhysicalDevice& device,
+    const vk::SurfaceKHR& surface) {
   const auto& queue_family_properties = device.getQueueFamilyProperties();
   for (uint32_t i = 0; i < queue_family_properties.size(); i++) {
+    PhysicalDeviceSelection selection;
+    selection.device_index = device_index;
+
+    // Check for graphics support.
     const auto& queue_family_property = queue_family_properties[i];
     if (!(queue_family_property.queueFlags & vk::QueueFlagBits::eGraphics)) {
       continue;
     }
 
-    selection.queue_family_index = i;
+    selection.graphics_family_index = i;
 
+    // Check for presentation support.
     const auto surface_supported = device.getSurfaceSupportKHR(i, surface);
     if (surface_supported.result != vk::Result::eSuccess) {
       continue;
@@ -63,13 +99,48 @@ static DeviceSelection IsDeviceSuitable(uint32_t device_index,
       continue;
     }
 
-    selection.present_family_index = surface_supported.value;
-    break;
+    selection.present_family_index = i;
+
+    // Check for required extensions.
+    if (!DeviceHasRequiredExtensions(device)) {
+      continue;
+    }
+
+    selection.has_required_extensions = true;
+
+    // Check for swapchain surface compatibility.
+    SwapchainDetails swapchain_details;
+
+    auto surface_capabilities = device.getSurfaceCapabilitiesKHR(surface);
+    if (surface_capabilities.result != vk::Result::eSuccess) {
+      continue;
+    }
+
+    swapchain_details.capabilities = surface_capabilities.value;
+
+    auto surface_formats = device.getSurfaceFormatsKHR(surface);
+    if (surface_formats.result != vk::Result::eSuccess) {
+      continue;
+    }
+
+    swapchain_details.surface_formats = surface_formats.value;
+
+    auto present_modes = device.getSurfacePresentModesKHR(surface);
+    if (present_modes.result != vk::Result::eSuccess) {
+      continue;
+    }
+
+    swapchain_details.present_modes = present_modes.value;
+
+    selection.swapchain_details = std::move(swapchain_details);
+
+    return selection;
   }
-  return selection;
+
+  return {};
 }
 
-static DeviceSelection PickSuitableDevice(
+static PhysicalDeviceSelection PickSuitableDevice(
     const std::vector<vk::PhysicalDevice>& devices,
     const vk::SurfaceKHR& surface) {
   for (uint32_t i = 0; i < devices.size(); i++) {
@@ -141,11 +212,15 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   }
 
   vk::DeviceQueueCreateInfo queue_create_info;
-  queue_create_info.setQueueFamilyIndex(selection.queue_family_index.value());
+  queue_create_info.setQueueFamilyIndex(
+      selection.graphics_family_index.value());
 
   vk::DeviceCreateInfo device_create_info;
   device_create_info.setPQueueCreateInfos(&queue_create_info);
   device_create_info.setQueueCreateInfoCount(1u);
+  device_create_info.setPpEnabledExtensionNames(
+      kRequiredDeviceExtensions.data());
+  device_create_info.setEnabledExtensionCount(kRequiredDeviceExtensions.size());
 
   auto [r3, device] =
       physical_devices[selection.device_index.value()].createDeviceUnique(
@@ -160,6 +235,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   instance_ = std::move(instance);
   surface_ = std::move(surface);
   device_ = std::move(device);
+
   is_valid_ = true;
 }
 

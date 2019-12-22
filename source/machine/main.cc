@@ -44,7 +44,7 @@ int Main(int argc, char const* argv[]) {
   AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
 
   while (!glfwWindowShouldClose(window)) {
-    glfwPollEvents();
+    glfwWaitEvents();
   }
 
   return EXIT_SUCCESS;
