@@ -25,8 +25,9 @@ int Main(int argc, char const* argv[]) {
   AutoClosure glfw_terminate([]() { glfwTerminate(); });
 
   glfwSetErrorCallback(&OnGLFWError);
+  glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-  auto window = glfwCreateWindow(640, 480, "Machine", NULL, NULL);
+  auto window = glfwCreateWindow(800, 600, "Machine", NULL, NULL);
 
   if (!window) {
     P_ERROR << "Could not create GLFW window.";

@@ -23,6 +23,7 @@ class VulkanConnection {
   vk::UniqueInstance instance_;
   vk::UniqueSurfaceKHR surface_;
   vk::UniqueDevice device_;
+  vk::UniqueSwapchainKHR swapchain_;
 
   bool is_valid_ = false;
 
