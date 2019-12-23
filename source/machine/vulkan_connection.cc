@@ -153,7 +153,7 @@ static vk::UniqueSurfaceKHR CreateSurface(const vk::Instance& instance,
     P_ERROR << "Could not create Vulkan Surface";
     return {};
   }
-
+  
   vk::UniqueSurfaceKHR surface(vk_surface);
 
   if (!surface.get()) {
@@ -346,8 +346,8 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
-  surface_ = std::move(surface);
   device_ = std::move(device);
+  surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
 
   is_valid_ = true;
