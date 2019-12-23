@@ -7,6 +7,7 @@
 
 #include "logging.h"
 #include "macros.h"
+#include "vulkan_swapchain.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -59,16 +60,17 @@ struct SwapchainDetails {
                                 capabilities.maxImageCount);
   };
 
-  vk::UniqueSwapchainKHR CreateSwapchain(const vk::Device& device,
-                                         const vk::SurfaceKHR& surface,
-                                         uint32_t graphics_family_index,
-                                         uint32_t present_family_index) const {
+  std::unique_ptr<VulkanSwapchain> CreateSwapchain(
+      const vk::Device& device,
+      const vk::SurfaceKHR& surface,
+      uint32_t graphics_family_index,
+      uint32_t present_family_index) const {
     auto surface_format = ChooseSurfaceFormat();
     auto present_mode = ChoosePresentMode();
     auto swap_extent = ChooseSwapExtent();
 
     if (!surface_format || !present_mode || !swap_extent) {
-      return {};
+      return nullptr;
     }
 
     vk::SwapchainCreateInfoKHR swapchain_create_info;
@@ -101,10 +103,17 @@ struct SwapchainDetails {
 
     auto swapchain = device.createSwapchainKHRUnique(swapchain_create_info);
     if (swapchain.result != vk::Result::eSuccess) {
-      return {};
+      return nullptr;
     }
 
-    return std::move(swapchain.value);
+    auto vulkan_swapchain = std::make_unique<VulkanSwapchain>(
+        device, std::move(swapchain.value), surface_format.value().format);
+
+    if (!vulkan_swapchain->IsValid()) {
+      return nullptr;
+    }
+
+    return vulkan_swapchain;
   }
 };
 
@@ -123,10 +132,10 @@ struct PhysicalDeviceSelection {
 
   operator bool() const { return IsValid(); }
 
-  vk::UniqueSwapchainKHR CreateSwapchain(const vk::Device& device,
+  std::unique_ptr<VulkanSwapchain> CreateSwapchain(const vk::Device& device,
                                          const vk::SurfaceKHR& surface) {
     if (!IsValid()) {
-      return {};
+      return nullptr;
     }
 
     return swapchain_details.value().CreateSwapchain(
@@ -337,7 +346,6 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
-  instance_ = std::move(instance);
   surface_ = std::move(surface);
   device_ = std::move(device);
   swapchain_ = std::move(swapchain);

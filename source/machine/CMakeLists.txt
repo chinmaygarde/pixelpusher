@@ -1,10 +1,12 @@
 
 add_executable(machine
   main.cc
-  surface.h
   surface.cc
+  surface.h
   vulkan_connection.cc
   vulkan_connection.h
+  vulkan_swapchain.cc
+  vulkan_swapchain.h
 )
 
 target_link_libraries(machine
