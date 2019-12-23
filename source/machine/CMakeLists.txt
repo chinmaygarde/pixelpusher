@@ -9,6 +9,11 @@ add_executable(machine
   vulkan_swapchain.h
 )
 
+compile_shaders(machine
+  shaders/triangle.frag
+  shaders/triangle.vert
+)
+
 target_link_libraries(machine
   PRIVATE
     glfw

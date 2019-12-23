@@ -4,8 +4,11 @@ project(pixel_pusher)
 
 set (CMAKE_CXX_STANDARD 17)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/tools")
+
+include(spirv)
+
 add_subdirectory(third_party/googletest)
-add_subdirectory(third_party/abseil)
 
 set(GLFW_BUILD_EXAMPLES   OFF CACHE BOOL "GLFW_BUILD_EXAMPLES" FORCE)
 set(GLFW_BUILD_TESTS      OFF CACHE BOOL "GLFW_BUILD_TESTS" FORCE)
