@@ -25,7 +25,7 @@ class VulkanConnection {
  private:
   vk::UniqueInstance instance_;
   vk::UniqueDevice device_;
-  vk::UniqueSurfaceKHR surface_;
+  vk::SurfaceKHR surface_;
   std::unique_ptr<VulkanSwapchain> swapchain_;
   bool is_valid_ = false;
 

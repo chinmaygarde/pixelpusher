@@ -144,7 +144,7 @@ struct PhysicalDeviceSelection {
   }
 };
 
-static vk::UniqueSurfaceKHR CreateSurface(const vk::Instance& instance,
+static vk::SurfaceKHR CreateSurface(const vk::Instance& instance,
                                           GLFWwindow* window) {
   VkSurfaceKHR vk_surface = {};
 
@@ -153,10 +153,10 @@ static vk::UniqueSurfaceKHR CreateSurface(const vk::Instance& instance,
     P_ERROR << "Could not create Vulkan Surface";
     return {};
   }
-  
-  vk::UniqueSurfaceKHR surface(vk_surface);
+    
+  vk::SurfaceKHR surface(vk_surface);
 
-  if (!surface.get()) {
+  if (!surface) {
     P_ERROR << "Could not create Window surface.";
     return {};
   }
@@ -312,7 +312,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
-  auto selection = SelectPhysicalDevice(physical_devices, surface.get());
+  auto selection = SelectPhysicalDevice(physical_devices, surface);
 
   if (!selection) {
     P_ERROR << "No suitable device available.";
@@ -340,12 +340,13 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
 
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
-  auto swapchain = selection.CreateSwapchain(device.get(), surface.get());
+  auto swapchain = selection.CreateSwapchain(device.get(), surface);
   if (!swapchain) {
     P_ERROR << "Could not create swapchain.";
     return;
   }
-
+  
+  instance_ = std::move(instance);
   device_ = std::move(device);
   surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
@@ -353,7 +354,11 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   is_valid_ = true;
 }
 
-VulkanConnection::~VulkanConnection() = default;
+VulkanConnection::~VulkanConnection() {
+  if (instance_.get() && surface_) {
+    instance_.get().destroySurfaceKHR(surface_);
+  }
+}
 
 bool VulkanConnection::IsValid() const {
   return is_valid_;
