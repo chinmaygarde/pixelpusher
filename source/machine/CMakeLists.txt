@@ -1,14 +1,16 @@
 
 add_executable(machine
   main.cc
+  pipeline_builder.cc
+  pipeline_builder.h
+  shader_loader.cc
+  shader_loader.h
   surface.cc
   surface.h
   vulkan_connection.cc
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
-  shader_loader.h
-  shader_loader.cc
 )
 
 compile_shaders(machine
