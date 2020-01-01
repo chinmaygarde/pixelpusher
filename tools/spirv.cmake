@@ -5,8 +5,6 @@ set(__spirv INCLUDED)
 
 function(compile_shader TARGET SHADER_PATH)
 
-  find_program(GLSLC_PROG glslc)
-
   get_filename_component(SHADER_NAME ${SHADER_PATH} NAME)
 
   get_filename_component(SHADER_IN_PATH ${SHADER_PATH} ABSOLUTE)
@@ -17,7 +15,7 @@ function(compile_shader TARGET SHADER_PATH)
 
   add_custom_command(
     OUTPUT ${SHADER_OUT_PATH}
-    COMMAND ${GLSLC_PROG} ${SHADER_IN_PATH} -o ${SHADER_OUT_PATH}
+    COMMAND glslc_exe ${SHADER_IN_PATH} -o ${SHADER_OUT_PATH}
     DEPENDS ${SHADER_IN_PATH}
     IMPLICIT_DEPENDS CXX ${SHADER_IN_PATH}
   )
