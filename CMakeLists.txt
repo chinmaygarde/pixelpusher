@@ -15,4 +15,6 @@ set(GLFW_BUILD_TESTS      OFF CACHE BOOL "GLFW_BUILD_TESTS" FORCE)
 set(GLFW_BUILD_DOCS       OFF CACHE BOOL "GLFW_BUILD_DOCS" FORCE)
 add_subdirectory(third_party/glfw)
 
+add_subdirectory(third_party/vulkan_headers)
+
 add_subdirectory(source)

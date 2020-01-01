@@ -22,11 +22,7 @@ target_link_libraries(machine
   PRIVATE
     glfw
     core
-)
-
-target_include_directories(machine
-  PRIVATE
-    /usr/local/include
+    Vulkan::Headers
 )
 
 get_filename_component(PIXEL_SHADERS_LOCATION ${CMAKE_BINARY_DIR}/shaders ABSOLUTE)
