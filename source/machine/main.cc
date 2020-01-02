@@ -1,6 +1,7 @@
 #define GLFW_INCLUDE_VULKAN
 
 #include <GLFW/glfw3.h>
+
 #include <cstdlib>
 #include <iostream>
 
@@ -33,14 +34,13 @@ int Main(int argc, char const* argv[]) {
     P_ERROR << "Could not create GLFW window.";
     return EXIT_FAILURE;
   }
-  
+
   auto vulkan_connection = std::make_unique<VulkanConnection>(window);
-  
+
   if (!vulkan_connection->IsValid()) {
     P_ERROR << "Vulkan could not be initialized.";
     return EXIT_FAILURE;
   }
-
 
   AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
 

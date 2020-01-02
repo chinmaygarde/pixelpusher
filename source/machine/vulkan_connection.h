@@ -4,10 +4,10 @@
 #define VK_NO_PROTOTYPES
 #define VULKAN_HPP_NO_EXCEPTIONS
 
+#include <GLFW/glfw3.h>
+
 #include <vector>
 #include <vulkan/vulkan.hpp>
-
-#include <GLFW/glfw3.h>
 
 #include "macros.h"
 

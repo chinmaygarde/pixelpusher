@@ -4,7 +4,6 @@
 
 #include "logging.h"
 
-
 namespace pixel {
 
 static std::optional<std::vector<vk::UniqueImageView>>
@@ -57,7 +56,8 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
     return;
   }
 
-  auto image_views = CreateSwapchainImageViews(device, swapchain.get(), swapchain_image_format);
+  auto image_views = CreateSwapchainImageViews(device, swapchain.get(),
+                                               swapchain_image_format);
 
   if (!image_views.has_value()) {
     P_ERROR << "Could not create swapchain image views.";

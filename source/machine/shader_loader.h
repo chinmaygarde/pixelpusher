@@ -1,8 +1,8 @@
 #pragma once
 
-#include "file.h"
-
 #include <vector>
+
+#include "file.h"
 
 namespace pixel {
 

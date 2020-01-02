@@ -132,8 +132,9 @@ struct PhysicalDeviceSelection {
 
   operator bool() const { return IsValid(); }
 
-  std::unique_ptr<VulkanSwapchain> CreateSwapchain(const vk::Device& device,
-                                         const vk::SurfaceKHR& surface) {
+  std::unique_ptr<VulkanSwapchain> CreateSwapchain(
+      const vk::Device& device,
+      const vk::SurfaceKHR& surface) {
     if (!IsValid()) {
       return nullptr;
     }
@@ -145,7 +146,7 @@ struct PhysicalDeviceSelection {
 };
 
 static vk::SurfaceKHR CreateSurface(const vk::Instance& instance,
-                                          GLFWwindow* window) {
+                                    GLFWwindow* window) {
   VkSurfaceKHR vk_surface = {};
 
   if (glfwCreateWindowSurface(static_cast<VkInstance>(instance), window,
@@ -153,7 +154,7 @@ static vk::SurfaceKHR CreateSurface(const vk::Instance& instance,
     P_ERROR << "Could not create Vulkan Surface";
     return {};
   }
-    
+
   vk::SurfaceKHR surface(vk_surface);
 
   if (!surface) {
@@ -345,7 +346,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     P_ERROR << "Could not create swapchain.";
     return;
   }
-  
+
   instance_ = std::move(instance);
   device_ = std::move(device);
   surface_ = std::move(surface);
