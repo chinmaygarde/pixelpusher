@@ -20,10 +20,14 @@ PipelineBuilder::PipelineBuilder() {
 
   // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions
   /*
+  // src is object color.
+  // dst is buffer color, i.e, the color already in the framebuffer.
   if (blendEnable) {
-      finalColor.rgb = (srcColorBlendFactor * newColor.rgb) <colorBlendOp>
-  (dstColorBlendFactor * oldColor.rgb); finalColor.a = (srcAlphaBlendFactor *
-  newColor.a) <alphaBlendOp> (dstAlphaBlendFactor * oldColor.a); } else {
+    finalColor.rgb = (srcColorBlendFactor * newColor.rgb) <colorBlendOp>
+                     (dstColorBlendFactor * oldColor.rgb);
+    finalColor.a = (srcAlphaBlendFactor * newColor.a) <alphaBlendOp>
+                   (dstAlphaBlendFactor * oldColor.a);
+  } else {
       finalColor = newColor;
   }
   finalColor = finalColor & colorWriteMask;

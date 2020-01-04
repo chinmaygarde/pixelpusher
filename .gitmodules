@@ -10,3 +10,6 @@
 [submodule "third_party/shaderc"]
 	path = third_party/shaderc
 	url = https://github.com/google/shaderc.git
+[submodule "third_party/vulkan_memory_allocator"]
+	path = third_party/vulkan_memory_allocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
