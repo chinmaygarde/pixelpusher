@@ -1,15 +1,9 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#define VK_NO_PROTOTYPES
-#define VULKAN_HPP_NO_EXCEPTIONS
-
-#include <GLFW/glfw3.h>
-
 #include <vector>
-#include <vulkan/vulkan.hpp>
 
 #include "macros.h"
+#include "vulkan.h"
 
 namespace pixel {
 

@@ -3,10 +3,15 @@ add_executable(machine
   main.cc
   pipeline_builder.cc
   pipeline_builder.h
+  render_pass.cc
+  render_pass.h
+  renderer.cc
+  renderer.h
   shader_loader.cc
   shader_loader.h
   surface.cc
   surface.h
+  vulkan.h
   vulkan_connection.cc
   vulkan_connection.h
   vulkan_swapchain.cc

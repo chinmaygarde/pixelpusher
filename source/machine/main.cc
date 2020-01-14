@@ -1,13 +1,12 @@
 #define GLFW_INCLUDE_VULKAN
 
-#include <GLFW/glfw3.h>
-
 #include <cstdlib>
 #include <iostream>
 
 #include "auto_closure.h"
 #include "logging.h"
-#include "vulkan_connection.h"
+#include "renderer.h"
+#include "vulkan.h"
 
 namespace pixel {
 
@@ -35,16 +34,24 @@ int Main(int argc, char const* argv[]) {
     return EXIT_FAILURE;
   }
 
-  auto vulkan_connection = std::make_unique<VulkanConnection>(window);
+  AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
 
-  if (!vulkan_connection->IsValid()) {
-    P_ERROR << "Vulkan could not be initialized.";
+  Renderer renderer(window);
+
+  renderer.Setup();
+
+  if (!renderer.IsValid()) {
+    P_ERROR << "Could not create a valid renderer.";
     return EXIT_FAILURE;
   }
 
-  AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
+  AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
 
   while (!glfwWindowShouldClose(window)) {
+    if (!renderer.Render()) {
+      P_ERROR << "Error while attempting to render.";
+      return EXIT_FAILURE;
+    }
     glfwWaitEvents();
   }
 
