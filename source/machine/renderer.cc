@@ -1,6 +1,7 @@
 #include "renderer.h"
 
 #include "logging.h"
+#include "shader_loader.h"
 
 namespace pixel {
 
@@ -19,12 +20,24 @@ bool Renderer::IsValid() const {
   return is_valid_;
 }
 
-void Renderer::Setup() {}
+bool Renderer::Setup() {
+  auto vertex_shader = LoadShaderModule(connection_.GetDevice(), "triangle.vert");
+  auto fragment_shader = LoadShaderModule(connection_.GetDevice(), "triangle.frag");
+  
+  if (!vertex_shader || !fragment_shader) {
+    P_ERROR << "Could not load shader modules.";
+    return false;
+  }
+  
+  return true;
+}
 
 bool Renderer::Render() {
   return true;
 }
 
-void Renderer::Teardown() {}
+bool Renderer::Teardown() {
+  return true;
+}
 
 }  // namespace pixel

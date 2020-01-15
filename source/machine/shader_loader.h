@@ -1,11 +1,9 @@
 #pragma once
 
-#include <vector>
-
-#include "file.h"
+#include "vulkan.h"
 
 namespace pixel {
 
-std::vector<char> LoadShader(const char* shader_name);
+vk::UniqueShaderModule LoadShaderModule(const vk::Device& device, const char* shader_name);
 
 }  // namespace pixel

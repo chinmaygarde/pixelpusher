@@ -38,10 +38,13 @@ int Main(int argc, char const* argv[]) {
 
   Renderer renderer(window);
 
-  renderer.Setup();
-
   if (!renderer.IsValid()) {
     P_ERROR << "Could not create a valid renderer.";
+    return EXIT_FAILURE;
+  }
+  
+  if (!renderer.Setup()) {
+    P_ERROR << "Could not setup renderer.";
     return EXIT_FAILURE;
   }
 

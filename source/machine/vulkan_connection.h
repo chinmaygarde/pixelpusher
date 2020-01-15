@@ -15,6 +15,8 @@ class VulkanConnection {
   ~VulkanConnection();
 
   bool IsValid() const;
+  
+  const vk::Device& GetDevice() const;
 
  private:
   vk::UniqueInstance instance_;

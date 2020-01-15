@@ -14,11 +14,11 @@ class Renderer {
 
   bool IsValid() const;
 
-  void Setup();
+  bool Setup();
 
   bool Render();
 
-  void Teardown();
+  bool Teardown();
 
  private:
   VulkanConnection connection_;

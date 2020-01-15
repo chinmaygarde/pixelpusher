@@ -365,4 +365,8 @@ bool VulkanConnection::IsValid() const {
   return is_valid_;
 }
 
+const vk::Device& VulkanConnection::GetDevice() const {
+  return device_.get();
+}
+
 }  // namespace pixel
