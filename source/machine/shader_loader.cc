@@ -3,36 +3,40 @@
 #include <sstream>
 #include <vector>
 
-#include "shader_location.h"
 #include "file.h"
+#include "mapping.h"
+#include "shader_location.h"
 
 namespace pixel {
 
-std::vector<char> LoadShader(const char* shader_name) {
+static std::string GetShaderPath(const char* shader_name) {
   if (shader_name == nullptr) {
-    return {};
+    return "";
   }
   std::stringstream stream;
   stream << PIXEL_SHADERS_LOCATION << "/" << shader_name;
-  return ReadFile(stream.str().c_str());
+  return stream.str();
 }
 
-vk::UniqueShaderModule LoadShaderModule(const vk::Device& device, const char* shader_name) {
-  auto shader_source = LoadShader(shader_name);
-  if (shader_source.size() == 0) {
+vk::UniqueShaderModule LoadShaderModule(const vk::Device& device,
+                                        const char* shader_name) {
+  auto shader_source_mapping = OpenFile(GetShaderPath(shader_name).c_str());
+
+  if (!shader_source_mapping) {
     return {};
   }
-  
+
   vk::ShaderModuleCreateInfo create_info;
-  create_info.setCodeSize(shader_source.size());
-  create_info.setPCode(reinterpret_cast<const uint32_t *>(shader_source.data()));
-  
+  create_info.setCodeSize(shader_source_mapping->GetSize());
+  create_info.setPCode(
+      reinterpret_cast<const uint32_t*>(shader_source_mapping->GetData()));
+
   auto module = device.createShaderModuleUnique(create_info);
-  
+
   if (module.result != vk::Result::eSuccess) {
     return {};
   }
-  
+
   return std::move(module.value);
 }
 

@@ -6,6 +6,7 @@ add_compile_options(
   -Werror
 
   -Wno-unused-parameter
+  -Wno-gnu-statement-expression
 )
 
 add_compile_options(

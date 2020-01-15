@@ -7,6 +7,9 @@ add_library(core
   logging.h
   macros.cc
   macros.h
+  mapping.cc
+  mapping.h
+  unique_object.h
 )
 
 target_include_directories(core PUBLIC .)

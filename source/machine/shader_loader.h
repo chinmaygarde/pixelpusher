@@ -4,6 +4,7 @@
 
 namespace pixel {
 
-vk::UniqueShaderModule LoadShaderModule(const vk::Device& device, const char* shader_name);
+vk::UniqueShaderModule LoadShaderModule(const vk::Device& device,
+                                        const char* shader_name);
 
 }  // namespace pixel

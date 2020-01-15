@@ -1,30 +1,39 @@
 #include "file.h"
 
-#include <fstream>
-#include <streambuf>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "logging.h"
+#include "mapping.h"
 
 namespace pixel {
 
-std::vector<char> ReadFile(const char* file_name) {
-  std::fstream stream(file_name, std::ios::ate | std::ios::binary);
-
-  if (!stream.is_open()) {
-    P_ERROR << "Could not open file: " << file_name;
-    return {};
+std::unique_ptr<Mapping> OpenFile(const char* file_name) {
+  UniqueFD fd(P_TEMP_FAILURE_RETRY(::open(file_name, O_RDONLY | O_CLOEXEC)));
+  if (!fd.IsValid()) {
+    P_ERROR << "Could not open FD.";
+    return nullptr;
   }
 
-  std::vector<char> buffer;
+  struct stat stat_buf = {};
 
-  stream.seekg(0, std::ios::end);
-  buffer.reserve(stream.tellg());
-  stream.seekg(0, std::ios::beg);
+  if (::fstat(fd.Get(), &stat_buf) != 0) {
+    P_ERROR << "Could not stat file.";
+    return nullptr;
+  }
 
-  buffer.assign(std::istreambuf_iterator<char>(stream),
-                std::istreambuf_iterator<char>());
+  auto mapping_ptr = ::mmap(nullptr, stat_buf.st_size, PROT_READ,
+                            MAP_FILE | MAP_PRIVATE, fd.Get(), 0);
+  if (mapping_ptr == MAP_FAILED) {
+    P_ERROR << "Could not mmap file descriptor.";
+    return nullptr;
+  }
 
-  return buffer;
+  MappingType mapping_type;
+  mapping_type.mapping = mapping_ptr;
+  mapping_type.size = stat_buf.st_size;
+
+  return std::make_unique<MemoryMapping>(mapping_type);
 }
 
 }  // namespace pixel
