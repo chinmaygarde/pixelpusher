@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sys/errno.h>
+#include <errno.h>
 
 #include <cassert>
 
