@@ -4,6 +4,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <limits>
 
 #include "logging.h"
 #include "macros.h"

@@ -1,12 +1,44 @@
 #include "file.h"
 
+#if P_OS_WINDOWS
+#else  // P_OS_WINDOWS
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#endif  // // P_OS_WINDOWS
 
 #include "logging.h"
 #include "mapping.h"
 
 namespace pixel {
+
+bool FDTraits::IsValid(int fd) {
+  return fd >= 0;
+}
+
+int FDTraits::DefaultValue() {
+  return -1;
+}
+
+void FDTraits::Collect(int fd) {
+  P_TEMP_FAILURE_RETRY(::close(fd));
+}
+
+bool MappingTraits::IsValid(const MappingType& mapping) {
+  return mapping.mapping != nullptr;
+}
+
+MappingType MappingTraits::DefaultValue() {
+  return {};
+}
+
+void MappingTraits::Collect(const MappingType& mapping) {
+  auto result = ::munmap(const_cast<void*>(mapping.mapping), mapping.size);
+  if (result != 0) {
+    P_ERROR << "Could not release memory mapping.";
+  }
+}
 
 std::unique_ptr<Mapping> OpenFile(const char* file_name) {
   UniqueFD fd(P_TEMP_FAILURE_RETRY(::open(file_name, O_RDONLY | O_CLOEXEC)));

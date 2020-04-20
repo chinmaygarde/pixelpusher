@@ -1,20 +1,18 @@
 #pragma once
 
-#include <sys/mman.h>
-#include <unistd.h>
-
 #include "logging.h"
 #include "macros.h"
+#include "platform.h"
 #include "unique_object.h"
 
 namespace pixel {
 
 struct FDTraits {
-  static bool IsValid(int fd) { return fd >= 0; }
+  static bool IsValid(int fd);
 
-  static int DefaultValue() { return -1; }
+  static int DefaultValue();
 
-  static void Collect(int fd) { P_TEMP_FAILURE_RETRY(::close(fd)); }
+  static void Collect(int fd);
 };
 
 struct MappingType {
@@ -23,18 +21,11 @@ struct MappingType {
 };
 
 struct MappingTraits {
-  static bool IsValid(const MappingType& mapping) {
-    return mapping.mapping != nullptr;
-  }
+  static bool IsValid(const MappingType& mapping);
 
-  static MappingType DefaultValue() { return {}; }
+  static MappingType DefaultValue();
 
-  static void Collect(const MappingType& mapping) {
-    auto result = ::munmap(const_cast<void*>(mapping.mapping), mapping.size);
-    if (result != 0) {
-      P_ERROR << "Could not release memory mapping.";
-    }
-  }
+  static void Collect(const MappingType& mapping);
 };
 
 using UniqueFD = UniqueObject<int, FDTraits>;

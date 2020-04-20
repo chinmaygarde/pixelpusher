@@ -10,6 +10,7 @@ add_library(core
   mapping.cc
   mapping.h
   unique_object.h
+  platform.h
 )
 
 target_include_directories(core PUBLIC .)
