@@ -1,20 +1,24 @@
 
 if(NOT WINDOWS)
 	add_compile_options(
-	  -Wall
-	  -Wextra
-	  -pedantic
-	  -Werror
+		-Wall
+		-Wextra
+		-pedantic
+		-Werror
 
-	  -Wno-unused-parameter
-	  -Wno-gnu-statement-expression
+		-Wno-unused-parameter
+		-Wno-gnu-statement-expression
 	)
 
 	add_compile_options(
-	  -fno-exceptions
-	  -fno-rtti
+		-fno-exceptions
+		-fno-rtti
 	)
 endif(NOT WINDOWS)
+
+if(WINDOWS)
+	add_compile_definitions(NOMINMAX)
+endif(WINDOWS)
 
 add_subdirectory(core)
 add_subdirectory(machine)
