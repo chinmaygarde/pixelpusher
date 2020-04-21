@@ -1,11 +1,21 @@
 #include "file.h"
 
 #if P_OS_WINDOWS
+
+#include <Windows.h>
+
+#include <codecvt>
+#include <locale>
+#include <sstream>
+#include <string>
+
 #else  // P_OS_WINDOWS
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #endif  // // P_OS_WINDOWS
 
 #include "logging.h"
@@ -13,35 +23,181 @@
 
 namespace pixel {
 
-bool FDTraits::IsValid(int fd) {
-  return fd >= 0;
-}
+class FileMapping : public Mapping {
+ public:
+  struct Data {
+    const uint8_t* mapping = nullptr;
+    size_t size = 0;
+#if P_OS_WINDOWS
+    UniqueFD fd;
+    UniqueFD mapping_fd;
+#endif  // P_OS_WINDOWS
+  };
 
-int FDTraits::DefaultValue() {
-  return -1;
-}
+  FileMapping(Data data) : data_(std::move(data)) {}
 
-void FDTraits::Collect(int fd) {
-  P_TEMP_FAILURE_RETRY(::close(fd));
-}
-
-bool MappingTraits::IsValid(const MappingType& mapping) {
-  return mapping.mapping != nullptr;
-}
-
-MappingType MappingTraits::DefaultValue() {
-  return {};
-}
-
-void MappingTraits::Collect(const MappingType& mapping) {
-  auto result = ::munmap(const_cast<void*>(mapping.mapping), mapping.size);
-  if (result != 0) {
-    P_ERROR << "Could not release memory mapping.";
+  // |Mapping|
+  ~FileMapping() override {
+#if P_OS_WINDOWS
+    if (!::UnmapViewOfFile(data_.mapping)) {
+      P_ERROR << "Could not unmap view of file.";
+    }
+#else   // P_OS_WINDOWS
+    if (::munmap(data_.mapping, data_.size) != 0) {
+      P_ERROR << "Could not unmap data.";
+    }
+#endif  // P_OS_WINDOWS
   }
+
+  // |Mapping|
+  const uint8_t* GetData() const { return data_.mapping; }
+
+  // |Mapping|
+  virtual size_t GetSize() const { return data_.size; }
+
+ private:
+  Data data_;
+
+  P_DISALLOW_COPY_AND_ASSIGN(FileMapping);
+};
+
+#if P_OS_WINDOWS
+
+using WideStringConvertor =
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>;
+
+static std::wstring StringToWideString(const std::string& str) {
+  WideStringConvertor converter;
+  return converter.from_bytes(str);
+}
+
+static std::string WideStringToString(const std::wstring& wstr) {
+  WideStringConvertor converter;
+  return converter.to_bytes(wstr);
+}
+
+static std::string GetLastErrorMessage() {
+  DWORD last_error = ::GetLastError();
+  if (last_error == 0) {
+    return {};
+  }
+
+  const DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                      FORMAT_MESSAGE_FROM_SYSTEM |
+                      FORMAT_MESSAGE_IGNORE_INSERTS;
+
+  wchar_t* buffer = nullptr;
+  size_t size = ::FormatMessage(
+      flags,                                      // dwFlags
+      NULL,                                       // lpSource
+      last_error,                                 // dwMessageId
+      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  // dwLanguageId
+      reinterpret_cast<LPSTR>(&buffer),           // lpBuffer
+      0,                                          // nSize
+      NULL                                        // Arguments
+  );
+
+  std::wstring message(buffer, size);
+
+  ::LocalFree(buffer);
+
+  std::wstringstream stream;
+  stream << message << " (" << last_error << ").";
+
+  return WideStringToString(stream.str());
+}
+
+#endif  // P_OS_WINDOWS
+
+bool FDTraits::IsValid(Handle fd) {
+#if P_OS_WINDOWS
+  return fd != INVALID_HANDLE_VALUE;
+#else   // P_OS_WINDOWS
+  return fd >= 0;
+#endif  // P_OS_WINDOWS
+}
+
+FDTraits::Handle FDTraits::DefaultValue() {
+#if P_OS_WINDOWS
+  return INVALID_HANDLE_VALUE;
+#else   // P_OS_WINDOWS
+  return -1;
+#endif  // P_OS_WINDOWS
+}
+
+void FDTraits::Collect(Handle fd) {
+#if P_OS_WINDOWS
+  auto closed = ::CloseHandle(fd);
+  if (!closed) {
+    P_ERROR << "Could not close file handle.";
+  }
+#else   // P_OS_WINDOWS
+  P_TEMP_FAILURE_RETRY(::close(fd));
+#endif  // P_OS_WINDOWS
 }
 
 std::unique_ptr<Mapping> OpenFile(const char* file_name) {
+  if (file_name == nullptr) {
+    P_ERROR << "File name was nullptr.";
+    return nullptr;
+  }
+
+#if P_OS_WINDOWS
+  UniqueFD fd(::CreateFile(file_name,              // lpFileName
+                           GENERIC_READ,           // dwDesiredAccess
+                           FILE_SHARE_READ,        // dwShareMode
+                           nullptr,                // lpSecurityAttributes
+                           OPEN_EXISTING,          // dwCreationDisposition
+                           FILE_ATTRIBUTE_NORMAL,  // dwFlagsAndAttributes
+                           nullptr                 // hTemplateFile
+                           ));
+  if (!fd.IsValid()) {
+    P_ERROR << "Could not open FD.";
+    return nullptr;
+  }
+
+  const auto mapping_size = ::GetFileSize(fd.Get(), nullptr);
+  if (mapping_size == INVALID_FILE_SIZE) {
+    P_ERROR << "Could not find file size.";
+    return nullptr;
+  }
+
+  UniqueFD mapping_fd(::CreateFileMapping(fd.Get(),       // hFile
+                                          nullptr,        // lpAttributes
+                                          PAGE_READONLY,  // flProtect
+                                          0,              // dwMaximumSizeHigh
+                                          0,              // dwMaximumSizeLow
+                                          nullptr         // lpName
+                                          ));
+
+  if (!mapping_fd.IsValid()) {
+    P_ERROR << "Could not setup file mapping: " << GetLastErrorMessage();
+    return nullptr;
+  }
+
+  auto mapping = reinterpret_cast<uint8_t*>(MapViewOfFile(
+      mapping_fd.Get(),  // hFileMappingObject
+      FILE_MAP_READ,     // hFileMappingObject
+      0,                 // hFileMappingObject
+      0,                 // hFileMappingObject
+      mapping_size       // hFileMappingObject
+      ));
+
+  if (mapping == nullptr) {
+    P_ERROR << "Could not map file: " << GetLastErrorMessage();
+    return nullptr;
+  }
+
+  FileMapping::Data mapping_data;
+  mapping_data.mapping = mapping;
+  mapping_data.size = mapping_size;
+  mapping_data.fd = std::move(fd);
+  mapping_data.mapping_fd = std::move(mapping_fd);
+  return std::make_unique<FileMapping>(std::move(mapping_data));
+
+#else   // P_OS_WINDOWS
   UniqueFD fd(P_TEMP_FAILURE_RETRY(::open(file_name, O_RDONLY | O_CLOEXEC)));
+
   if (!fd.IsValid()) {
     P_ERROR << "Could not open FD.";
     return nullptr;
@@ -61,11 +217,11 @@ std::unique_ptr<Mapping> OpenFile(const char* file_name) {
     return nullptr;
   }
 
-  MappingType mapping_type;
-  mapping_type.mapping = mapping_ptr;
-  mapping_type.size = stat_buf.st_size;
-
-  return std::make_unique<MemoryMapping>(mapping_type);
+  FileMapping::Data mapping_data;
+  mapping_data.mapping = mapping_ptr;
+  mapping_data.size = stat_buf.st_size;
+  return std::make_unique<FileMapping>(std::move(mapping_data));
+#endif  // P_OS_WINDOWS
 }
 
 }  // namespace pixel

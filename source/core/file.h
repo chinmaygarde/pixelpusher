@@ -8,28 +8,20 @@
 namespace pixel {
 
 struct FDTraits {
-  static bool IsValid(int fd);
+#if P_OS_WINDOWS
+  using Handle = void*;
+#else   // P_OS_WINDOWS
+  using Handle = int;
+#endif  // P_OS_WINDOWS
 
-  static int DefaultValue();
+  static bool IsValid(Handle fd);
 
-  static void Collect(int fd);
+  static Handle DefaultValue();
+
+  static void Collect(Handle fd);
 };
 
-struct MappingType {
-  const void* mapping = nullptr;
-  size_t size = 0;
-};
-
-struct MappingTraits {
-  static bool IsValid(const MappingType& mapping);
-
-  static MappingType DefaultValue();
-
-  static void Collect(const MappingType& mapping);
-};
-
-using UniqueFD = UniqueObject<int, FDTraits>;
-using UniqueMapping = UniqueObject<MappingType, MappingTraits>;
+using UniqueFD = UniqueObject<FDTraits::Handle, FDTraits>;
 
 class Mapping;
 std::unique_ptr<Mapping> OpenFile(const char* file_name);
