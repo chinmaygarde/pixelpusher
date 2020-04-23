@@ -28,10 +28,10 @@ class VulkanConnection {
   vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
   bool is_valid_ = false;
 
-  bool OnDebugUtilsMessengerCallback(
-      VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-      VkDebugUtilsMessageTypeFlagsEXT types,
-      const VkDebugUtilsMessengerCallbackDataEXT* callback_data);
+  static bool OnDebugUtilsMessengerCallback(
+      vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+      vk::DebugUtilsMessageTypeFlagsEXT types,
+      const vk::DebugUtilsMessengerCallbackDataEXT& callback_data);
 
   P_DISALLOW_COPY_AND_ASSIGN(VulkanConnection);
 };

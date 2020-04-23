@@ -412,6 +412,39 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
 
   VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
 
+  // The debug messenger must be attached as soon as the instance is created so
+  // that further calls are intercepted.
+  vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger;
+  if (AreValidationLayersEnabled()) {
+    vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_info;
+    using Severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+    debug_utils_messenger_info.setMessageSeverity(
+        Severity::eError | Severity::eWarning | Severity::eInfo |
+        Severity::eVerbose);
+    using Type = vk::DebugUtilsMessageTypeFlagBitsEXT;
+    debug_utils_messenger_info.setMessageType(
+        Type::eGeneral | Type::ePerformance | Type::eValidation);
+    debug_utils_messenger_info.setPfnUserCallback(
+        [](VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+           VkDebugUtilsMessageTypeFlagsEXT types,
+           const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
+           void* user_data) -> VkBool32 {
+          return OnDebugUtilsMessengerCallback(
+              static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(severity),
+              static_cast<vk::DebugUtilsMessageTypeFlagBitsEXT>(types),
+              {*callback_data});
+        });
+    auto debug_messenger_result =
+        instance.get().createDebugUtilsMessengerEXTUnique(
+            debug_utils_messenger_info);
+    if (debug_messenger_result.result != vk::Result::eSuccess) {
+      P_ERROR << "Validation was enabled but could not create debug utils "
+                 "messenger.";
+      return;
+    }
+    debug_utils_messenger = std::move(debug_messenger_result.value);
+  }
+
   auto surface = CreateSurface(instance.get(), glfw_window);
 
   if (!surface) {
@@ -435,6 +468,9 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   vk::DeviceQueueCreateInfo queue_create_info;
   queue_create_info.setQueueFamilyIndex(
       selection.graphics_family_index.value());
+  queue_create_info.setQueueCount(1u);
+  const float queue_priority = 1.0f;
+  queue_create_info.setPQueuePriorities(&queue_priority);
 
   vk::DeviceCreateInfo device_create_info;
   device_create_info.setPQueueCreateInfos(&queue_create_info);
@@ -457,36 +493,6 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   if (!swapchain) {
     P_ERROR << "Could not create swapchain.";
     return;
-  }
-
-  vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger;
-  if (AreValidationLayersEnabled()) {
-    vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_info;
-    using Severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-    debug_utils_messenger_info.setMessageSeverity(
-        Severity::eError | Severity::eWarning | Severity::eInfo |
-        Severity::eVerbose);
-    using Type = vk::DebugUtilsMessageTypeFlagBitsEXT;
-    debug_utils_messenger_info.setMessageType(
-        Type::eGeneral | Type::ePerformance | Type::eValidation);
-    debug_utils_messenger_info.setPUserData(this);
-    debug_utils_messenger_info.setPfnUserCallback(
-        [](VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-           VkDebugUtilsMessageTypeFlagsEXT types,
-           const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
-           void* user_data) -> VkBool32 {
-          return reinterpret_cast<VulkanConnection*>(user_data)
-              ->OnDebugUtilsMessengerCallback(severity, types, callback_data);
-        });
-    auto debug_messenger_result =
-        instance_.get().createDebugUtilsMessengerEXTUnique(
-            debug_utils_messenger_info);
-    if (debug_messenger_result.result != vk::Result::eSuccess) {
-      P_ERROR << "Validation was enabled but could not create debug utils "
-                 "messenger.";
-      return;
-    }
-    debug_utils_messenger = std::move(debug_messenger_result.value);
   }
 
   instance_ = std::move(instance);
@@ -517,10 +523,17 @@ vk::Format VulkanConnection::GetColorAttachmentFormat() const {
 }
 
 bool VulkanConnection::OnDebugUtilsMessengerCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT p_severity,
-    VkDebugUtilsMessageTypeFlagsEXT p_types,
-    const VkDebugUtilsMessengerCallbackDataEXT* callback_data) {
-  return true;
+    vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+    vk::DebugUtilsMessageTypeFlagsEXT types,
+    const vk::DebugUtilsMessengerCallbackDataEXT& callback_data) {
+  if (!(severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)) {
+    return false;
+  }
+
+  P_ERROR << "[Vulkan Validation] " << to_string(severity)
+          << callback_data.pMessage;
+
+  return false;
 }
 
 }  // namespace pixel
