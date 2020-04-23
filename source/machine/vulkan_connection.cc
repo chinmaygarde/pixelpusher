@@ -261,6 +261,93 @@ static PhysicalDeviceSelection SelectPhysicalDevice(
   return {};
 }
 
+static constexpr bool AreValidationLayersEnabled() {
+  return true;
+}
+
+static std::optional<std::set<std::string>> GetRequiredInstanceLayers() {
+  std::set<std::string> required_layers;
+
+  // Other required layers go here as necessary.
+
+  if (AreValidationLayersEnabled()) {
+    required_layers.insert("VK_LAYER_KHRONOS_validation");
+  }
+
+  const auto layer_properties = vk::enumerateInstanceLayerProperties();
+
+  if (layer_properties.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not query instance layer properties.";
+    return std::nullopt;
+  }
+
+  std::set<std::string> layers;
+  for (const auto& layer : layer_properties.value) {
+    std::string layer_name{layer.layerName};
+
+    auto found = required_layers.find(layer_name);
+    if (found == required_layers.end()) {
+      continue;
+    }
+    layers.insert(*found);
+    required_layers.erase(found);
+  }
+
+  if (required_layers.size() != 0u) {
+    P_ERROR << "No all required layers were found. The ones missing were:";
+    for (const auto& layer : required_layers) {
+      P_ERROR << "Layer Name: " << layer;
+    }
+    return std::nullopt;
+  }
+
+  return layers;
+}
+
+static std::optional<std::set<std::string>> GetRequiredInstanceExtensions() {
+  uint32_t glfw_extensions_count = 0;
+  const char** glfw_extensions =
+      glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
+
+  std::set<std::string> required_extensions;
+
+  for (size_t i = 0; i < glfw_extensions_count; i++) {
+    required_extensions.insert(std::string{glfw_extensions[i]});
+  }
+
+  if (AreValidationLayersEnabled()) {
+    required_extensions.insert(std::string{VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
+  }
+
+  const auto extension_properties = vk::enumerateInstanceExtensionProperties();
+  if (extension_properties.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not query instance layer properties.";
+    return std::nullopt;
+  }
+
+  std::set<std::string> extensions;
+  for (const auto& extension_property : extension_properties.value) {
+    std::string extension_name{extension_property.extensionName};
+    auto found = required_extensions.find(extension_name);
+    if (found == required_extensions.end()) {
+      continue;
+    }
+    extensions.insert(*found);
+    required_extensions.erase(found);
+  }
+
+  if (required_extensions.size() != 0u) {
+    P_ERROR
+        << "Not all required extensions were found. The ones missing were: ";
+    for (const auto& required_extension : required_extensions) {
+      P_ERROR << "Extension Name: " << required_extension;
+    }
+    return std::nullopt;
+  }
+
+  return extensions;
+}
+
 VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   if (glfw_window == nullptr) {
     P_ERROR << "GLFW window invalid.";
@@ -283,14 +370,38 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   application_info.setEngineVersion(VK_MAKE_VERSION(1, 0, 0));
   application_info.setApiVersion(VK_MAKE_VERSION(1, 0, 0));
 
-  uint32_t required_extensions_count = 0;
-  const char** required_extensions =
-      glfwGetRequiredInstanceExtensions(&required_extensions_count);
+  const auto required_layers = GetRequiredInstanceLayers();
+  const auto required_extensions = GetRequiredInstanceExtensions();
+
+  if (!required_layers.has_value() || !required_extensions.has_value()) {
+    P_ERROR
+        << "Could not consolidate the required Vulkan extensions or layers.";
+    return;
+  }
+
+  std::vector<const char*> required_layers_vector;
+  for (const auto& layer : required_layers.value()) {
+    required_layers_vector.push_back(layer.c_str());
+  }
+  std::vector<const char*> required_extensions_vector;
+  for (const auto& extension : required_extensions.value()) {
+    required_extensions_vector.push_back(extension.c_str());
+  }
 
   vk::InstanceCreateInfo instance_create_info;
-  instance_create_info.setPpEnabledExtensionNames(required_extensions);
-  instance_create_info.setEnabledExtensionCount(required_extensions_count);
   instance_create_info.setPApplicationInfo(&application_info);
+
+  if (required_extensions_vector.size() != 0) {
+    instance_create_info.setPpEnabledExtensionNames(
+        required_extensions_vector.data());
+    instance_create_info.setEnabledExtensionCount(
+        required_extensions_vector.size());
+  }
+
+  if (required_layers_vector.size() != 0) {
+    instance_create_info.setEnabledLayerCount(required_layers_vector.size());
+    instance_create_info.setPpEnabledLayerNames(required_layers_vector.data());
+  }
 
   auto [r1, instance] = vk::createInstanceUnique(instance_create_info);
 
