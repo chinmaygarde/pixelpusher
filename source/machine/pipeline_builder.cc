@@ -84,7 +84,8 @@ vk::UniquePipeline PipelineBuilder::CreatePipeline(
   pipeline_info.setLayout(pipeline_layout);
   pipeline_info.setRenderPass(render_pass);
 
-  auto result = device.createGraphicsPipelineUnique({},  // pipeline cache
+  
+  auto result = device.createGraphicsPipelineUnique(nullptr,  // pipeline cache
                                                     pipeline_info);
   if (result.result != vk::Result::eSuccess) {
     P_ERROR << "Could not create graphics pipeline.";

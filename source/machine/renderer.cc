@@ -4,6 +4,7 @@
 
 #include "logging.h"
 #include "pipeline_builder.h"
+#include "pipeline_layout.h"
 #include "render_pass.h"
 #include "shader_loader.h"
 
@@ -29,7 +30,7 @@ bool Renderer::Setup() {
     return false;
   }
 
-  // Load shaders.
+  // Load shader stages.
   auto vertex_shader_module =
       LoadShaderModule(connection_.GetDevice(), "triangle.vert");
   auto fragment_shader_module =
@@ -55,6 +56,9 @@ bool Renderer::Setup() {
       fragment_shader,  //
   };
 
+  // Setup pipeline layout.
+  auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
+
   // Setup render pass.
   auto render_pass = CreateRenderPass(connection_.GetDevice(),
                                       connection_.GetColorAttachmentFormat());
@@ -64,8 +68,17 @@ bool Renderer::Setup() {
   }
 
   PipelineBuilder pipeline_builder;
-  pipeline_builder.CreatePipeline(connection_.GetDevice(), shader_stages,
-                                  render_pass.get());
+  auto pipeline =
+      pipeline_builder.CreatePipeline(connection_.GetDevice(),  // device
+                                      shader_stages,            // shader stages
+                                      pipeline_layout.get(),  // pipeline layout
+                                      render_pass.get()       // render pass
+      );
+
+  if (!pipeline) {
+    P_ERROR << "Could not create pipeline.";
+    return false;
+  }
 
   return true;
 }

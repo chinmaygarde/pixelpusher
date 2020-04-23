@@ -3,6 +3,8 @@ add_executable(machine
   main.cc
   pipeline_builder.cc
   pipeline_builder.h
+  pipeline_layout.cc
+  pipeline_layout.h
   render_pass.cc
   render_pass.h
   renderer.cc
