@@ -25,7 +25,13 @@ class VulkanConnection {
   vk::UniqueDevice device_;
   vk::SurfaceKHR surface_;
   std::unique_ptr<VulkanSwapchain> swapchain_;
+  vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
   bool is_valid_ = false;
+
+  bool OnDebugUtilsMessengerCallback(
+      VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+      VkDebugUtilsMessageTypeFlagsEXT types,
+      const VkDebugUtilsMessengerCallbackDataEXT* callback_data);
 
   P_DISALLOW_COPY_AND_ASSIGN(VulkanConnection);
 };

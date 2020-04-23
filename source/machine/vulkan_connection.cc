@@ -459,10 +459,41 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
+  vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger;
+  if (AreValidationLayersEnabled()) {
+    vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_info;
+    using Severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+    debug_utils_messenger_info.setMessageSeverity(
+        Severity::eError | Severity::eWarning | Severity::eInfo |
+        Severity::eVerbose);
+    using Type = vk::DebugUtilsMessageTypeFlagBitsEXT;
+    debug_utils_messenger_info.setMessageType(
+        Type::eGeneral | Type::ePerformance | Type::eValidation);
+    debug_utils_messenger_info.setPUserData(this);
+    debug_utils_messenger_info.setPfnUserCallback(
+        [](VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+           VkDebugUtilsMessageTypeFlagsEXT types,
+           const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
+           void* user_data) -> VkBool32 {
+          return reinterpret_cast<VulkanConnection*>(user_data)
+              ->OnDebugUtilsMessengerCallback(severity, types, callback_data);
+        });
+    auto debug_messenger_result =
+        instance_.get().createDebugUtilsMessengerEXTUnique(
+            debug_utils_messenger_info);
+    if (debug_messenger_result.result != vk::Result::eSuccess) {
+      P_ERROR << "Validation was enabled but could not create debug utils "
+                 "messenger.";
+      return;
+    }
+    debug_utils_messenger = std::move(debug_messenger_result.value);
+  }
+
   instance_ = std::move(instance);
   device_ = std::move(device);
   surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
+  debug_utils_messenger_ = std::move(debug_utils_messenger);
 
   is_valid_ = true;
 }
@@ -483,6 +514,13 @@ const vk::Device& VulkanConnection::GetDevice() const {
 
 vk::Format VulkanConnection::GetColorAttachmentFormat() const {
   return swapchain_->GetImageFormat();
+}
+
+bool VulkanConnection::OnDebugUtilsMessengerCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT p_severity,
+    VkDebugUtilsMessageTypeFlagsEXT p_types,
+    const VkDebugUtilsMessengerCallbackDataEXT* callback_data) {
+  return true;
 }
 
 }  // namespace pixel
