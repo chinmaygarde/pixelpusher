@@ -49,7 +49,7 @@ bool Renderer::Setup() {
   vk::PipelineShaderStageCreateInfo fragment_shader;
   fragment_shader.setModule(fragment_shader_module.get());
   fragment_shader.setStage(vk::ShaderStageFlagBits::eFragment);
-  vertex_shader.setPName("main");
+  fragment_shader.setPName("main");
 
   std::vector<vk::PipelineShaderStageCreateInfo> shader_stages = {
       vertex_shader,    //
