@@ -1,5 +1,7 @@
 #include "pipeline_builder.h"
 
+#include "logging.h"
+
 namespace pixel {
 
 PipelineBuilder::PipelineBuilder() {
@@ -62,5 +64,34 @@ PipelineBuilder::PipelineBuilder() {
 };
 
 PipelineBuilder::~PipelineBuilder() = default;
+
+vk::UniquePipeline PipelineBuilder::CreatePipeline(
+    const vk::Device& device,
+    const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages,
+    vk::PipelineLayout pipeline_layout,
+    vk::RenderPass render_pass) const {
+  vk::GraphicsPipelineCreateInfo pipeline_info;
+  pipeline_info.setStageCount(shader_stages.size());
+  pipeline_info.setPStages(shader_stages.data());
+  pipeline_info.setPVertexInputState(&vertex_input_state_);
+  pipeline_info.setPInputAssemblyState(&input_assembly_);
+  pipeline_info.setPViewportState(&viewport_state_);
+  pipeline_info.setPRasterizationState(&rasterizer_state_);
+  pipeline_info.setPMultisampleState(&multisample_state_);
+  pipeline_info.setPDepthStencilState(&depth_stencil_state_);
+  pipeline_info.setPColorBlendState(&color_blend_state_);
+  pipeline_info.setPDynamicState(&dynamic_state_);
+  pipeline_info.setLayout(pipeline_layout);
+  pipeline_info.setRenderPass(render_pass);
+
+  auto result = device.createGraphicsPipelineUnique({},  // pipeline cache
+                                                    pipeline_info);
+  if (result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not create graphics pipeline.";
+    return {};
+  }
+
+  return std::move(result.value);
+}
 
 }  // namespace pixel

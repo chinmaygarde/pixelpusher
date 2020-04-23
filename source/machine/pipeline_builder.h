@@ -13,6 +13,12 @@ class PipelineBuilder {
 
   ~PipelineBuilder();
 
+  vk::UniquePipeline CreatePipeline(
+      const vk::Device& device,
+      const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages,
+      vk::PipelineLayout pipeline_layout,
+      vk::RenderPass render_pass) const;
+
  private:
   vk::PipelineVertexInputStateCreateInfo vertex_input_state_;
   vk::PipelineInputAssemblyStateCreateInfo input_assembly_;
@@ -26,6 +32,7 @@ class PipelineBuilder {
   vk::PipelineColorBlendStateCreateInfo color_blend_state_;
   std::vector<vk::DynamicState> dynamic_states_;
   vk::PipelineDynamicStateCreateInfo dynamic_state_;
+
   P_DISALLOW_COPY_AND_ASSIGN(PipelineBuilder);
 };
 
