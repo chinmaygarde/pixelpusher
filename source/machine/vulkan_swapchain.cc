@@ -50,7 +50,8 @@ CreateSwapchainImageViews(const vk::Device& device,
 
 VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
                                  vk::UniqueSwapchainKHR swapchain,
-                                 vk::Format swapchain_image_format) {
+                                 vk::Format swapchain_image_format)
+    : image_format_(swapchain_image_format) {
   if (!swapchain) {
     P_ERROR << "Swapchain was invalid.";
     return;
@@ -73,6 +74,10 @@ VulkanSwapchain::~VulkanSwapchain() = default;
 
 bool VulkanSwapchain::IsValid() const {
   return is_valid_;
+}
+
+vk::Format VulkanSwapchain::GetImageFormat() const {
+  return image_format_;
 }
 
 }  // namespace pixel

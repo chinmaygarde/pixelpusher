@@ -17,10 +17,12 @@ class VulkanSwapchain {
 
   bool IsValid() const;
 
+  vk::Format GetImageFormat() const;
+
  private:
   vk::UniqueSwapchainKHR swapchain_;
   std::vector<vk::UniqueImageView> image_views_;
-
+  const vk::Format image_format_;
   bool is_valid_ = false;
 
   P_DISALLOW_COPY_AND_ASSIGN(VulkanSwapchain);

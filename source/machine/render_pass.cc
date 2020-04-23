@@ -4,8 +4,8 @@
 
 namespace pixel {
 
-RenderPass::RenderPass(const vk::Device& device,
-                       vk::Format color_attachment_format) {
+vk::UniqueRenderPass CreateRenderPass(const vk::Device& device,
+                                      vk::Format color_attachment_format) {
   vk::AttachmentDescription color_attachment_desc;
   color_attachment_desc.setFormat(color_attachment_format);
   color_attachment_desc.setSamples(vk::SampleCountFlagBits::e1);
@@ -32,20 +32,14 @@ RenderPass::RenderPass(const vk::Device& device,
   render_pass_info.setSubpassCount(1u);
   render_pass_info.setPSubpasses(&subpass);
 
-  auto render_pass = device.createRenderPassUnique(render_pass_info);
+  auto render_pass_result = device.createRenderPassUnique(render_pass_info);
 
-  if (render_pass.result != vk::Result::eSuccess) {
+  if (render_pass_result.result != vk::Result::eSuccess) {
     P_ERROR << "Could not create render pass";
-    return;
+    return {};
   }
 
-  is_valid_ = true;
-}
-
-RenderPass::~RenderPass() = default;
-
-bool RenderPass::IsValid() const {
-  return is_valid_;
+  return std::move(render_pass_result.value);
 }
 
 }  // namespace pixel

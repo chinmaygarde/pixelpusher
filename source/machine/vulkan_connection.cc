@@ -1,10 +1,10 @@
 #include "vulkan_connection.h"
 
 #include <algorithm>
+#include <limits>
 #include <optional>
 #include <set>
 #include <string>
-#include <limits>
 
 #include "logging.h"
 #include "macros.h"
@@ -368,6 +368,10 @@ bool VulkanConnection::IsValid() const {
 
 const vk::Device& VulkanConnection::GetDevice() const {
   return device_.get();
+}
+
+vk::Format VulkanConnection::GetColorAttachmentFormat() const {
+  return swapchain_->GetImageFormat();
 }
 
 }  // namespace pixel

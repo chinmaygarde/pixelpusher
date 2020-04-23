@@ -15,8 +15,10 @@ class VulkanConnection {
   ~VulkanConnection();
 
   bool IsValid() const;
-  
+
   const vk::Device& GetDevice() const;
+
+  vk::Format GetColorAttachmentFormat() const;
 
  private:
   vk::UniqueInstance instance_;
