@@ -153,12 +153,35 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
     return;
   }
 
+  auto render_semaphore_result =
+      device.createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+  if (render_semaphore_result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not create semaphore";
+    return;
+  }
+
+  auto present_semaphore_result =
+      device.createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+  if (present_semaphore_result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not create semaphore";
+    return;
+  }
+
+  auto graphics_queue = device.get().getQueue(
+      selection.graphics_family_index.value(),  // queue family index
+      0u                                        // queue index
+  );
+
+  device_ = device;
+  graphics_queue_ = graphics_queue;
   swapchain_ = std::move(swapchain);
   image_views_ = std::move(image_views.value());
   render_pass_ = std::move(render_pass);
   frame_buffers_ = std::move(frame_buffers.value());
   command_pool_ = std::move(pool_result.value);
   command_buffers_ = std::move(command_buffers.value());
+  ready_to_render_semaphore_ = std::move(render_semaphore_result.value);
+  ready_to_present_semaphore_ = std::move(present_semaphore_result.value);
 
   is_valid_ = true;
 }
@@ -172,6 +195,112 @@ bool VulkanSwapchain::IsValid() const {
 const vk::RenderPass& VulkanSwapchain::GetRenderPass() const {
   P_ASSERT(is_valid_);
   return render_pass_.get();
+}
+
+std::optional<vk::CommandBuffer> VulkanSwapchain::AcquireNextCommandBuffer() {
+  P_ASSERT(is_valid_);
+  if (pending_command_buffer_.has_value()) {
+    P_ERROR << "A command buffer was already pending for submission.";
+    return std::nullopt;
+  }
+
+  auto result = device_.acquireNextImageKHR(
+      swapchain_.get(),                      // swapchain
+      std::numeric_limits<uint64_t>::max(),  // timeout
+      ready_to_render_semaphore_.get(),      // semaphore
+      {}                                     // fence
+  );
+  if (result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not acquire next swapchain image.";
+    return std::nullopt;
+  }
+
+  if (result.value >= command_buffers_.size()) {
+    P_ERROR << "Swapchain image index returned was invalid.";
+    return std::nullopt;
+  }
+
+  pending_swapchain_image_index_ = result.value;
+  pending_command_buffer_ = command_buffers_[result.value].get();
+  return pending_command_buffer_.value();
+}
+
+bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
+  if (!pending_command_buffer_.has_value()) {
+    P_ERROR << "There was no pending command buffer to submit.";
+    return false;
+  }
+
+  if (pending_command_buffer_.value() != buffer) {
+    P_ERROR << "Command buffer to submit was not the pending command buffer.";
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Submit the command buffer.
+  // ---------------------------------------------------------------------------
+
+  vk::SubmitInfo submit_info;
+
+  submit_info.setPCommandBuffers(&buffer);
+  submit_info.setCommandBufferCount(1u);
+
+  // Wait until the slot is ready for rendering.
+  submit_info.setPWaitSemaphores(&ready_to_render_semaphore_.get());
+  submit_info.setWaitSemaphoreCount(1u);
+
+  // Signal that the slot is ready for presentation.
+  submit_info.setPSignalSemaphores(&ready_to_present_semaphore_.get());
+  submit_info.setSignalSemaphoreCount(1u);
+
+  auto command_buffer_submit_result =
+      graphics_queue_.submit(submit_info, nullptr /* fences */);
+  if (command_buffer_submit_result != vk::Result::eSuccess) {
+    P_ERROR << "Could not submit the pending command buffer.";
+    return false;
+  }
+
+  pending_command_buffer_.reset();
+
+  // ---------------------------------------------------------------------------
+  // Present the contents of the submitted command buffer.
+  // ---------------------------------------------------------------------------
+
+  if (!pending_swapchain_image_index_.has_value()) {
+    P_ERROR
+        << "Swapchain image index not associated with pending command buffer.";
+    return false;
+  }
+
+  vk::PresentInfoKHR present_info;
+
+  // Wait for the presentation to be ready.
+  present_info.setPWaitSemaphores(&ready_to_present_semaphore_.get());
+  present_info.setWaitSemaphoreCount(1u);
+
+  // Select the swapchain to present on.
+  present_info.setPSwapchains(&swapchain_.get());
+  present_info.setSwapchainCount(1u);
+
+  // Select the swapchain image to present to.
+  present_info.setPImageIndices(&pending_swapchain_image_index_.value());
+
+  auto present_result = graphics_queue_.presentKHR(&present_info);
+  if (present_result != vk::Result::eSuccess) {
+    P_ERROR << "Could not present the swapchain image.";
+    return false;
+  }
+
+  pending_swapchain_image_index_.reset();
+
+  // TODO: Remove temporary pessimization till multiple frames in flight are
+  // implemented.
+  if (graphics_queue_.waitIdle() != vk::Result::eSuccess) {
+    P_ERROR << "Could not wait the graphics queue to go idle.";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace pixel

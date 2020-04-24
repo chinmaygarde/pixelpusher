@@ -29,8 +29,6 @@ class VulkanConnection {
   vk::SurfaceKHR surface_;
   std::unique_ptr<VulkanSwapchain> swapchain_;
   vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
-  vk::Queue graphics_queue_;
-
   bool is_valid_ = false;
 
   static bool OnDebugUtilsMessengerCallback(
