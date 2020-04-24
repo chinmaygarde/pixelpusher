@@ -500,11 +500,19 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
+  auto graphics_queue = device.get().getQueue(
+      selection.graphics_family_index.value(),  // queue family index
+      0u                                        // queue index
+  );
+
   instance_ = std::move(instance);
+  physical_device_selection_ =
+      std::make_unique<PhysicalDeviceSelection>(selection);
   device_ = std::move(device);
   surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
   debug_utils_messenger_ = std::move(debug_utils_messenger);
+  graphics_queue_ = graphics_queue;
 
   is_valid_ = true;
 }
