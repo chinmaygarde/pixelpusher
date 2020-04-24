@@ -107,8 +107,12 @@ struct SwapchainDetails {
       return nullptr;
     }
 
-    auto vulkan_swapchain = std::make_unique<VulkanSwapchain>(
-        device, std::move(swapchain.value), surface_format.value().format);
+    auto vulkan_swapchain =
+        std::make_unique<VulkanSwapchain>(device,                         //
+                                          std::move(swapchain.value),     //
+                                          surface_format.value().format,  //
+                                          swap_extent.value()             //
+        );
 
     if (!vulkan_swapchain->IsValid()) {
       return nullptr;
@@ -518,10 +522,6 @@ const vk::Device& VulkanConnection::GetDevice() const {
   return device_.get();
 }
 
-vk::Format VulkanConnection::GetColorAttachmentFormat() const {
-  return swapchain_->GetImageFormat();
-}
-
 bool VulkanConnection::OnDebugUtilsMessengerCallback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
     vk::DebugUtilsMessageTypeFlagsEXT types,
@@ -534,6 +534,11 @@ bool VulkanConnection::OnDebugUtilsMessengerCallback(
           << callback_data.pMessage;
 
   return false;
+}
+
+const VulkanSwapchain& VulkanConnection::GetSwapchain() const {
+  P_ASSERT(is_valid_);
+  return *swapchain_.get();
 }
 
 }  // namespace pixel

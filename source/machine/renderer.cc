@@ -5,8 +5,8 @@
 #include "logging.h"
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
-#include "render_pass.h"
 #include "shader_loader.h"
+#include "vulkan_swapchain.h"
 
 namespace pixel {
 
@@ -59,21 +59,13 @@ bool Renderer::Setup() {
   // Setup pipeline layout.
   auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
 
-  // Setup render pass.
-  auto render_pass = CreateRenderPass(connection_.GetDevice(),
-                                      connection_.GetColorAttachmentFormat());
-  if (!render_pass) {
-    P_ERROR << "Could not create render pass";
-    return false;
-  }
-
   PipelineBuilder pipeline_builder;
-  auto pipeline =
-      pipeline_builder.CreatePipeline(connection_.GetDevice(),  // device
-                                      shader_stages,            // shader stages
-                                      pipeline_layout.get(),  // pipeline layout
-                                      render_pass.get()       // render pass
-      );
+  auto pipeline = pipeline_builder.CreatePipeline(
+      connection_.GetDevice(),                    // device
+      shader_stages,                              // shader stages
+      pipeline_layout.get(),                      // pipeline layout
+      connection_.GetSwapchain().GetRenderPass()  // render pass
+  );
 
   if (!pipeline) {
     P_ERROR << "Could not create pipeline.";

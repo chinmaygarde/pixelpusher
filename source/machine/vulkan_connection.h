@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "macros.h"
+#include "render_pass.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -18,7 +19,7 @@ class VulkanConnection {
 
   const vk::Device& GetDevice() const;
 
-  vk::Format GetColorAttachmentFormat() const;
+  const VulkanSwapchain& GetSwapchain() const;
 
  private:
   vk::UniqueInstance instance_;
