@@ -94,6 +94,11 @@ CreateSwapchainCommandBuffers(const vk::Device& device,
     return std::nullopt;
   }
 
+  if (result.value.size() != buffer_count) {
+    P_ERROR << "Unexpected command buffers count.";
+    return std::nullopt;
+  }
+
   return std::move(result.value);
 }
 

@@ -1,5 +1,7 @@
 
 add_executable(machine
+  command_buffer.cc
+  command_buffer.h
   main.cc
   pipeline_builder.cc
   pipeline_builder.h
