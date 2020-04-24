@@ -111,6 +111,7 @@ struct SwapchainDetails {
         std::make_unique<VulkanSwapchain>(device,                         //
                                           std::move(swapchain.value),     //
                                           surface_format.value().format,  //
+                                          graphics_family_index,          //
                                           swap_extent.value()             //
         );
 

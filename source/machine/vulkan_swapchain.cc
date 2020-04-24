@@ -79,9 +79,28 @@ CreateSwapchainFramebuffers(const vk::Device& device,
   return framebuffers;
 }
 
+static std::optional<std::vector<vk::UniqueCommandBuffer>>
+CreateSwapchainCommandBuffers(const vk::Device& device,
+                              const vk::CommandPool& commandPool,
+                              uint32_t buffer_count) {
+  vk::CommandBufferAllocateInfo buffer_info;
+  buffer_info.setCommandPool(commandPool);
+  buffer_info.setLevel(vk::CommandBufferLevel::ePrimary);
+  buffer_info.setCommandBufferCount(buffer_count);
+
+  auto result = device.allocateCommandBuffersUnique(buffer_info);
+  if (result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not allocate command buffers.";
+    return std::nullopt;
+  }
+
+  return std::move(result.value);
+}
+
 VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
                                  vk::UniqueSwapchainKHR swapchain,
                                  vk::Format swapchain_image_format,
+                                 uint32_t graphics_queue_family_index,
                                  vk::Extent2D extents) {
   if (!swapchain) {
     P_ERROR << "Swapchain was invalid.";
@@ -114,10 +133,27 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
     return;
   }
 
+  vk::CommandPoolCreateInfo pool_info;
+  pool_info.setQueueFamilyIndex(graphics_queue_family_index);
+  auto pool_result = device.createCommandPoolUnique(pool_info);
+  if (pool_result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not create command buffer pool.";
+    return;
+  }
+
+  auto command_buffers = CreateSwapchainCommandBuffers(
+      device, pool_result.value.get(), frame_buffers.value().size());
+  if (!command_buffers.has_value()) {
+    P_ERROR << "Could not create swapchain command buffers.";
+    return;
+  }
+
   swapchain_ = std::move(swapchain);
   image_views_ = std::move(image_views.value());
   render_pass_ = std::move(render_pass);
   frame_buffers_ = std::move(frame_buffers.value());
+  command_pool_ = std::move(pool_result.value);
+  command_buffers_ = std::move(command_buffers.value());
 
   is_valid_ = true;
 }
