@@ -26,11 +26,23 @@ vk::UniqueRenderPass CreateRenderPass(const vk::Device& device,
   subpass.setColorAttachmentCount(1u);
   subpass.setPColorAttachments(&color_attachment_reference);
 
+  vk::SubpassDependency subpass_dependency;
+  subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  subpass_dependency.dstSubpass = 0u;  // The first (and only) subpass.
+  subpass_dependency.srcStageMask =
+      vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  subpass_dependency.srcAccessMask = {};
+  subpass_dependency.dstStageMask =
+      vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  subpass_dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+
   vk::RenderPassCreateInfo render_pass_info;
   render_pass_info.setAttachmentCount(1u);
   render_pass_info.setPAttachments(&color_attachment_desc);
   render_pass_info.setSubpassCount(1u);
   render_pass_info.setPSubpasses(&subpass);
+  render_pass_info.setDependencyCount(1u);
+  render_pass_info.setPDependencies(&subpass_dependency);
 
   auto render_pass_result = device.createRenderPassUnique(render_pass_info);
 

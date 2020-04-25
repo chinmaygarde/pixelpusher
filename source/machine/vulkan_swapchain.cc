@@ -333,12 +333,13 @@ bool VulkanSwapchain::PrepareCommandBuffer(vk::CommandBuffer buffer,
     return false;
   }
 
-  // Being the render pass.
+  // Begin the render pass.
   vk::RenderPassBeginInfo render_pass_begin_info;
   render_pass_begin_info.setRenderPass(render_pass_.get());
   render_pass_begin_info.setFramebuffer(frame_buffers_[swapchain_index].get());
   render_pass_begin_info.setRenderArea({{0, 0}, extents_});
   render_pass_begin_info.setClearValueCount(1u);
+
   vk::ClearValue clear_color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f};
   render_pass_begin_info.setPClearValues(&clear_color);
 
