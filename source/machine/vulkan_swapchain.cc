@@ -193,6 +193,10 @@ bool VulkanSwapchain::IsValid() const {
   return is_valid_;
 }
 
+const vk::Extent2D& VulkanSwapchain::GetExtents() const {
+  return extents_;
+}
+
 const vk::RenderPass& VulkanSwapchain::GetRenderPass() const {
   P_ASSERT(is_valid_);
   return render_pass_.get();

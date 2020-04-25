@@ -60,6 +60,14 @@ bool Renderer::Setup() {
   auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
 
   PipelineBuilder pipeline_builder;
+
+  const auto extents = connection_.GetSwapchain().GetExtents();
+
+  pipeline_builder.SetScissor({{0u, 0u}, {extents.width, extents.height}});
+  pipeline_builder.SetViewport({0.0f, 0.0f, static_cast<float>(extents.width),
+                                static_cast<float>(extents.height), 0.0f,
+                                1.0f});
+
   auto pipeline = pipeline_builder.CreatePipeline(
       connection_.GetDevice(),                    // device
       shader_stages,                              // shader stages

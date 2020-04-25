@@ -19,6 +19,10 @@ class PipelineBuilder {
       vk::PipelineLayout pipeline_layout,
       vk::RenderPass render_pass) const;
 
+  PipelineBuilder& SetScissor(vk::Rect2D rect);
+
+  PipelineBuilder& SetViewport(vk::Viewport viewport);
+
  private:
   vk::PipelineVertexInputStateCreateInfo vertex_input_state_;
   vk::PipelineInputAssemblyStateCreateInfo input_assembly_;

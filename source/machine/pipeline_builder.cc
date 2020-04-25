@@ -57,13 +57,23 @@ PipelineBuilder::PipelineBuilder() {
   color_blend_state_.setBlendConstants({0.0f, 0.0f, 0.0f, 0.0f});
 
   dynamic_states_ = {
-      vk::DynamicState::eViewport,
+      // vk::DynamicState::eViewport,
   };
   dynamic_state_.setDynamicStateCount(dynamic_states_.size());
   dynamic_state_.setPDynamicStates(dynamic_states_.data());
 };
 
 PipelineBuilder::~PipelineBuilder() = default;
+
+PipelineBuilder& PipelineBuilder::SetScissor(vk::Rect2D rect) {
+  scissor_ = rect;
+  return *this;
+}
+
+PipelineBuilder& PipelineBuilder::SetViewport(vk::Viewport viewport) {
+  viewport_ = viewport;
+  return *this;
+}
 
 vk::UniquePipeline PipelineBuilder::CreatePipeline(
     const vk::Device& device,
@@ -84,7 +94,6 @@ vk::UniquePipeline PipelineBuilder::CreatePipeline(
   pipeline_info.setLayout(pipeline_layout);
   pipeline_info.setRenderPass(render_pass);
 
-  
   auto result = device.createGraphicsPipelineUnique(nullptr,  // pipeline cache
                                                     pipeline_info);
   if (result.result != vk::Result::eSuccess) {

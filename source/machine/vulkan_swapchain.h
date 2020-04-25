@@ -21,6 +21,8 @@ class VulkanSwapchain {
 
   bool IsValid() const;
 
+  const vk::Extent2D& GetExtents() const;
+
   const vk::RenderPass& GetRenderPass() const;
 
   std::optional<vk::CommandBuffer> AcquireNextCommandBuffer();
