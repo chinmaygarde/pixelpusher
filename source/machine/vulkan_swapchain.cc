@@ -140,6 +140,7 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
   }
 
   vk::CommandPoolCreateInfo pool_info;
+  pool_info.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
   pool_info.setQueueFamilyIndex(graphics_queue_family_index);
   auto pool_result = device.createCommandPoolUnique(pool_info);
   if (pool_result.result != vk::Result::eSuccess) {
@@ -264,6 +265,9 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
   // Wait until the slot is ready for rendering.
   submit_info.setPWaitSemaphores(&ready_to_render_semaphore_.get());
   submit_info.setWaitSemaphoreCount(1u);
+  vk::PipelineStageFlags wait_stage =
+      vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  submit_info.setPWaitDstStageMask(&wait_stage);
 
   // Signal that the slot is ready for presentation.
   submit_info.setPSignalSemaphores(&ready_to_present_semaphore_.get());
