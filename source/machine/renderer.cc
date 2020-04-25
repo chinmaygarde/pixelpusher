@@ -72,10 +72,38 @@ bool Renderer::Setup() {
     return false;
   }
 
+  pipeline_ = std::move(pipeline);
+
   return true;
 }
 
 bool Renderer::Render() {
+  if (!is_valid_) {
+    P_ERROR << "Render was not valid.";
+    return false;
+  }
+
+  auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
+  if (!buffer.has_value()) {
+    P_ERROR << "Could not acquire next swapchain command buffer.";
+    return false;
+  }
+
+  // Perform per frame rendering operations here.
+
+  buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
+                              pipeline_.get());
+  buffer.value().draw(3u,  // vertex count
+                      1u,  // instance count
+                      0u,  // first vertex
+                      0u   // first instance
+  );
+
+  if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {
+    P_ERROR << "Could not submit the command buffer back to the swapchain.";
+    return false;
+  }
+
   return true;
 }
 

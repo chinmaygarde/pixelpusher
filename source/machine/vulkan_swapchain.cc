@@ -106,7 +106,8 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
                                  vk::UniqueSwapchainKHR swapchain,
                                  vk::Format swapchain_image_format,
                                  uint32_t graphics_queue_family_index,
-                                 vk::Extent2D extents) {
+                                 vk::Extent2D extents)
+    : extents_(extents) {
   if (!swapchain) {
     P_ERROR << "Swapchain was invalid.";
     return;
@@ -167,10 +168,10 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
     return;
   }
 
-  auto graphics_queue = device.get().getQueue(
-      selection.graphics_family_index.value(),  // queue family index
-      0u                                        // queue index
-  );
+  auto graphics_queue =
+      device.getQueue(graphics_queue_family_index,  // queue family index
+                      0u                            // queue index
+      );
 
   device_ = device;
   graphics_queue_ = graphics_queue;
@@ -222,6 +223,12 @@ std::optional<vk::CommandBuffer> VulkanSwapchain::AcquireNextCommandBuffer() {
 
   pending_swapchain_image_index_ = result.value;
   pending_command_buffer_ = command_buffers_[result.value].get();
+
+  if (!PrepareCommandBuffer(pending_command_buffer_.value(), result.value)) {
+    P_ERROR << "Could not prepare command buffer.";
+    return std::nullopt;
+  }
+
   return pending_command_buffer_.value();
 }
 
@@ -233,6 +240,11 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
 
   if (pending_command_buffer_.value() != buffer) {
     P_ERROR << "Command buffer to submit was not the pending command buffer.";
+    return false;
+  }
+
+  if (!FinalizeCommandBuffer(buffer)) {
+    P_ERROR << "Could not finalize command buffer.";
     return false;
   }
 
@@ -297,6 +309,48 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
   // implemented.
   if (graphics_queue_.waitIdle() != vk::Result::eSuccess) {
     P_ERROR << "Could not wait the graphics queue to go idle.";
+    return false;
+  }
+
+  return true;
+}
+
+bool VulkanSwapchain::PrepareCommandBuffer(vk::CommandBuffer buffer,
+                                           size_t swapchain_index) {
+  if (!is_valid_) {
+    P_ERROR << "Swapchain was not valid.";
+    return false;
+  }
+
+  // Being recording the command buffer.
+  auto result = buffer.begin(vk::CommandBufferBeginInfo{});
+  if (result != vk::Result::eSuccess) {
+    P_ERROR << "Could not begin recording the command buffer.";
+    return false;
+  }
+
+  // Being the render pass.
+  vk::RenderPassBeginInfo render_pass_begin_info;
+  render_pass_begin_info.setRenderPass(render_pass_.get());
+  render_pass_begin_info.setFramebuffer(frame_buffers_[swapchain_index].get());
+  render_pass_begin_info.setRenderArea({{0, 0}, extents_});
+  render_pass_begin_info.setClearValueCount(1u);
+  vk::ClearValue clear_color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f};
+  render_pass_begin_info.setPClearValues(&clear_color);
+
+  buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
+
+  return true;
+}
+
+bool VulkanSwapchain::FinalizeCommandBuffer(vk::CommandBuffer buffer) {
+  // End the render pass.
+  buffer.endRenderPass();
+
+  // End the command buffer.
+  auto buffer_end_result = buffer.end();
+  if (buffer_end_result != vk::Result::eSuccess) {
+    P_ERROR << "Could not end recording the command buffer.";
     return false;
   }
 

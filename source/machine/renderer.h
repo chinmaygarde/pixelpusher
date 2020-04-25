@@ -22,6 +22,7 @@ class Renderer {
 
  private:
   VulkanConnection connection_;
+  vk::UniquePipeline pipeline_;
 
   bool is_valid_ = false;
 

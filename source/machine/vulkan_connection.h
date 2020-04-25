@@ -20,7 +20,7 @@ class VulkanConnection {
 
   const vk::Device& GetDevice() const;
 
-  const VulkanSwapchain& GetSwapchain() const;
+  VulkanSwapchain& GetSwapchain() const;
 
  private:
   vk::UniqueInstance instance_;

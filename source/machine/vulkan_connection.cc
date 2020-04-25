@@ -539,7 +539,7 @@ bool VulkanConnection::OnDebugUtilsMessengerCallback(
   return false;
 }
 
-const VulkanSwapchain& VulkanConnection::GetSwapchain() const {
+VulkanSwapchain& VulkanConnection::GetSwapchain() const {
   P_ASSERT(is_valid_);
   return *swapchain_.get();
 }
