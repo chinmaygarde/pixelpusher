@@ -1,6 +1,8 @@
 
 add_executable(machine
   main.cc
+  memory_allocator.cc
+  memory_allocator.h
   pipeline_builder.cc
   pipeline_builder.h
   pipeline_layout.cc
@@ -11,6 +13,7 @@ add_executable(machine
   renderer.h
   shader_loader.cc
   shader_loader.h
+  shaders/triangle.h
   surface.cc
   surface.h
   vulkan.h
@@ -18,12 +21,12 @@ add_executable(machine
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
-  shaders/triangle.h
 )
 
 target_include_directories(machine
   PRIVATE
     .
+    ../../third_party/vulkan_memory_allocator/src
 )
 
 compile_shaders(machine

@@ -500,12 +500,20 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
+  auto memory_allocator = std::make_unique<MemoryAllocator>(
+      physical_devices[selection.device_index.value()], device.get());
+  if (!memory_allocator->IsValid()) {
+    P_ERROR << "Could not create device memory allocator.";
+    return;
+  }
+
   instance_ = std::move(instance);
   physical_device_selection_ =
       std::make_unique<PhysicalDeviceSelection>(selection);
   device_ = std::move(device);
   surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
+  memory_allocator_ = std::move(memory_allocator);
   debug_utils_messenger_ = std::move(debug_utils_messenger);
 
   is_valid_ = true;

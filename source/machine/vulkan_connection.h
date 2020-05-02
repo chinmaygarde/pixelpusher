@@ -1,8 +1,10 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include "macros.h"
+#include "memory_allocator.h"
 #include "render_pass.h"
 #include "vulkan.h"
 
@@ -28,6 +30,7 @@ class VulkanConnection {
   vk::UniqueDevice device_;
   vk::SurfaceKHR surface_;
   std::unique_ptr<VulkanSwapchain> swapchain_;
+  std::unique_ptr<MemoryAllocator> memory_allocator_;
   vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
   bool is_valid_ = false;
 
