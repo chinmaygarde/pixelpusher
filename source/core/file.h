@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "logging.h"
 #include "macros.h"
 #include "platform.h"

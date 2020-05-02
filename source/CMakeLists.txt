@@ -3,7 +3,6 @@ if(NOT WINDOWS)
 	add_compile_options(
 		-Wall
 		-Wextra
-		-pedantic
 		-Werror
 
 		-Wno-unused-parameter

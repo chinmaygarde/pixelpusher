@@ -43,7 +43,7 @@ class FileMapping : public Mapping {
       P_ERROR << "Could not unmap view of file.";
     }
 #else   // P_OS_WINDOWS
-    if (::munmap(data_.mapping, data_.size) != 0) {
+    if (::munmap(const_cast<uint8_t*>(data_.mapping), data_.size) != 0) {
       P_ERROR << "Could not unmap data.";
     }
 #endif  // P_OS_WINDOWS
@@ -218,7 +218,7 @@ std::unique_ptr<Mapping> OpenFile(const char* file_name) {
   }
 
   FileMapping::Data mapping_data;
-  mapping_data.mapping = mapping_ptr;
+  mapping_data.mapping = reinterpret_cast<uint8_t*>(mapping_ptr);
   mapping_data.size = stat_buf.st_size;
   return std::make_unique<FileMapping>(std::move(mapping_data));
 #endif  // P_OS_WINDOWS

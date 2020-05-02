@@ -21,6 +21,11 @@ add_executable(machine
   shaders/triangle.h
 )
 
+target_include_directories(machine
+  PRIVATE
+    .
+)
+
 compile_shaders(machine
   shaders/triangle.frag
   shaders/triangle.vert
