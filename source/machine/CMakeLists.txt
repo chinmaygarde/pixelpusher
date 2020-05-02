@@ -18,6 +18,7 @@ add_executable(machine
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
+  shaders/triangle.h
 )
 
 compile_shaders(machine

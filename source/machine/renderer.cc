@@ -6,6 +6,7 @@
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
 #include "shader_loader.h"
+#include "shaders/triangle.h"
 #include "vulkan_swapchain.h"
 
 namespace pixel {
@@ -67,6 +68,9 @@ bool Renderer::Setup() {
   pipeline_builder.SetViewport({0.0f, 0.0f, static_cast<float>(extents.width),
                                 static_cast<float>(extents.height), 0.0f,
                                 1.0f});
+  pipeline_builder.SetVertexInputDescription(
+      {Triangle::GetVertexInputBindingDescription()},
+      Triangle::GetVertexInputAttributeDescription());
 
   auto pipeline = pipeline_builder.CreatePipeline(
       connection_.GetDevice(),                    // device

@@ -75,15 +75,33 @@ PipelineBuilder& PipelineBuilder::SetViewport(vk::Viewport viewport) {
   return *this;
 }
 
+PipelineBuilder& PipelineBuilder::SetVertexInputDescription(
+    std::vector<vk::VertexInputBindingDescription> input_bindings,
+    std::vector<vk::VertexInputAttributeDescription> input_attributes) {
+  vertex_input_binding_descriptions_ = std::move(input_bindings);
+  vertex_input_attribute_descriptions_ = std::move(input_attributes);
+  return *this;
+}
+
 vk::UniquePipeline PipelineBuilder::CreatePipeline(
     const vk::Device& device,
     const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages,
     vk::PipelineLayout pipeline_layout,
     vk::RenderPass render_pass) const {
+  vk::PipelineVertexInputStateCreateInfo vertex_input_state;
+  vertex_input_state.setVertexBindingDescriptionCount(
+      vertex_input_binding_descriptions_.size());
+  vertex_input_state.setPVertexBindingDescriptions(
+      vertex_input_binding_descriptions_.data());
+  vertex_input_state.setVertexAttributeDescriptionCount(
+      vertex_input_attribute_descriptions_.size());
+  vertex_input_state.setPVertexAttributeDescriptions(
+      vertex_input_attribute_descriptions_.data());
+
   vk::GraphicsPipelineCreateInfo pipeline_info;
   pipeline_info.setStageCount(shader_stages.size());
   pipeline_info.setPStages(shader_stages.data());
-  pipeline_info.setPVertexInputState(&vertex_input_state_);
+  pipeline_info.setPVertexInputState(&vertex_input_state);
   pipeline_info.setPInputAssemblyState(&input_assembly_);
   pipeline_info.setPViewportState(&viewport_state_);
   pipeline_info.setPRasterizationState(&rasterizer_state_);

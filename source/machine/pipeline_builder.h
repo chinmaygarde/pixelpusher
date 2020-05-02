@@ -23,8 +23,15 @@ class PipelineBuilder {
 
   PipelineBuilder& SetViewport(vk::Viewport viewport);
 
+  PipelineBuilder& SetVertexInputDescription(
+      std::vector<vk::VertexInputBindingDescription> input_bindings,
+      std::vector<vk::VertexInputAttributeDescription> input_attributes);
+
  private:
-  vk::PipelineVertexInputStateCreateInfo vertex_input_state_;
+  std::vector<vk::VertexInputBindingDescription>
+      vertex_input_binding_descriptions_;
+  std::vector<vk::VertexInputAttributeDescription>
+      vertex_input_attribute_descriptions_;
   vk::PipelineInputAssemblyStateCreateInfo input_assembly_;
   vk::Viewport viewport_;
   vk::Rect2D scissor_;
