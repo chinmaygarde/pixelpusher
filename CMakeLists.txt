@@ -18,6 +18,7 @@ set(GLFW_BUILD_DOCS       OFF CACHE BOOL "GLFW_BUILD_DOCS" FORCE)
 add_subdirectory(third_party/glfw EXCLUDE_FROM_ALL)
 # add_subdirectory(third_party/googletest)
 add_subdirectory(third_party/vulkan_headers EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/glm EXCLUDE_FROM_ALL)
 
 # execute_process(
 #   COMMAND ./utils/git-sync-deps
