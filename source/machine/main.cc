@@ -25,7 +25,7 @@ int Main(int argc, char const* argv[]) {
   AutoClosure glfw_terminate([]() { glfwTerminate(); });
 
   glfwSetErrorCallback(&OnGLFWError);
-  glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, false);
 
   auto window = glfwCreateWindow(800, 600, "Machine", NULL, NULL);
 

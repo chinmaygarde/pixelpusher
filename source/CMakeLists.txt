@@ -2,11 +2,7 @@
 if(NOT WINDOWS)
 	add_compile_options(
 		-Wall
-		-Wextra
 		-Werror
-
-		-Wno-unused-parameter
-		-Wno-gnu-statement-expression
 	)
 
 	add_compile_options(
@@ -21,4 +17,6 @@ endif(WINDOWS)
 
 add_subdirectory(core)
 add_subdirectory(machine)
-add_subdirectory(test)
+
+# Conflicts with shaderc dependencies.
+# add_subdirectory(test)

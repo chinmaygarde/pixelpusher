@@ -1,8 +1,14 @@
 #include "memory_allocator.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 #define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
+#pragma GCC diagnostic pop
+
 #include "logging.h"
-#include "vk_mem_alloc.h"
 
 namespace pixel {
 
@@ -10,7 +16,7 @@ static VmaVulkanFunctions CreateVulkanFunctionsProcTable() {
   VmaVulkanFunctions functions = {};
 
 #define BIND_VMA_PROC(proc_name) \
-  functions.##proc_name = VULKAN_HPP_DEFAULT_DISPATCHER.##proc_name;
+  functions.proc_name = VULKAN_HPP_DEFAULT_DISPATCHER.proc_name;
 
   BIND_VMA_PROC(vkGetPhysicalDeviceProperties);
   BIND_VMA_PROC(vkGetPhysicalDeviceMemoryProperties);
@@ -81,12 +87,13 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateBuffer(
     const VmaAllocationCreateInfo& allocation_info) {
   VkBuffer raw_buffer = nullptr;
   VmaAllocation allocation = nullptr;
-  if (::vmaCreateBuffer(allocator_,                                     //
-                        &static_cast<VkBufferCreateInfo>(buffer_info),  //
-                        &allocation_info,                               //
-                        &raw_buffer,                                    //
-                        &allocation,                                    //
-                        nullptr  // allocation info
+  VkBufferCreateInfo buffer_create_info = buffer_info;
+  if (::vmaCreateBuffer(allocator_,           //
+                        &buffer_create_info,  //
+                        &allocation_info,     //
+                        &raw_buffer,          //
+                        &allocation,          //
+                        nullptr               // allocation info
                         ) != VK_SUCCESS) {
     return nullptr;
   }

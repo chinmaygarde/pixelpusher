@@ -46,7 +46,7 @@ CreateSwapchainImageViews(const vk::Device& device,
     image_views.emplace_back(std::move(image_view.value));
   }
 
-  return image_views;
+  return {std::move(image_views)};
 }
 
 static std::optional<std::vector<vk::UniqueFramebuffer>>
@@ -76,7 +76,7 @@ CreateSwapchainFramebuffers(const vk::Device& device,
     framebuffers.emplace_back(std::move(result.value));
   }
 
-  return framebuffers;
+  return {std::move(framebuffers)};
 }
 
 static std::optional<std::vector<vk::UniqueCommandBuffer>>
@@ -344,7 +344,7 @@ bool VulkanSwapchain::PrepareCommandBuffer(vk::CommandBuffer buffer,
   render_pass_begin_info.setRenderArea({{0, 0}, extents_});
   render_pass_begin_info.setClearValueCount(1u);
 
-  vk::ClearValue clear_color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f};
+  vk::ClearValue clear_color = {std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}};
   render_pass_begin_info.setPClearValues(&clear_color);
 
   buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);

@@ -408,12 +408,14 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     instance_create_info.setPpEnabledLayerNames(required_layers_vector.data());
   }
 
-  auto [r1, instance] = vk::createInstanceUnique(instance_create_info);
+  auto instance_result = vk::createInstanceUnique(instance_create_info);
 
-  if (!instance.get()) {
+  if (instance_result.result != vk::Result::eSuccess) {
     P_ERROR << "Could not create Vulkan instance.";
     return;
   }
+
+  auto instance = std::move(instance_result.value);
 
   VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
 
@@ -457,7 +459,15 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
-  auto [r2, physical_devices] = instance->enumeratePhysicalDevices();
+  auto physical_devices_result = instance->enumeratePhysicalDevices();
+
+  if (physical_devices_result.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not enumerate physical devices.";
+    return;
+  }
+
+  auto physical_devices = std::move(physical_devices_result.value);
+
   if (physical_devices.size() == 0) {
     P_ERROR << "Instance has no devices.";
     return;
@@ -484,13 +494,15 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
       kRequiredDeviceExtensions.data());
   device_create_info.setEnabledExtensionCount(kRequiredDeviceExtensions.size());
 
-  auto [r3, device] =
+  auto device_result =
       physical_devices[selection.device_index.value()].createDeviceUnique(
           device_create_info);
-  if (!device.get()) {
+  if (device_result.result != vk::Result::eSuccess) {
     P_ERROR << "Could not create logical device.";
     return;
   }
+
+  auto device = std::move(device_result.value);
 
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
