@@ -21,6 +21,44 @@ struct Buffer {
   P_DISALLOW_COPY_AND_ASSIGN(Buffer);
 };
 
+class BufferMapping {
+ public:
+  BufferMapping(const Buffer& buffer) : buffer_(buffer) {
+    void* mapping = nullptr;
+    if (vmaMapMemory(buffer_.allocator, buffer_.allocation, &mapping) !=
+        VK_SUCCESS) {
+      return;
+    }
+
+    mapping_ = mapping;
+    is_valid_ = true;
+  }
+
+  ~BufferMapping() {
+    if (!IsValid()) {
+      return;
+    }
+
+    vmaUnmapMemory(buffer_.allocator, buffer_.allocation);
+  }
+
+  void* GetMapping() const {
+    P_ASSERT(IsValid());
+    return mapping_;
+  }
+
+  bool IsValid() const { return is_valid_; }
+
+  operator bool() const { return IsValid(); }
+
+ private:
+  const Buffer& buffer_;
+  void* mapping_ = nullptr;
+  bool is_valid_ = false;
+
+  P_DISALLOW_COPY_AND_ASSIGN(BufferMapping);
+};
+
 class MemoryAllocator {
  public:
   MemoryAllocator(const vk::PhysicalDevice& physical_device,
@@ -32,7 +70,7 @@ class MemoryAllocator {
 
   std::unique_ptr<Buffer> CreateBuffer(
       const vk::BufferCreateInfo& buffer_info,
-      const VmaAllocationCreateInfo& allocation_info = {});
+      const VmaAllocationCreateInfo& allocation_info);
 
  private:
   const vk::UniqueDevice& device_;

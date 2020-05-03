@@ -66,13 +66,28 @@ bool Renderer::Setup() {
   buffer_info.setSize(vertices.size() * sizeof(decltype(vertices)::value_type));
   buffer_info.setSharingMode(vk::SharingMode::eExclusive);
 
-  auto vertex_buffer =
-      connection_.GetMemoryAllocator().CreateBuffer(buffer_info);
+  VmaAllocationCreateInfo allocation_info = {};
+  allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
+  allocation_info.requiredFlags =
+      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  auto vertex_buffer = connection_.GetMemoryAllocator().CreateBuffer(
+      buffer_info, allocation_info);
 
   if (!vertex_buffer) {
     P_ERROR << "Could not create vertex buffer.";
     return false;
   }
+
+  BufferMapping mapping(*vertex_buffer);
+  if (!mapping.IsValid()) {
+    P_ERROR << "Could not setup buffer mapping.";
+    return false;
+  }
+
+  memcpy(mapping.GetMapping(), vertices.data(), buffer_info.size);
+  vertex_buffer_ = std::move(vertex_buffer);
 
   // Setup pipeline layout.
   auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
@@ -122,6 +137,7 @@ bool Renderer::Render() {
 
   buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
                               pipeline_.get());
+  buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
   buffer.value().draw(3u,  // vertex count
                       1u,  // instance count
                       0u,  // first vertex
