@@ -24,6 +24,8 @@ class VulkanConnection {
 
   VulkanSwapchain& GetSwapchain() const;
 
+  MemoryAllocator& GetMemoryAllocator() const;
+
  private:
   vk::UniqueInstance instance_;
   std::unique_ptr<PhysicalDeviceSelection> physical_device_selection_;

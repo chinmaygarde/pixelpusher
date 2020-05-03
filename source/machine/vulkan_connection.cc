@@ -501,7 +501,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   }
 
   auto memory_allocator = std::make_unique<MemoryAllocator>(
-      physical_devices[selection.device_index.value()], device.get());
+      physical_devices[selection.device_index.value()], device);
   if (!memory_allocator->IsValid()) {
     P_ERROR << "Could not create device memory allocator.";
     return;
@@ -550,6 +550,11 @@ bool VulkanConnection::OnDebugUtilsMessengerCallback(
 VulkanSwapchain& VulkanConnection::GetSwapchain() const {
   P_ASSERT(is_valid_);
   return *swapchain_.get();
+}
+
+MemoryAllocator& VulkanConnection::GetMemoryAllocator() const {
+  P_ASSERT(is_valid_);
+  return *memory_allocator_.get();
 }
 
 }  // namespace pixel

@@ -57,6 +57,23 @@ bool Renderer::Setup() {
       fragment_shader,  //
   };
 
+  const std::vector<Triangle> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+                                          {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+
+  vk::BufferCreateInfo buffer_info;
+  buffer_info.setUsage(vk::BufferUsageFlagBits::eVertexBuffer);
+  buffer_info.setSize(vertices.size() * sizeof(decltype(vertices)::value_type));
+  buffer_info.setSharingMode(vk::SharingMode::eExclusive);
+
+  auto vertex_buffer =
+      connection_.GetMemoryAllocator().CreateBuffer(buffer_info);
+
+  if (!vertex_buffer) {
+    P_ERROR << "Could not create vertex buffer.";
+    return false;
+  }
+
   // Setup pipeline layout.
   auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
 

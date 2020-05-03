@@ -1,6 +1,7 @@
 #include "memory_allocator.h"
 
 #define VMA_IMPLEMENTATION
+#include "logging.h"
 #include "vk_mem_alloc.h"
 
 namespace pixel {
@@ -40,12 +41,23 @@ static VmaVulkanFunctions CreateVulkanFunctionsProcTable() {
 }
 
 MemoryAllocator::MemoryAllocator(const vk::PhysicalDevice& physical_device,
-                                 const vk::Device& logical_device) {
+                                 const vk::UniqueDevice& logical_device)
+    : device_(logical_device) {
+  if (!device_) {
+    P_ERROR << "Invalid device for memory allocator.";
+    return;
+  }
+
   proc_table_ = CreateVulkanFunctionsProcTable();
   VmaAllocatorCreateInfo create_info = {};
   create_info.physicalDevice = physical_device;
-  create_info.device = logical_device;
+  create_info.device = device_.get();
   create_info.pVulkanFunctions = &proc_table_;
+  if (auto allocator = device_.getAllocator()) {
+    const vk::AllocationCallbacks callbacks = *allocator;
+    const VkAllocationCallbacks& raw_callbacks = callbacks;
+    create_info.pAllocationCallbacks = &raw_callbacks;
+  }
 
   VmaAllocator allocator = nullptr;
   if (vmaCreateAllocator(&create_info, &allocator) != VkResult::VK_SUCCESS) {
@@ -64,30 +76,38 @@ MemoryAllocator::~MemoryAllocator() {
   vmaDestroyAllocator(allocator_);
 }
 
-BufferAllocation MemoryAllocator::CreateBuffer(
+std::unique_ptr<Buffer> MemoryAllocator::CreateBuffer(
     const vk::BufferCreateInfo& buffer_info,
     const VmaAllocationCreateInfo& allocation_info) {
-  VkBuffer buffer = nullptr;
+  VkBuffer raw_buffer = nullptr;
   VmaAllocation allocation = nullptr;
   if (::vmaCreateBuffer(allocator_,                                     //
                         &static_cast<VkBufferCreateInfo>(buffer_info),  //
                         &allocation_info,                               //
-                        &buffer,                                        //
+                        &raw_buffer,                                    //
                         &allocation,                                    //
                         nullptr  // allocation info
                         ) != VK_SUCCESS) {
-    return {};
+    return nullptr;
   }
 
-  // TODO: Wire up the deleter.
-  auto unique_buffer =
-      vk::UniqueBuffer{buffer, vk::UniqueBuffer::ObjectDestroy()};
-
-  return {std::move(unique_buffer), allocator_, allocation};
+  return std::make_unique<Buffer>(raw_buffer, allocator_, allocation);
 }
 
 bool MemoryAllocator::IsValid() const {
   return is_valid_;
+}
+
+Buffer::Buffer(vk::Buffer p_buffer,
+               VmaAllocator p_allocator,
+               VmaAllocation p_allocation)
+    : buffer(p_buffer), allocator(p_allocator), allocation(p_allocation) {}
+
+Buffer::~Buffer() {
+  if (!allocator || !allocation) {
+    return;
+  }
+  vmaDestroyBuffer(allocator, buffer, allocation);
 }
 
 }  // namespace pixel
