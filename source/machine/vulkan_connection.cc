@@ -520,6 +520,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
 }
 
 VulkanConnection::~VulkanConnection() {
+  swapchain_.reset();
   if (instance_.get() && surface_) {
     instance_.get().destroySurfaceKHR(surface_);
   }
