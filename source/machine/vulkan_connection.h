@@ -11,7 +11,7 @@
 namespace pixel {
 
 class VulkanSwapchain;
-class PhysicalDeviceSelection;
+struct PhysicalDeviceSelection;
 class VulkanConnection {
  public:
   VulkanConnection(GLFWwindow* window);
