@@ -17,6 +17,4 @@ endif(WINDOWS)
 
 add_subdirectory(core)
 add_subdirectory(machine)
-
-# Conflicts with shaderc dependencies.
-# add_subdirectory(test)
+add_subdirectory(test)

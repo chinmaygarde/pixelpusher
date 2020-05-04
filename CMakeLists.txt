@@ -19,9 +19,8 @@ detect_platform()
 add_subdirectory(third_party/glfw           EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/vulkan_headers EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/glm            EXCLUDE_FROM_ALL)
+set(SHADERC_SKIP_TESTS YES)
 add_subdirectory(third_party/shaderc        EXCLUDE_FROM_ALL)
-
-# Conflicts with shaderc dependencies
-# add_subdirectory(third_party/googletest     EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/googletest     EXCLUDE_FROM_ALL)
 
 add_subdirectory(source)
