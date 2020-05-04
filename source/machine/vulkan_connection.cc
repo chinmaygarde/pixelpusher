@@ -570,4 +570,9 @@ MemoryAllocator& VulkanConnection::GetMemoryAllocator() const {
   return *memory_allocator_.get();
 }
 
+uint32_t VulkanConnection::GetGraphicsQueueFamilyIndex() const {
+  P_ASSERT(is_valid_);
+  return physical_device_selection_->graphics_family_index.value();
+}
+
 }  // namespace pixel
