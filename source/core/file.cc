@@ -50,10 +50,10 @@ class FileMapping : public Mapping {
   }
 
   // |Mapping|
-  const uint8_t* GetData() const { return data_.mapping; }
+  const uint8_t* GetData() const override { return data_.mapping; }
 
   // |Mapping|
-  virtual size_t GetSize() const { return data_.size; }
+  size_t GetSize() const override { return data_.size; }
 
  private:
   Data data_;
