@@ -1,0 +1,2 @@
+
+#cmakedefine P_FIXTURES_LOCATION "@P_FIXTURES_LOCATION@" "/"

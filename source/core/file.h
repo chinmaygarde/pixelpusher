@@ -4,6 +4,7 @@
 
 #include "logging.h"
 #include "macros.h"
+#include "mapping.h"
 #include "platform.h"
 #include "unique_object.h"
 

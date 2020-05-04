@@ -26,7 +26,7 @@
     {
       "folder_exclude_patterns":
       [
-        "build",
+        // "build",
       ],
       "follow_symlinks": false,
       "name": "Pixel Pusher",
