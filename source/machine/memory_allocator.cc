@@ -1,12 +1,18 @@
 #include "memory_allocator.h"
 
+#include "platform.h"
+
+#if !P_OS_WINDOWS
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#endif  // !P_OS_WINDOWS
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#if !P_OS_WINDOWS
 #pragma GCC diagnostic pop
+#endif  // !P_OS_WINDOWS
 
 #include "logging.h"
 

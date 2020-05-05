@@ -3,6 +3,7 @@ if(WINDOWS)
 	add_compile_options(
 		/W3
 		/WX
+		/wd4267
 	)
 
 	add_definitions(
