@@ -181,7 +181,8 @@ static bool DeviceHasRequiredExtensions(const vk::PhysicalDevice& device) {
                                             kRequiredDeviceExtensions.end());
 
   for (const auto& extension : device_extensions.value) {
-    required_extensions.erase(extension.extensionName);
+    required_extensions.erase(
+        static_cast<const char*>(extension.extensionName));
   }
 
   return required_extensions.empty();
