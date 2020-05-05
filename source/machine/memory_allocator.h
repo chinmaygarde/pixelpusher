@@ -59,6 +59,7 @@ class BufferMapping {
   P_DISALLOW_COPY_AND_ASSIGN(BufferMapping);
 };
 
+class CommandPool;
 class MemoryAllocator {
  public:
   MemoryAllocator(const vk::PhysicalDevice& physical_device,
@@ -71,6 +72,20 @@ class MemoryAllocator {
   std::unique_ptr<Buffer> CreateBuffer(
       const vk::BufferCreateInfo& buffer_info,
       const VmaAllocationCreateInfo& allocation_info);
+
+  std::unique_ptr<Buffer> CreateHostVisibleBufferCopy(
+      vk::BufferUsageFlags usage,
+      const void* buffer,
+      size_t buffer_size);
+
+  std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
+      vk::BufferUsageFlags usage,
+      const void* buffer,
+      size_t buffer_size,
+      const CommandPool& pool,
+      vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+      vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+      vk::ArrayProxy<vk::Semaphore> signal_semaphores);
 
  private:
   const vk::UniqueDevice& device_;

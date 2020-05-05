@@ -66,86 +66,22 @@ bool Renderer::Setup() {
                                           {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
                                           {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
-  // Copy data into the host visible staging buffer.
-  vk::BufferCreateInfo buffer_info;
-  buffer_info.setUsage(vk::BufferUsageFlagBits::eVertexBuffer |
-                       vk::BufferUsageFlagBits::eTransferSrc);
-  buffer_info.setSize(vertices.size() * sizeof(decltype(vertices)::value_type));
-  buffer_info.setSharingMode(vk::SharingMode::eExclusive);
-
-  VmaAllocationCreateInfo allocation_info = {};
-  allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
-  allocation_info.requiredFlags =
-      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-  auto staging_buffer = connection_.GetMemoryAllocator().CreateBuffer(
-      buffer_info, allocation_info);
-
-  if (!staging_buffer) {
-    P_ERROR << "Could not create staging buffer.";
-    return false;
-  }
-
-  BufferMapping mapping(*staging_buffer);
-  if (!mapping.IsValid()) {
-    P_ERROR << "Could not setup staging buffer mapping.";
-    return false;
-  }
-
-  memcpy(mapping.GetMapping(), vertices.data(), buffer_info.size);
-
-  // Copy data into device local buffer.
-  vk::BufferCreateInfo device_buffer_info;
-  device_buffer_info.setUsage(vk::BufferUsageFlagBits::eVertexBuffer |
-                              vk::BufferUsageFlagBits::eTransferDst);
-  device_buffer_info.setSize(vertices.size() *
-                             sizeof(decltype(vertices)::value_type));
-  device_buffer_info.setSharingMode(vk::SharingMode::eExclusive);
-
-  VmaAllocationCreateInfo device_allocation_info = {};
-  device_allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
-  device_allocation_info.requiredFlags =
-      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-  auto device_buffer = connection_.GetMemoryAllocator().CreateBuffer(
-      device_buffer_info, device_allocation_info);
-
-  if (!device_buffer) {
-    P_ERROR << "Could not create device buffer.";
-    return false;
-  }
-
-  auto transfer_command_buffer = command_pool_->CreateCommandBuffer();
-  if (!transfer_command_buffer) {
-    P_ERROR << "Could not create transfer buffer.";
-    return false;
-  }
-
-  {
-    vk::CommandBufferBeginInfo begin_info;
-    begin_info.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-    transfer_command_buffer->GetCommandBuffer().begin(begin_info);
-  }
-
-  {
-    vk::BufferCopy region;
-    region.setSize(vertices.size() * sizeof(decltype(vertices)::value_type));
-    transfer_command_buffer->GetCommandBuffer().copyBuffer(
-        staging_buffer.get()->buffer, device_buffer.get()->buffer, {region});
-  }
-
-  transfer_command_buffer->GetCommandBuffer().end();
-
-  if (!transfer_command_buffer->Submit(nullptr, nullptr, nullptr)) {
-    P_ERROR << "Could not commit transfer command buffer.";
-  }
+  auto vertex_buffer =
+      connection_.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+          vk::BufferUsageFlagBits::eVertexBuffer,                    // usage
+          vertices.data(),                                           // data
+          vertices.size() * sizeof(decltype(vertices)::value_type),  // size
+          *command_pool_,                                            // pool
+          nullptr,  // wait semaphores
+          nullptr,  // wait stages
+          nullptr   // signal semaphores
+      );
 
   // TODO: For the transfer to the staging buffer to be complete. Get rid of
   // this and use fences instead.
   connection_.GetDevice().waitIdle();
 
-  vertex_buffer_ = std::move(device_buffer);
+  vertex_buffer_ = std::move(vertex_buffer);
 
   // Setup pipeline layout.
   auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());

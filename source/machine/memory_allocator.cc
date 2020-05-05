@@ -14,6 +14,8 @@
 #pragma GCC diagnostic pop
 #endif  // !P_OS_WINDOWS
 
+#include "command_buffer.h"
+#include "command_pool.h"
 #include "logging.h"
 
 namespace pixel {
@@ -50,6 +52,18 @@ static VmaVulkanFunctions CreateVulkanFunctionsProcTable() {
 #undef BIND_VMA_PROC
 
   return functions;
+}
+
+Buffer::Buffer(vk::Buffer p_buffer,
+               VmaAllocator p_allocator,
+               VmaAllocation p_allocation)
+    : buffer(p_buffer), allocator(p_allocator), allocation(p_allocation) {}
+
+Buffer::~Buffer() {
+  if (!allocator || !allocation) {
+    return;
+  }
+  vmaDestroyBuffer(allocator, buffer, allocation);
 }
 
 MemoryAllocator::MemoryAllocator(const vk::PhysicalDevice& physical_device,
@@ -111,16 +125,103 @@ bool MemoryAllocator::IsValid() const {
   return is_valid_;
 }
 
-Buffer::Buffer(vk::Buffer p_buffer,
-               VmaAllocator p_allocator,
-               VmaAllocation p_allocation)
-    : buffer(p_buffer), allocator(p_allocator), allocation(p_allocation) {}
+std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBufferCopy(
+    vk::BufferUsageFlags usage,
+    const void* buffer,
+    size_t buffer_size) {
+  vk::BufferCreateInfo buffer_info;
+  buffer_info.setSize(buffer_size);
+  buffer_info.setUsage(usage);
+  buffer_info.setSharingMode(vk::SharingMode::eExclusive);
 
-Buffer::~Buffer() {
-  if (!allocator || !allocation) {
-    return;
+  VmaAllocationCreateInfo allocation_info = {};
+  allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
+  // Coherence is not necessary as we are manually managing the mappings.
+  allocation_info.requiredFlags =
+      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+  auto host_visible_buffer = CreateBuffer(buffer_info, allocation_info);
+
+  if (!host_visible_buffer) {
+    P_ERROR << "Could not create host visible buffer.";
+    return false;
   }
-  vmaDestroyBuffer(allocator, buffer, allocation);
+
+  BufferMapping mapping(*host_visible_buffer);
+  if (!mapping.IsValid()) {
+    P_ERROR << "Could not setup host visible buffer mapping.";
+    return false;
+  }
+
+  memcpy(mapping.GetMapping(), buffer, buffer_info.size);
+
+  return host_visible_buffer;
+}
+
+std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
+    vk::BufferUsageFlags usage,
+    const void* buffer,
+    size_t buffer_size,
+    const CommandPool& pool,
+    vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+    vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+    vk::ArrayProxy<vk::Semaphore> signal_semaphores) {
+  // Create a host visible staging buffer.
+  auto staging_buffer = CreateHostVisibleBufferCopy(
+      usage | vk::BufferUsageFlagBits::eTransferSrc, buffer, buffer_size);
+
+  if (!staging_buffer) {
+    P_ERROR << "Could not create staging buffer.";
+    return nullptr;
+  }
+
+  // Copy the staging buffer to the device.
+  vk::BufferCreateInfo device_buffer_info;
+  device_buffer_info.setUsage(usage | vk::BufferUsageFlagBits::eTransferDst);
+  device_buffer_info.setSize(buffer_size);
+  device_buffer_info.setSharingMode(vk::SharingMode::eExclusive);
+
+  VmaAllocationCreateInfo device_allocation_info = {};
+  device_allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
+  device_allocation_info.requiredFlags =
+      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+  auto device_buffer = CreateBuffer(device_buffer_info, device_allocation_info);
+
+  if (!device_buffer) {
+    P_ERROR << "Could not create device buffer.";
+    return nullptr;
+  }
+
+  auto transfer_command_buffer = pool.CreateCommandBuffer();
+  if (!transfer_command_buffer) {
+    P_ERROR << "Could not create transfer buffer.";
+    return nullptr;
+  }
+
+  {
+    vk::CommandBufferBeginInfo begin_info;
+    begin_info.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+    transfer_command_buffer->GetCommandBuffer().begin(begin_info);
+  }
+
+  {
+    vk::BufferCopy region;
+    region.setSize(buffer_size);
+    transfer_command_buffer->GetCommandBuffer().copyBuffer(
+        staging_buffer.get()->buffer, device_buffer.get()->buffer, {region});
+  }
+
+  transfer_command_buffer->GetCommandBuffer().end();
+
+  if (!transfer_command_buffer->Submit(std::move(wait_semaphores),
+                                       std::move(wait_stages),
+                                       std::move(signal_semaphores))) {
+    P_ERROR << "Could not commit transfer command buffer.";
+    return nullptr;
+  }
+
+  return device_buffer;
 }
 
 }  // namespace pixel
