@@ -16,7 +16,7 @@
     },
     {
       "name": "Pixel Pusher Windows",
-      "shell_cmd": "msbuild pixel_pusher.sln && .\\source\\machine\\Debug\\machine.exe",
+      "shell_cmd": "msbuild pixel_pusher.sln -verbosity:minimal -nologo -maxcpucount && .\\source\\machine\\Debug\\machine.exe",
       "working_dir": "${project_path}/build",
       "shell": true,
     },

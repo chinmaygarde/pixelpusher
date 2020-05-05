@@ -14,8 +14,6 @@ add_executable(machine
   shader_loader.cc
   shader_loader.h
   shaders/triangle.h
-  surface.cc
-  surface.h
   vulkan.h
   vulkan_connection.cc
   vulkan_connection.h

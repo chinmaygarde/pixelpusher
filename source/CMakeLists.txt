@@ -1,5 +1,14 @@
 
-if(NOT WINDOWS)
+if(WINDOWS)
+	add_compile_options(
+		/W3
+		/WX
+	)
+
+	add_definitions(
+		"-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1"
+	)
+else()
 	add_compile_options(
 		-Wall
 		-Werror
@@ -9,7 +18,7 @@ if(NOT WINDOWS)
 		-fno-exceptions
 		-fno-rtti
 	)
-endif(NOT WINDOWS)
+endif()
 
 if(WINDOWS)
 	add_compile_definitions(NOMINMAX)

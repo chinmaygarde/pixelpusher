@@ -25,7 +25,7 @@ class VulkanConnection {
   VulkanSwapchain& GetSwapchain() const;
 
   MemoryAllocator& GetMemoryAllocator() const;
-  
+
   uint32_t GetGraphicsQueueFamilyIndex() const;
 
  private:
