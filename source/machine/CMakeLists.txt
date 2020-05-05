@@ -21,6 +21,10 @@ add_executable(machine
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
+  command_pool.h
+  command_pool.cc
+  command_buffer.cc
+  command_buffer.h
 )
 
 target_include_directories(machine

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+
+#include "command_pool.h"
 #include "macros.h"
 #include "vulkan.h"
 #include "vulkan_connection.h"
@@ -22,6 +25,7 @@ class Renderer {
 
  private:
   VulkanConnection connection_;
+  std::shared_ptr<CommandPool> command_pool_;
   std::unique_ptr<Buffer> vertex_buffer_;
   vk::UniquePipeline pipeline_;
 
