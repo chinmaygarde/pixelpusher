@@ -85,7 +85,8 @@ class MemoryAllocator {
       const CommandPool& pool,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
       vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
-      vk::ArrayProxy<vk::Semaphore> signal_semaphores);
+      vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+      std::function<void(void)> on_done);
 
  private:
   const vk::UniqueDevice& device_;

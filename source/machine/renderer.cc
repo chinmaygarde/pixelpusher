@@ -74,7 +74,8 @@ bool Renderer::Setup() {
           *command_pool_,                                            // pool
           nullptr,  // wait semaphores
           nullptr,  // wait stages
-          nullptr   // signal semaphores
+          nullptr,  // signal semaphores
+          nullptr   // on done
       );
 
   // TODO: For the transfer to the staging buffer to be complete. Get rid of

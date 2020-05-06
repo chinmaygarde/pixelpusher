@@ -66,12 +66,16 @@ std::unique_ptr<CommandBuffer> CommandPool::CreateCommandBuffer() const {
     return nullptr;
   }
 
-  return std::unique_ptr<CommandBuffer>(
-      new CommandBuffer(shared_from_this(), std::move(result.value.front())));
+  return std::unique_ptr<CommandBuffer>(new CommandBuffer(
+      device_, shared_from_this(), std::move(result.value.front())));
 }
 
 const vk::Queue& CommandPool::GetCommandQueue() const {
   return queue_;
+}
+
+FenceWaiter& CommandPool::GetFenceWaiter() const {
+  return *waiter_;
 }
 
 }  // namespace pixel

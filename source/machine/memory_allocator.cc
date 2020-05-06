@@ -165,7 +165,8 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
     const CommandPool& pool,
     vk::ArrayProxy<vk::Semaphore> wait_semaphores,
     vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
-    vk::ArrayProxy<vk::Semaphore> signal_semaphores) {
+    vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+    std::function<void(void)> on_done) {
   // Create a host visible staging buffer.
   auto staging_buffer = CreateHostVisibleBufferCopy(
       usage | vk::BufferUsageFlagBits::eTransferSrc, buffer, buffer_size);
@@ -213,6 +214,8 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   }
 
   transfer_command_buffer->GetCommandBuffer().end();
+
+  auto on_done_fence = device_.get().createFenceUnique({});
 
   if (!transfer_command_buffer->Submit(std::move(wait_semaphores),
                                        std::move(wait_stages),

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "command_pool.h"
 #include "macros.h"
 #include "vulkan.h"
@@ -15,15 +17,24 @@ class CommandBuffer {
               vk::ArrayProxy<vk::Semaphore> signal_semaphores = nullptr,
               vk::Fence submission_fence = nullptr);
 
+  bool SubmitWithCompletionCallback(
+      vk::ArrayProxy<vk::Semaphore> wait_semaphores = nullptr,
+      vk::ArrayProxy<vk::PipelineStageFlags> wait_stages = nullptr,
+      vk::ArrayProxy<vk::Semaphore> signal_semaphores = nullptr,
+      std::function<void(void)> on_done = nullptr);
+
   ~CommandBuffer();
 
  private:
   friend class CommandPool;
 
+  const vk::Device device_;
+  // TODO: This does not need to be weak.
   std::weak_ptr<const CommandPool> pool_;
   vk::UniqueCommandBuffer command_buffer_;
 
-  CommandBuffer(std::shared_ptr<const CommandPool> pool,
+  CommandBuffer(vk::Device device,
+                std::shared_ptr<const CommandPool> pool,
                 vk::UniqueCommandBuffer buffer);
 
   P_DISALLOW_COPY_AND_ASSIGN(CommandBuffer);
