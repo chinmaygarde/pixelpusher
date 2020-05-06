@@ -10,9 +10,10 @@ class CommandBuffer {
  public:
   const vk::CommandBuffer& GetCommandBuffer() const;
 
-  bool Submit(vk::ArrayProxy<vk::Semaphore> wait_semaphores,
-              vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
-              vk::ArrayProxy<vk::Semaphore> signal_semaphores);
+  bool Submit(vk::ArrayProxy<vk::Semaphore> wait_semaphores = nullptr,
+              vk::ArrayProxy<vk::PipelineStageFlags> wait_stages = nullptr,
+              vk::ArrayProxy<vk::Semaphore> signal_semaphores = nullptr,
+              vk::Fence submission_fence = nullptr);
 
   ~CommandBuffer();
 

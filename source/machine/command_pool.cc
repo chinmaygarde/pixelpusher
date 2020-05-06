@@ -7,10 +7,12 @@ namespace pixel {
 
 CommandPool::CommandPool(vk::Device device,
                          vk::UniqueCommandPool pool,
-                         vk::Queue queue)
+                         vk::Queue queue,
+                         std::shared_ptr<FenceWaiter> waiter)
     : device_(std::move(device)),
       pool_(std::move(pool)),
-      queue_(std::move(queue)) {}
+      queue_(std::move(queue)),
+      waiter_(std::move(waiter)) {}
 
 CommandPool::~CommandPool() = default;
 
@@ -37,8 +39,18 @@ std::shared_ptr<CommandPool> CommandPool::Create(
   // TODO: Allow acquisition of a queue with a different index.
   auto queue = device.getQueue(queue_family_index, 0u);
 
+  auto fence_waiter = FenceWaiter::Create(device, queue);
+  if (!fence_waiter) {
+    P_ERROR << "Could not create fence waiter.";
+    return nullptr;
+  }
+
   return std::shared_ptr<CommandPool>(new CommandPool(
-      std::move(device), std::move(result.value), std::move(queue)));
+      std::move(device),        //
+      std::move(result.value),  //
+      std::move(queue),         //
+      std::move(fence_waiter)   //
+      ));
 }
 
 std::unique_ptr<CommandBuffer> CommandPool::CreateCommandBuffer() const {

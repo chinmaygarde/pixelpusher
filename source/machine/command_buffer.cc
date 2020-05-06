@@ -18,7 +18,8 @@ const vk::CommandBuffer& CommandBuffer::GetCommandBuffer() const {
 
 bool CommandBuffer::Submit(vk::ArrayProxy<vk::Semaphore> wait_semaphores,
                            vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
-                           vk::ArrayProxy<vk::Semaphore> signal_semaphores) {
+                           vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+                           vk::Fence submission_fence) {
   if (wait_semaphores.size() != wait_stages.size()) {
     P_ERROR << "Semaphore and wait stage counts were inconsistent.";
     return false;
@@ -47,7 +48,7 @@ bool CommandBuffer::Submit(vk::ArrayProxy<vk::Semaphore> wait_semaphores,
     return false;
   }
 
-  if (pool->GetCommandQueue().submit(1u, &submit_info, nullptr) !=
+  if (pool->GetCommandQueue().submit(1u, &submit_info, submission_fence) !=
       vk::Result::eSuccess) {
     P_ERROR << "Could not submit command queue.";
     return false;

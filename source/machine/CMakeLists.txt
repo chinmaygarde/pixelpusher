@@ -23,6 +23,8 @@ add_executable(machine
   command_pool.cc
   command_buffer.cc
   command_buffer.h
+  fence_waiter.h
+  fence_waiter.cc
 )
 
 target_include_directories(machine
