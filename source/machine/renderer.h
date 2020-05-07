@@ -27,6 +27,7 @@ class Renderer {
   VulkanConnection connection_;
   std::shared_ptr<CommandPool> command_pool_;
   std::unique_ptr<Buffer> vertex_buffer_;
+  std::unique_ptr<Buffer> index_buffer_;
   vk::UniquePipeline pipeline_;
 
   bool is_valid_ = false;

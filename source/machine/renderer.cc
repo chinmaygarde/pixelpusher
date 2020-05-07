@@ -62,9 +62,12 @@ bool Renderer::Setup() {
       fragment_shader,  //
   };
 
-  const std::vector<Triangle> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                                          {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+  const std::vector<Triangle> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+  const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
   auto vertex_buffer =
       connection_.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
@@ -78,11 +81,29 @@ bool Renderer::Setup() {
           nullptr   // on done
       );
 
+  auto index_buffer =
+      connection_.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+          vk::BufferUsageFlagBits::eIndexBuffer,                   // usage
+          indices.data(),                                          // data
+          indices.size() * sizeof(decltype(indices)::value_type),  // size
+          *command_pool_,                                          // pool
+          nullptr,  // wait semaphores
+          nullptr,  // wait stages
+          nullptr,  // signal semaphores
+          nullptr   // on done
+      );
+
+  if (!vertex_buffer || !index_buffer) {
+    P_ERROR << "Could not allocate either the vertex or index buffers.";
+    return false;
+  }
+
   // TODO: For the transfer to the staging buffer to be complete. Get rid of
   // this and use fences instead.
   connection_.GetDevice().waitIdle();
 
   vertex_buffer_ = std::move(vertex_buffer);
+  index_buffer_ = std::move(index_buffer);
 
   // Setup pipeline layout.
   auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
@@ -133,11 +154,9 @@ bool Renderer::Render() {
   buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
                               pipeline_.get());
   buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
-  buffer.value().draw(3u,  // vertex count
-                      1u,  // instance count
-                      0u,  // first vertex
-                      0u   // first instance
-  );
+  buffer.value().bindIndexBuffer(index_buffer_->buffer, 0,
+                                 vk::IndexType::eUint16);
+  buffer.value().drawIndexed(6, 1, 0, 0, 0);
 
   if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {
     P_ERROR << "Could not submit the command buffer back to the swapchain.";
