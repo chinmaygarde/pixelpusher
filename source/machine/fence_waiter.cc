@@ -9,31 +9,35 @@ namespace pixel {
 
 FenceWaiter::FenceWaiter(vk::Device device, vk::Queue queue)
     : device_(std::move(device)), queue_(std::move(queue)) {
-  auto fence_result = device_.createFenceUnique({});
-  if (fence_result.result != vk::Result::eSuccess) {
-    P_ERROR << "Could not create host fence.";
-    return;
-  }
-  host_fence_ = std::move(fence_result.value);
-
-  waiter_ = std::make_unique<std::thread>([weak = weak_from_this()]() {
-    if (auto strong = weak.lock()) {
-      strong->WaiterMain();
-    }
-  });
-
   is_valid_ = true;
 }
 
 FenceWaiter::~FenceWaiter() = default;
+
+bool FenceWaiter::StartThread() {
+  if (waiter_) {
+    P_ERROR << "Waiter thread can only be started once.";
+    return false;
+  }
+  waiter_ = std::make_unique<std::thread>(
+      [thiz = shared_from_this()]() { thiz->WaiterMain(); });
+  return true;
+}
 
 std::shared_ptr<FenceWaiter> FenceWaiter::Create(vk::Device device,
                                                  vk::Queue queue) {
   auto waiter = std::shared_ptr<FenceWaiter>(
       new FenceWaiter(std::move(device), std::move(queue)));
   if (!waiter->IsValid()) {
+    P_ERROR << "Could not create fence waiter.";
     return false;
   }
+
+  if (!waiter->StartThread()) {
+    P_ERROR << "Could not start waiter thread.";
+    return false;
+  }
+
   return waiter;
 }
 
@@ -43,12 +47,23 @@ bool FenceWaiter::IsValid() const {
 
 void FenceWaiter::WaiterMain() {
   while (true) {
-    auto wait_set = CreateWaitSet();
+    std::unique_lock lock(fences_mutex_);
+
+    fences_cv_.wait(lock, [&]() { return awaited_fences_.size() > 0u; });
+
+    auto wait_set = CreateWaitSetLocked();
+
+    lock.unlock();
 
     if (!wait_set.has_value()) {
       P_ERROR << "Could not create wait set.";
       return;
     }
+
+    // This should be caught by the predicate.
+    P_ASSERT(wait_set.value().size() > 0u);
+
+    P_LOG << "Waiting for " << wait_set.value().size() << " fences.";
 
     auto wait_result =
         device_.waitForFences(wait_set.value(),  // wait set
@@ -76,15 +91,9 @@ void FenceWaiter::WaiterMain() {
   }
 }
 
-std::optional<std::vector<vk::Fence>> FenceWaiter::CreateWaitSet() {
-  std::scoped_lock lock(fences_mutex_);
-  if (device_.resetFences({host_fence_.get()}) != vk::Result::eSuccess) {
-    P_ERROR << "Could not reset waiter fence.";
-    return std::nullopt;
-  }
+std::optional<std::vector<vk::Fence>> FenceWaiter::CreateWaitSetLocked() {
   std::vector<vk::Fence> wait_set;
-  wait_set.reserve(awaited_fences_.size() + 1u);
-  wait_set.push_back(host_fence_.get());
+  wait_set.reserve(awaited_fences_.size());
   for (const auto& fence : awaited_fences_) {
     wait_set.push_back(fence.first);
   }
@@ -98,9 +107,6 @@ void FenceWaiter::ProcessSignalledFences(std::vector<vk::Fence> fences) {
     // All access to fences must be guarded by the mutex.
     std::scoped_lock lock(fences_mutex_);
     for (const auto& fence : fences) {
-      if (fence == host_fence_.get()) {
-        continue;
-      }
       auto found = awaited_fences_.find(fence);
       // A fence we weren't waiting on cannot be signalled.
       P_ASSERT(found != awaited_fences_.end());
@@ -123,11 +129,7 @@ bool FenceWaiter::AddCompletionHandler(vk::Fence fence,
 
   std::scoped_lock lock(fences_mutex_);
   awaited_fences_[fence] = handler;
-  if (queue_.submit(nullptr, host_fence_.get()) != vk::Result::eSuccess) {
-    P_ERROR << "Could not submit host fence signalling.";
-    awaited_fences_.erase(fence);
-    return false;
-  }
+  fences_cv_.notify_one();
   return true;
 }
 

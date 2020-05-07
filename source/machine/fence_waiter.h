@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -12,6 +13,7 @@
 
 namespace pixel {
 
+// TODO: There can only be one of these per queue. Enfore this in the API.
 class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
  public:
   static std::shared_ptr<FenceWaiter> Create(vk::Device device,
@@ -28,15 +30,17 @@ class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
   vk::Queue queue_;
   std::unique_ptr<std::thread> waiter_;
   std::mutex fences_mutex_;
-  vk::UniqueFence host_fence_;
+  std::condition_variable fences_cv_;
   std::map<vk::Fence, std::function<void(void)>> awaited_fences_;
   bool is_valid_ = false;
 
   FenceWaiter(vk::Device device, vk::Queue queue);
 
+  bool StartThread();
+
   void WaiterMain();
 
-  std::optional<std::vector<vk::Fence>> CreateWaitSet();
+  std::optional<std::vector<vk::Fence>> CreateWaitSetLocked();
 
   void ProcessSignalledFences(std::vector<vk::Fence> fences);
 
