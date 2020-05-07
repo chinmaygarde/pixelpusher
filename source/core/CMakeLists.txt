@@ -1,7 +1,7 @@
 
 # Core Library
 add_library(core
-  auto_closure.h
+  closure.h
   file.cc
   file.h
   logging.cc

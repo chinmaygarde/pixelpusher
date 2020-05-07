@@ -1,5 +1,6 @@
 #include "command_buffer.h"
 
+#include "closure.h"
 #include "logging.h"
 
 namespace pixel {
@@ -97,9 +98,8 @@ bool CommandBuffer::SubmitWithCompletionCallback(
   // This is going to be moved into a capture.
   auto raw_fence = on_done_fence.get();
 
-  auto fence_release = [fence = std::move(on_done_fence)]() mutable {
-    fence.reset();
-  };
+  auto fence_release = MakeCopyable(
+      [fence = std::move(on_done_fence)]() mutable { fence.reset(); });
 
   if (!pool->GetFenceWaiter().AddCompletionHandler(raw_fence, fence_release)) {
     // Manually release the fence so we don't leak it.

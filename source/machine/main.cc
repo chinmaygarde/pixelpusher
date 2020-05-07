@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "auto_closure.h"
+#include "closure.h"
 #include "logging.h"
 #include "renderer.h"
 #include "vulkan.h"
@@ -42,7 +42,7 @@ int Main(int argc, char const* argv[]) {
     P_ERROR << "Could not create a valid renderer.";
     return EXIT_FAILURE;
   }
-  
+
   if (!renderer.Setup()) {
     P_ERROR << "Could not setup renderer.";
     return EXIT_FAILURE;
