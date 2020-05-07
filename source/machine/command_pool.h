@@ -17,7 +17,7 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
 
   ~CommandPool();
 
-  std::unique_ptr<CommandBuffer> CreateCommandBuffer() const;
+  std::shared_ptr<CommandBuffer> CreateCommandBuffer() const;
 
   const vk::Queue& GetCommandQueue() const;
 

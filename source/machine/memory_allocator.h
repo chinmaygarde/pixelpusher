@@ -63,7 +63,7 @@ class CommandPool;
 class MemoryAllocator {
  public:
   MemoryAllocator(const vk::PhysicalDevice& physical_device,
-                  const vk::UniqueDevice& logical_device);
+                  vk::Device logical_device);
 
   ~MemoryAllocator();
 
@@ -89,7 +89,7 @@ class MemoryAllocator {
       std::function<void(void)> on_done);
 
  private:
-  const vk::UniqueDevice& device_;
+  vk::Device device_;
   VmaVulkanFunctions proc_table_;
   VmaAllocator allocator_ = nullptr;
   bool is_valid_ = false;

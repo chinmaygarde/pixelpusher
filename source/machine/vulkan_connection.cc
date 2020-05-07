@@ -514,7 +514,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   }
 
   auto memory_allocator = std::make_unique<MemoryAllocator>(
-      physical_devices[selection.device_index.value()], device);
+      physical_devices[selection.device_index.value()], device.get());
   if (!memory_allocator->IsValid()) {
     P_ERROR << "Could not create device memory allocator.";
     return;

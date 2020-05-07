@@ -14,6 +14,7 @@
 #pragma GCC diagnostic pop
 #endif  // !P_OS_WINDOWS
 
+#include "closure.h"
 #include "command_buffer.h"
 #include "command_pool.h"
 #include "logging.h"
@@ -67,8 +68,8 @@ Buffer::~Buffer() {
 }
 
 MemoryAllocator::MemoryAllocator(const vk::PhysicalDevice& physical_device,
-                                 const vk::UniqueDevice& logical_device)
-    : device_(logical_device) {
+                                 vk::Device logical_device)
+    : device_(std::move(logical_device)) {
   if (!device_) {
     P_ERROR << "Invalid device for memory allocator.";
     return;
@@ -77,13 +78,8 @@ MemoryAllocator::MemoryAllocator(const vk::PhysicalDevice& physical_device,
   proc_table_ = CreateVulkanFunctionsProcTable();
   VmaAllocatorCreateInfo create_info = {};
   create_info.physicalDevice = physical_device;
-  create_info.device = device_.get();
+  create_info.device = device_;
   create_info.pVulkanFunctions = &proc_table_;
-  if (auto allocator = device_.getAllocator()) {
-    const vk::AllocationCallbacks callbacks = *allocator;
-    const VkAllocationCallbacks& raw_callbacks = callbacks;
-    create_info.pAllocationCallbacks = &raw_callbacks;
-  }
 
   VmaAllocator allocator = nullptr;
   if (vmaCreateAllocator(&create_info, &allocator) != VkResult::VK_SUCCESS) {
@@ -195,31 +191,44 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   }
 
   auto transfer_command_buffer = pool.CreateCommandBuffer();
+
   if (!transfer_command_buffer) {
     P_ERROR << "Could not create transfer buffer.";
     return nullptr;
   }
 
+  auto cmd_buffer = transfer_command_buffer->GetCommandBuffer();
+
   {
     vk::CommandBufferBeginInfo begin_info;
     begin_info.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-    transfer_command_buffer->GetCommandBuffer().begin(begin_info);
+    cmd_buffer.begin(begin_info);
   }
 
   {
     vk::BufferCopy region;
     region.setSize(buffer_size);
-    transfer_command_buffer->GetCommandBuffer().copyBuffer(
-        staging_buffer.get()->buffer, device_buffer.get()->buffer, {region});
+    cmd_buffer.copyBuffer(staging_buffer.get()->buffer,
+                          device_buffer.get()->buffer, {region});
   }
 
-  transfer_command_buffer->GetCommandBuffer().end();
+  cmd_buffer.end();
 
-  auto on_done_fence = device_.get().createFenceUnique({});
+  auto on_done_fence = device_.createFenceUnique({});
 
-  if (!transfer_command_buffer->Submit(std::move(wait_semaphores),
-                                       std::move(wait_stages),
-                                       std::move(signal_semaphores))) {
+  auto on_transfer_done =
+      MakeCopyable([transfer_command_buffer,
+                    staging_buffer = std::move(staging_buffer)]() mutable {
+        transfer_command_buffer.reset();
+        staging_buffer.reset();
+      });
+
+  if (!transfer_command_buffer->SubmitWithCompletionCallback(
+          std::move(wait_semaphores),    //
+          std::move(wait_stages),        //
+          std::move(signal_semaphores),  //
+          on_transfer_done)              //
+  ) {
     P_ERROR << "Could not commit transfer command buffer.";
     return nullptr;
   }

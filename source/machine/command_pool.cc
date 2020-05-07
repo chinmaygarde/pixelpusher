@@ -53,7 +53,7 @@ std::shared_ptr<CommandPool> CommandPool::Create(
       ));
 }
 
-std::unique_ptr<CommandBuffer> CommandPool::CreateCommandBuffer() const {
+std::shared_ptr<CommandBuffer> CommandPool::CreateCommandBuffer() const {
   vk::CommandBufferAllocateInfo buffer_info;
   buffer_info.setCommandPool(pool_.get());
   buffer_info.setLevel(vk::CommandBufferLevel::ePrimary);
@@ -65,8 +65,7 @@ std::unique_ptr<CommandBuffer> CommandPool::CreateCommandBuffer() const {
     P_ERROR << "Could not allocate command buffer.";
     return nullptr;
   }
-
-  return std::unique_ptr<CommandBuffer>(new CommandBuffer(
+  return std::shared_ptr<CommandBuffer>(new CommandBuffer(
       device_, shared_from_this(), std::move(result.value.front())));
 }
 
