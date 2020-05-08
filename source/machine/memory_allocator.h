@@ -78,6 +78,9 @@ class MemoryAllocator {
       const void* buffer,
       size_t buffer_size);
 
+  std::unique_ptr<Buffer> CreateHostVisibleBuffer(vk::BufferUsageFlags usage,
+                                                  size_t buffer_size);
+
   std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
       vk::BufferUsageFlags usage,
       const void* buffer,
@@ -95,6 +98,32 @@ class MemoryAllocator {
   bool is_valid_ = false;
 
   P_DISALLOW_COPY_AND_ASSIGN(MemoryAllocator);
+};
+
+template <class T>
+struct UniformBuffer {
+  T prototype = {};
+  std::unique_ptr<Buffer> buffer;
+
+  UniformBuffer() = default;
+
+  UniformBuffer(MemoryAllocator& allocator, T object, size_t copies)
+      : prototype(std::move(object)),
+        buffer(allocator.CreateHostVisibleBuffer(
+            vk::BufferUsageFlagBits::eUniformBuffer,
+            sizeof(T) * copies)),
+        copies(copies),
+        current_index(copies - 1u) {
+    P_ASSERT(copies > 0u);
+  };
+
+  operator bool() const { return static_cast<bool>(buffer); }
+
+  T* operator->() { return &prototype; };
+
+ private:
+  size_t copies = 0;
+  size_t current_index = 0;
 };
 
 }  // namespace pixel

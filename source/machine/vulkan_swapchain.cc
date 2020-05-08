@@ -366,4 +366,8 @@ bool VulkanSwapchain::FinalizeCommandBuffer(vk::CommandBuffer buffer) {
   return true;
 }
 
+size_t VulkanSwapchain::GetImageCount() const {
+  return image_views_.size();
+}
+
 }  // namespace pixel

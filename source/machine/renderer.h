@@ -4,9 +4,10 @@
 
 #include "command_pool.h"
 #include "macros.h"
+#include "memory_allocator.h"
+#include "shaders/triangle.h"
 #include "vulkan.h"
 #include "vulkan_connection.h"
-#include "shaders/triangle.h"
 
 namespace pixel {
 
@@ -31,7 +32,7 @@ class Renderer {
   std::unique_ptr<Buffer> vertex_buffer_;
   std::unique_ptr<Buffer> index_buffer_;
   vk::UniquePipeline pipeline_;
-  TriangleUBO triangle_ubo_;
+  UniformBuffer<TriangleUBO> triangle_ubo_;
 
   bool is_valid_ = false;
 

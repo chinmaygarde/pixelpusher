@@ -106,6 +106,17 @@ bool Renderer::Setup() {
   vertex_buffer_ = std::move(vertex_buffer);
   index_buffer_ = std::move(index_buffer);
 
+  UniformBuffer<TriangleUBO> triangle_ubo(
+      connection_.GetMemoryAllocator(), {},
+      connection_.GetSwapchain().GetImageCount());
+
+  if (!triangle_ubo) {
+    P_ERROR << "Could not allocate backing store for the triangle UBO.";
+    return false;
+  }
+
+  triangle_ubo_ = std::move(triangle_ubo);
+
   auto descriptor_set_layout =
       TriangleUBO::CreateDescriptorSetLayout(connection_.GetDevice());
 
@@ -126,10 +137,10 @@ bool Renderer::Setup() {
 
   const auto extents = connection_.GetSwapchain().GetExtents();
 
-  triangle_ubo_.model = glm::identity<glm::mat4>();
-  triangle_ubo_.view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
-                                   glm::vec3(0.0f, 0.0f, 1.0f));
-  triangle_ubo_.projection =
+  triangle_ubo_->model = glm::identity<glm::mat4>();
+  triangle_ubo_->view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
+                                    glm::vec3(0.0f, 0.0f, 1.0f));
+  triangle_ubo_->projection =
       glm::ortho(0.0f, static_cast<float>(extents.width),
                  static_cast<float>(extents.height), 0.0f, 0.0f, 1.0f);
 

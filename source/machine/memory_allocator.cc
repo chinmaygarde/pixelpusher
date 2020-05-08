@@ -125,6 +125,26 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBufferCopy(
     vk::BufferUsageFlags usage,
     const void* buffer,
     size_t buffer_size) {
+  auto host_visible_buffer = CreateHostVisibleBuffer(usage, buffer_size);
+
+  if (!host_visible_buffer) {
+    return nullptr;
+  }
+
+  BufferMapping mapping(*host_visible_buffer);
+  if (!mapping.IsValid()) {
+    P_ERROR << "Could not setup host visible buffer mapping.";
+    return nullptr;
+  }
+
+  memcpy(mapping.GetMapping(), buffer, buffer_size);
+
+  return host_visible_buffer;
+}
+
+std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBuffer(
+    vk::BufferUsageFlags usage,
+    size_t buffer_size) {
   vk::BufferCreateInfo buffer_info;
   buffer_info.setSize(buffer_size);
   buffer_info.setUsage(usage);
@@ -142,14 +162,6 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBufferCopy(
     P_ERROR << "Could not create host visible buffer.";
     return nullptr;
   }
-
-  BufferMapping mapping(*host_visible_buffer);
-  if (!mapping.IsValid()) {
-    P_ERROR << "Could not setup host visible buffer mapping.";
-    return nullptr;
-  }
-
-  memcpy(mapping.GetMapping(), buffer, buffer_info.size);
 
   return host_visible_buffer;
 }

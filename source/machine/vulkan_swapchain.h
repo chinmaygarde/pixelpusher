@@ -29,6 +29,8 @@ class VulkanSwapchain {
 
   bool SubmitCommandBuffer(vk::CommandBuffer buffer);
 
+  size_t GetImageCount() const;
+
  private:
   vk::Device device_;
   vk::Queue graphics_queue_;
