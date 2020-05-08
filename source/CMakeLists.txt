@@ -4,6 +4,7 @@ if(WINDOWS)
 		/W3
 		/WX
 		/wd4267
+		/wd4305
 	)
 
 	add_definitions(

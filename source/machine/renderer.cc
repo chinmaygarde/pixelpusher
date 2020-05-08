@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "command_buffer.h"
+#include "glm.h"
 #include "logging.h"
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
@@ -124,6 +125,13 @@ bool Renderer::Setup() {
   PipelineBuilder pipeline_builder;
 
   const auto extents = connection_.GetSwapchain().GetExtents();
+
+  triangle_ubo_.model = glm::identity<glm::mat4>();
+  triangle_ubo_.view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
+                                   glm::vec3(0.0f, 0.0f, 1.0f));
+  triangle_ubo_.projection =
+      glm::ortho(0.0f, static_cast<float>(extents.width),
+                 static_cast<float>(extents.height), 0.0f, 0.0f, 1.0f);
 
   pipeline_builder.SetScissor({{0u, 0u}, {extents.width, extents.height}});
   pipeline_builder.SetViewport({0.0f, 0.0f, static_cast<float>(extents.width),
