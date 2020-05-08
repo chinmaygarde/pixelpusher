@@ -9,10 +9,10 @@ CommandPool::CommandPool(vk::Device device,
                          vk::UniqueCommandPool pool,
                          vk::Queue queue,
                          std::shared_ptr<FenceWaiter> waiter)
-    : device_(std::move(device)),
+    : waiter_(std::move(waiter)),
+      device_(std::move(device)),
       pool_(std::move(pool)),
-      queue_(std::move(queue)),
-      waiter_(std::move(waiter)) {}
+      queue_(std::move(queue)) {}
 
 CommandPool::~CommandPool() = default;
 

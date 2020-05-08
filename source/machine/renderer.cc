@@ -7,7 +7,6 @@
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
 #include "shader_loader.h"
-#include "shaders/triangle.h"
 #include "vulkan_swapchain.h"
 
 namespace pixel {
@@ -62,10 +61,11 @@ bool Renderer::Setup() {
       fragment_shader,  //
   };
 
-  const std::vector<Triangle> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+  const std::vector<TriangleVertices> vertices = {
+      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 
   const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
@@ -105,8 +105,21 @@ bool Renderer::Setup() {
   vertex_buffer_ = std::move(vertex_buffer);
   index_buffer_ = std::move(index_buffer);
 
+  auto descriptor_set_layout =
+      TriangleUBO::CreateDescriptorSetLayout(connection_.GetDevice());
+
+  if (!descriptor_set_layout) {
+    P_ERROR << "Could not create descriptor set layout.";
+    return false;
+  }
+
+  descriptor_set_layout_ = std::move(descriptor_set_layout);
+
+  std::vector<vk::DescriptorSetLayout> layouts;
+  layouts.push_back(descriptor_set_layout_.get());
+
   // Setup pipeline layout.
-  auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice());
+  auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice(), layouts);
 
   PipelineBuilder pipeline_builder;
 
@@ -117,8 +130,8 @@ bool Renderer::Setup() {
                                 static_cast<float>(extents.height), 0.0f,
                                 1.0f});
   pipeline_builder.SetVertexInputDescription(
-      {Triangle::GetVertexInputBindingDescription()},
-      Triangle::GetVertexInputAttributeDescription());
+      {TriangleVertices::GetVertexInputBindingDescription()},
+      TriangleVertices::GetVertexInputAttributeDescription());
 
   auto pipeline = pipeline_builder.CreatePipeline(
       connection_.GetDevice(),                    // device

@@ -140,13 +140,13 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBufferCopy(
 
   if (!host_visible_buffer) {
     P_ERROR << "Could not create host visible buffer.";
-    return false;
+    return nullptr;
   }
 
   BufferMapping mapping(*host_visible_buffer);
   if (!mapping.IsValid()) {
     P_ERROR << "Could not setup host visible buffer mapping.";
-    return false;
+    return nullptr;
   }
 
   memcpy(mapping.GetMapping(), buffer, buffer_info.size);
@@ -222,6 +222,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
         // TODO: This is not thread safe as the command buffer must be released
         // on the same thread as it is allocated.
         P_LOG << "Transfer Done.";
+
         transfer_command_buffer.reset();
         staging_buffer.reset();
       });

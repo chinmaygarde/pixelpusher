@@ -13,9 +13,13 @@ else()
 	add_compile_options(
 		-Wall
 		-Werror
+
+		-Wno-deprecated-declarations
 	)
 
 	add_compile_options(
+		-fdiagnostics-color=always
+
 		-fno-exceptions
 		-fno-rtti
 	)

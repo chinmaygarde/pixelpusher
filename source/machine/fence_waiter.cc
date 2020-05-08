@@ -30,12 +30,12 @@ std::shared_ptr<FenceWaiter> FenceWaiter::Create(vk::Device device,
       new FenceWaiter(std::move(device), std::move(queue)));
   if (!waiter->IsValid()) {
     P_ERROR << "Could not create fence waiter.";
-    return false;
+    return nullptr;
   }
 
   if (!waiter->StartThread()) {
     P_ERROR << "Could not start waiter thread.";
-    return false;
+    return nullptr;
   }
 
   return waiter;

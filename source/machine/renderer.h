@@ -6,6 +6,7 @@
 #include "macros.h"
 #include "vulkan.h"
 #include "vulkan_connection.h"
+#include "shaders/triangle.h"
 
 namespace pixel {
 
@@ -26,9 +27,11 @@ class Renderer {
  private:
   VulkanConnection connection_;
   std::shared_ptr<CommandPool> command_pool_;
+  vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;
   std::unique_ptr<Buffer> index_buffer_;
   vk::UniquePipeline pipeline_;
+  TriangleUBO triangle_ubo_;
 
   bool is_valid_ = false;
 

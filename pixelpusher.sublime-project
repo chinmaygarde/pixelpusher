@@ -1,37 +1,51 @@
 {
-  "build_systems":
-  [
-    {
-      "file_regex": "([a-zA-Z\/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
-      "name": "Pixel Pusher Build All",
-      "shell_cmd": "(cmake ../.. -G Ninja && ninja && ./source/machine/machine)",
-      "working_dir": "${project_path}/build/clang",
-      "shell": true,
-    },
-    {
-      "name": "Pixel Pusher Setup Xcode",
-      "shell_cmd": "(cmake ../../ -G Xcode)",
-      "working_dir": "${project_path}/build/xcode",
-      "shell": true,
-    },
-    {
-      "name": "Pixel Pusher Windows",
-      "file_regex": "([\\w\\\\:\\.]+)\\((\\d+),(\\d+)\\): (.*)",
-      "shell_cmd": "msbuild pixel_pusher.sln -verbosity:quiet -nologo -maxcpucount && .\\source\\machine\\Debug\\machine.exe",
-      "working_dir": "${project_path}/build",
-      "shell": true,
-    },
-  ],
-  "folders":
-  [
-    {
-      "folder_exclude_patterns":
-      [
-        "build",
-      ],
-      "follow_symlinks": false,
-      "name": "Pixel Pusher",
-      "path": "."
-    }
-  ]
+	"build_systems":
+	[
+		{
+			"file_regex": "([a-zA-Z/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
+			"name": "Pixel Pusher Build All",
+			"shell": true,
+			"shell_cmd": "(cmake ../.. -G Ninja && ninja && ./source/machine/machine)",
+			"working_dir": "${project_path}/build/clang"
+		},
+		{
+			"name": "Pixel Pusher Setup Xcode",
+			"shell": true,
+			"shell_cmd": "(cmake ../../ -G Xcode)",
+			"working_dir": "${project_path}/build/xcode"
+		},
+		{
+			"file_regex": "([\\w\\\\:\\.]+)\\((\\d+),(\\d+)\\): (.*)",
+			"name": "Pixel Pusher Windows",
+			"shell": true,
+			"shell_cmd": "msbuild pixel_pusher.sln -verbosity:quiet -nologo -maxcpucount && .\\source\\machine\\Debug\\machine.exe",
+			"working_dir": "${project_path}/build"
+		}
+	],
+	"folders":
+	[
+		{
+			"folder_exclude_patterns":
+			[
+				"build"
+			],
+			"follow_symlinks": false,
+			"name": "Pixel Pusher",
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"LSP":
+		{
+			"clangd":
+			{
+				"enabled": false,
+				"command": [
+					"clangd",
+					"--clang-tidy"
+				]
+			}
+		}
+	}
 }
