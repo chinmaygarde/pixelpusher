@@ -127,11 +127,66 @@ bool Renderer::Setup() {
 
   descriptor_set_layout_ = std::move(descriptor_set_layout);
 
-  std::vector<vk::DescriptorSetLayout> layouts;
-  layouts.push_back(descriptor_set_layout_.get());
+  vk::DescriptorPoolSize pool_size;
+  pool_size.setDescriptorCount(connection_.GetSwapchain().GetImageCount());
+  pool_size.setType(vk::DescriptorType::eUniformBuffer);
+
+  vk::DescriptorPoolCreateInfo descriptor_pool_info;
+  descriptor_pool_info.setPoolSizeCount(1u);
+  descriptor_pool_info.setPPoolSizes(&pool_size);
+  descriptor_pool_info.setMaxSets(connection_.GetSwapchain().GetImageCount());
+
+  auto descriptor_pool = UnwrapResult(
+      connection_.GetDevice().createDescriptorPoolUnique(descriptor_pool_info));
+  if (!descriptor_pool) {
+    P_ERROR << "Could not create descriptor pool.";
+    return false;
+  }
+
+  vk::DescriptorSetAllocateInfo descriptor_info;
+  descriptor_info.setDescriptorPool(*descriptor_pool);
+  descriptor_info.setDescriptorSetCount(
+      connection_.GetSwapchain().GetImageCount());
+  auto layouts = std::vector<vk::DescriptorSetLayout>{
+      connection_.GetSwapchain().GetImageCount(), descriptor_set_layout_.get()};
+  descriptor_info.setPSetLayouts(layouts.data());
+
+  descriptor_sets_ = UnwrapResult(
+      connection_.GetDevice().allocateDescriptorSets(descriptor_info));
+
+  if (descriptor_sets_.size() != connection_.GetSwapchain().GetImageCount()) {
+    P_ERROR << "Could not allocate descriptor sets.";
+    return false;
+  }
+
+  auto buffer_infos = triangle_ubo_.GetBufferInfos();
+
+  if (buffer_infos.size() != descriptor_sets_.size()) {
+    P_ERROR << "Could not allocate buffer infos.";
+    return false;
+  }
+
+  std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
+
+  for (size_t i = 0; i < descriptor_sets_.size(); i++) {
+    vk::WriteDescriptorSet write_descriptor_set;
+    write_descriptor_set.setDescriptorCount(1u);
+    write_descriptor_set.setDescriptorType(vk::DescriptorType::eUniformBuffer);
+    write_descriptor_set.setDstArrayElement(0u);
+    write_descriptor_set.setDstSet(descriptor_sets_[i]);
+    write_descriptor_set.setPBufferInfo(&buffer_infos[i]);
+    write_descriptor_sets.push_back(write_descriptor_set);
+  }
+
+  connection_.GetDevice().updateDescriptorSets(write_descriptor_sets, nullptr);
+
+  descriptor_pool_ = std::move(descriptor_pool);
+
+  std::vector<vk::DescriptorSetLayout> layouts2;
+  layouts2.push_back(descriptor_set_layout_.get());
 
   // Setup pipeline layout.
-  auto pipeline_layout = CreatePipelineLayout(connection_.GetDevice(), layouts);
+  pipeline_layout_ = CreatePipelineLayout(connection_.GetDevice(), layouts2);
 
   PipelineBuilder pipeline_builder;
 
@@ -155,7 +210,7 @@ bool Renderer::Setup() {
   auto pipeline = pipeline_builder.CreatePipeline(
       connection_.GetDevice(),                    // device
       shader_stages,                              // shader stages
-      pipeline_layout.get(),                      // pipeline layout
+      pipeline_layout_.get(),                     // pipeline layout
       connection_.GetSwapchain().GetRenderPass()  // render pass
   );
 
@@ -175,6 +230,11 @@ bool Renderer::Render() {
     return false;
   }
 
+  if (!triangle_ubo_.UpdateUniformData()) {
+    P_ERROR << "Could not write uniform data.";
+    return false;
+  }
+
   auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
   if (!buffer.has_value()) {
     P_ERROR << "Could not acquire next swapchain command buffer.";
@@ -182,12 +242,14 @@ bool Renderer::Render() {
   }
 
   // Perform per frame rendering operations here.
-
   buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
                               pipeline_.get());
   buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
   buffer.value().bindIndexBuffer(index_buffer_->buffer, 0,
                                  vk::IndexType::eUint16);
+  buffer.value().bindDescriptorSets(
+      vk::PipelineBindPoint::eGraphics, pipeline_layout_.get(), 0u,
+      descriptor_sets_[triangle_ubo_.GetCurrentIndex()], nullptr);
   buffer.value().drawIndexed(6, 1, 0, 0, 0);
 
   if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {

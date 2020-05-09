@@ -33,6 +33,9 @@ class Renderer {
   std::unique_ptr<Buffer> index_buffer_;
   vk::UniquePipeline pipeline_;
   UniformBuffer<TriangleUBO> triangle_ubo_;
+  vk::UniquePipelineLayout pipeline_layout_;
+  vk::UniqueDescriptorPool descriptor_pool_;
+  std::vector<vk::DescriptorSet> descriptor_sets_;
 
   bool is_valid_ = false;
 

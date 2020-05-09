@@ -26,9 +26,7 @@ inline auto UnwrapHandles(
 }
 
 template <class T>
-inline auto UnwrapUniqueResult(
-    vk::ResultValue<vk::UniqueHandle<T, VULKAN_HPP_DEFAULT_DISPATCHER_TYPE>>
-        result) {
+inline auto UnwrapResult(vk::ResultValue<T> result) {
   if (result.result != vk::Result::eSuccess) {
     return decltype(result.value){};
   }

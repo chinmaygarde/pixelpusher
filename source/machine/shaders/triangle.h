@@ -58,8 +58,7 @@ struct TriangleUBO {
     layout_info.setBindingCount(1u);
     layout_info.setPBindings(&binding);
 
-    return UnwrapUniqueResult(
-        device.createDescriptorSetLayoutUnique(layout_info));
+    return UnwrapResult(device.createDescriptorSetLayoutUnique(layout_info));
   }
 };
 
