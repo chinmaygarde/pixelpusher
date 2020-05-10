@@ -63,8 +63,6 @@ void FenceWaiter::WaiterMain() {
     // This should be caught by the predicate.
     P_ASSERT(wait_set.value().size() > 0u);
 
-    P_LOG << "Waiting for " << wait_set.value().size() << " fences.";
-
     auto wait_result =
         device_.waitForFences(wait_set.value(),  // wait set
                               false,             // wait for all

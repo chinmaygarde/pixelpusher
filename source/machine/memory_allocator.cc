@@ -234,7 +234,6 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
                     staging_buffer = std::move(staging_buffer)]() mutable {
         // TODO: This is not thread safe as the command buffer must be released
         // on the same thread as it is allocated.
-        P_LOG << "Transfer Done.";
 
         transfer_command_buffer.reset();
         staging_buffer.reset();

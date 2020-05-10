@@ -133,20 +133,15 @@ struct UniformBuffer {
 
   T* operator->() { return &prototype; };
 
-  constexpr vk::DescriptorBufferInfo GetBufferInfo(size_t index) const {
+  vk::DescriptorBufferInfo GetBufferInfo() const {
+    return GetBufferInfo(current_index);
+  }
+
+  vk::DescriptorBufferInfo GetBufferInfo(size_t index) const {
     vk::DescriptorBufferInfo info;
     info.setBuffer(buffer->buffer);
     info.setOffset(sizeof(T) * index);
     info.setRange(sizeof(T));
-    return info;
-  }
-
-  std::vector<vk::DescriptorBufferInfo> GetBufferInfos() const {
-    std::vector<vk::DescriptorBufferInfo> info;
-    info.reserve(copies);
-    for (size_t i = 0; i < copies; i++) {
-      info.push_back(GetBufferInfo(i));
-    }
     return info;
   }
 

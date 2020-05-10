@@ -68,7 +68,7 @@ bool Renderer::Setup() {
       {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
       {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 
-  const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+  const std::vector<uint16_t> indices = {2, 1, 0, 0, 3, 2};
 
   auto vertex_buffer =
       connection_.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
@@ -159,27 +159,6 @@ bool Renderer::Setup() {
     return false;
   }
 
-  auto buffer_infos = triangle_ubo_.GetBufferInfos();
-
-  if (buffer_infos.size() != descriptor_sets_.size()) {
-    P_ERROR << "Could not allocate buffer infos.";
-    return false;
-  }
-
-  std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
-
-  for (size_t i = 0; i < descriptor_sets_.size(); i++) {
-    vk::WriteDescriptorSet write_descriptor_set;
-    write_descriptor_set.setDescriptorCount(1u);
-    write_descriptor_set.setDescriptorType(vk::DescriptorType::eUniformBuffer);
-    write_descriptor_set.setDstArrayElement(0u);
-    write_descriptor_set.setDstSet(descriptor_sets_[i]);
-    write_descriptor_set.setPBufferInfo(&buffer_infos[i]);
-    write_descriptor_sets.push_back(write_descriptor_set);
-  }
-
-  connection_.GetDevice().updateDescriptorSets(write_descriptor_sets, nullptr);
-
   descriptor_pool_ = std::move(descriptor_pool);
 
   std::vector<vk::DescriptorSetLayout> layouts2;
@@ -193,11 +172,12 @@ bool Renderer::Setup() {
   const auto extents = connection_.GetSwapchain().GetExtents();
 
   triangle_ubo_->model = glm::identity<glm::mat4>();
-  triangle_ubo_->view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
-                                    glm::vec3(0.0f, 0.0f, 1.0f));
-  triangle_ubo_->projection =
-      glm::ortho(0.0f, static_cast<float>(extents.width),
-                 static_cast<float>(extents.height), 0.0f, 0.0f, 1.0f);
+  triangle_ubo_->view =
+      glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f));
+  triangle_ubo_->projection = glm::perspective(
+      glm::radians(45.0f), static_cast<float>(extents.width) / extents.height,
+      0.1f, 10.0f);
 
   pipeline_builder.SetScissor({{0u, 0u}, {extents.width, extents.height}});
   pipeline_builder.SetViewport({0.0f, 0.0f, static_cast<float>(extents.width),
@@ -235,6 +215,21 @@ bool Renderer::Render() {
     return false;
   }
 
+  const auto current_index = triangle_ubo_.GetCurrentIndex();
+
+  std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
+
+  auto buffer_info = triangle_ubo_.GetBufferInfo();
+  vk::WriteDescriptorSet write_descriptor_set;
+  write_descriptor_set.setDescriptorCount(1u);
+  write_descriptor_set.setDescriptorType(vk::DescriptorType::eUniformBuffer);
+  write_descriptor_set.setDstArrayElement(0u);
+  write_descriptor_set.setDstSet(descriptor_sets_[current_index]);
+  write_descriptor_set.setPBufferInfo(&buffer_info);
+  write_descriptor_sets.push_back(write_descriptor_set);
+
+  connection_.GetDevice().updateDescriptorSets(write_descriptor_sets, nullptr);
+
   auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
   if (!buffer.has_value()) {
     P_ERROR << "Could not acquire next swapchain command buffer.";
@@ -247,9 +242,9 @@ bool Renderer::Render() {
   buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
   buffer.value().bindIndexBuffer(index_buffer_->buffer, 0,
                                  vk::IndexType::eUint16);
-  buffer.value().bindDescriptorSets(
-      vk::PipelineBindPoint::eGraphics, pipeline_layout_.get(), 0u,
-      descriptor_sets_[triangle_ubo_.GetCurrentIndex()], nullptr);
+  buffer.value().bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                    pipeline_layout_.get(), 0u,
+                                    descriptor_sets_[current_index], nullptr);
   buffer.value().drawIndexed(6, 1, 0, 0, 0);
 
   if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {
