@@ -44,6 +44,7 @@ target_link_libraries(machine
     core
     Vulkan::Headers
     glm
+    stb
 )
 
 get_filename_component(PIXEL_SHADERS_LOCATION ${CMAKE_BINARY_DIR}/shaders ABSOLUTE)
