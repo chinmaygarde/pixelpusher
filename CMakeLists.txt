@@ -13,6 +13,15 @@ include(platform_selection)
 
 detect_platform()
 
+if(WINDOWS AND NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  add_compile_options(
+    -Xclang
+    -fno-rtti-data
+    -D_HAS_STATIC_RTTI=0
+    -D_CRT_SECURE_NO_WARNINGS=0
+  )
+endif()
+
 # execute_process(
 #   COMMAND ./utils/git-sync-deps
 #   WORKING_DIRECTORY third_party/shaderc

@@ -2,17 +2,18 @@
 
 #include "platform.h"
 
-#if !P_OS_WINDOWS
+#if __GNUC__ || __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif  // !P_OS_WINDOWS
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif  // __GNUC__ || __clang__
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-#if !P_OS_WINDOWS
+#if __GNUC__ || __clang__
 #pragma GCC diagnostic pop
-#endif  // !P_OS_WINDOWS
+#endif  // __GNUC__ || __clang__
 
 #include "closure.h"
 #include "command_buffer.h"

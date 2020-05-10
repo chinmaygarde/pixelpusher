@@ -32,6 +32,14 @@
 			"follow_symlinks": false,
 			"name": "Pixel Pusher",
 			"path": "."
+		},
+		{
+			"name": "Build",
+			"path": "build",
+			"follow_symlinks": false,
+			"file_include_patterns": [
+				"compile_commands.json"
+			]
 		}
 	],
 	"settings":
@@ -40,10 +48,10 @@
 		{
 			"clangd":
 			{
-				"enabled": false,
+				"enabled": true,
 				"command": [
-					"clangd",
-					"--clang-tidy"
+						"clangd",
+						"--compile-commands-dir=build/clang"
 				]
 			}
 		}

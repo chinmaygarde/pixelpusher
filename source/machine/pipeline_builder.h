@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "macros.h"
+#include "vulkan.h"
 #include "vulkan_connection.h"
 
 namespace pixel {

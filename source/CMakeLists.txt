@@ -1,5 +1,5 @@
 
-if(WINDOWS)
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	add_compile_options(
 		/W3
 		/WX

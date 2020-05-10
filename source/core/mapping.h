@@ -1,6 +1,7 @@
 #pragma once
 
-#include "file.h"
+#include <cstdint>
+
 #include "macros.h"
 
 namespace pixel {

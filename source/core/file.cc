@@ -66,11 +66,6 @@ class FileMapping : public Mapping {
 using WideStringConvertor =
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>;
 
-static std::wstring StringToWideString(const std::string& str) {
-  WideStringConvertor converter;
-  return converter.from_bytes(str);
-}
-
 static std::string WideStringToString(const std::wstring& wstr) {
   WideStringConvertor converter;
   return converter.to_bytes(wstr);
