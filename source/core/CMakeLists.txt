@@ -12,6 +12,7 @@ add_library(core
   mapping.h
   unique_object.h
   platform.h
+  geometry.h
 )
 
 target_include_directories(core

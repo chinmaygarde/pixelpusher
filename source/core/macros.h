@@ -11,10 +11,18 @@
   TypeName& operator=(const TypeName&) = delete;
 
 #if defined(__GNUC__) || defined(__clang__)
+#define CLANG_OR_GCC 1
+#else  // defined(__GNUC__) || defined(__clang__)
+#define CLANG_OR_GCC 0
+#endif  //  defined(__GNUC__) || defined(__clang__)
+
+#if CLANG_OR_GCC
 #define P_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
-#else
+#define GCC_PRAGMA(x) _Pragma(x)
+#else  // CLANG_OR_GCC
 #define P_WARN_UNUSED_RESULT
-#endif
+#define GCC_PRAGMA(x)
+#endif  // CLANG_OR_GCC
 
 #define P_ASSERT(x) assert((x))
 

@@ -2,18 +2,14 @@
 
 #include "platform.h"
 
-#if __GNUC__ || __clang__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif  // __GNUC__ || __clang__
+GCC_PRAGMA("GCC diagnostic push")
+GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-variable\"")
+GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-function\"")
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-#if __GNUC__ || __clang__
-#pragma GCC diagnostic pop
-#endif  // __GNUC__ || __clang__
+GCC_PRAGMA("GCC diagnostic pop")
 
 #include "closure.h"
 #include "command_buffer.h"

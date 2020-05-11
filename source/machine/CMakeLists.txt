@@ -1,5 +1,13 @@
 
 add_executable(machine
+  command_buffer.cc
+  command_buffer.h
+  command_pool.cc
+  command_pool.h
+  fence_waiter.cc
+  fence_waiter.h
+  image_decoder.cc
+  image_decoder.h
   main.cc
   memory_allocator.cc
   memory_allocator.h
@@ -19,12 +27,6 @@ add_executable(machine
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
-  command_pool.h
-  command_pool.cc
-  command_buffer.cc
-  command_buffer.h
-  fence_waiter.h
-  fence_waiter.cc
 )
 
 target_include_directories(machine
