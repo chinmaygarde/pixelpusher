@@ -225,14 +225,17 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
 
   auto on_done_fence = device_.createFenceUnique({});
 
-  auto on_transfer_done =
-      MakeCopyable([transfer_command_buffer,
-                    staging_buffer = std::move(staging_buffer)]() mutable {
+  auto on_transfer_done = MakeCopyable(
+      [transfer_command_buffer, staging_buffer = std::move(staging_buffer),
+       on_done]() mutable {
         // TODO: This is not thread safe as the command buffer must be released
         // on the same thread as it is allocated.
 
         transfer_command_buffer.reset();
         staging_buffer.reset();
+        if (on_done) {
+          on_done();
+        }
       });
 
   if (!transfer_command_buffer->SubmitWithCompletionCallback(
