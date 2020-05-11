@@ -332,6 +332,27 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
   }
 
   {
+    vk::ImageMemoryBarrier image_barrier;
+    image_barrier.setImage(device_image->image);
+    image_barrier.setOldLayout(vk::ImageLayout::eUndefined);
+    image_barrier.setNewLayout(vk::ImageLayout::eTransferDstOptimal);
+    image_barrier.setSrcAccessMask({});
+    image_barrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
+    image_barrier.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED);
+    image_barrier.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED);
+    vk::ImageSubresourceRange subresource_range;
+    subresource_range.setLayerCount(1u);
+    subresource_range.setLevelCount(1u);
+    subresource_range.setBaseArrayLayer(0u);
+    subresource_range.setBaseMipLevel(0u);
+    subresource_range.setAspectMask(vk::ImageAspectFlagBits::eColor);
+    image_barrier.setSubresourceRange(subresource_range);
+    cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                               vk::PipelineStageFlagBits::eTransfer, {},
+                               nullptr, nullptr, {image_barrier});
+  }
+
+  {
     vk::BufferImageCopy image_copy;
     image_copy.setBufferOffset(0u);
     image_copy.setBufferImageHeight(0u);  // tightly packed
@@ -354,7 +375,48 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
     );
   }
 
-  { cmd_buffer.end(); }
+  {
+    vk::ImageMemoryBarrier image_barrier;
+    image_barrier.setImage(device_image->image);
+    image_barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal);
+    image_barrier.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+    image_barrier.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite);
+    image_barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+    image_barrier.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED);
+    image_barrier.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED);
+    vk::ImageSubresourceRange subresource_range;
+    subresource_range.setLayerCount(1u);
+    subresource_range.setLevelCount(1u);
+    subresource_range.setBaseArrayLayer(0u);
+    subresource_range.setBaseMipLevel(0u);
+    subresource_range.setAspectMask(vk::ImageAspectFlagBits::eColor);
+    image_barrier.setSubresourceRange(subresource_range);
+    cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                               vk::PipelineStageFlagBits::eFragmentShader, {},
+                               nullptr, nullptr, {image_barrier});
+  }
+
+  {  //
+    cmd_buffer.end();
+  }
+
+  auto on_transfer_done = MakeCopyable(
+      [transfer_command_buffer, staging_buffer = std::move(staging_buffer),
+       on_done]() mutable {
+        // TODO: Releasing the command buffer here is not thread safe.
+        transfer_command_buffer.reset();
+        staging_buffer.reset();
+        if (on_done) {
+          on_done();
+        }
+      });
+
+  if (!transfer_command_buffer->SubmitWithCompletionCallback(
+          wait_semaphores, wait_stages, signal_semaphores, on_transfer_done)) {
+    return nullptr;
+  }
+
+  return device_image;
 }
 
 }  // namespace pixel
