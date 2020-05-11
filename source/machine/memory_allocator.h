@@ -21,6 +21,16 @@ struct Buffer {
   P_DISALLOW_COPY_AND_ASSIGN(Buffer);
 };
 
+struct Image {
+  vk::Image image = {};
+  VmaAllocator allocator = nullptr;
+  VmaAllocation allocation = nullptr;
+
+  Image(vk::Image image, VmaAllocator allocator, VmaAllocation allocation);
+
+  ~Image();
+};
+
 class BufferMapping {
  public:
   BufferMapping(const Buffer& buffer) : buffer_(buffer) {
@@ -73,6 +83,10 @@ class MemoryAllocator {
       const vk::BufferCreateInfo& buffer_info,
       const VmaAllocationCreateInfo& allocation_info);
 
+  std::unique_ptr<Image> CreateImage(
+      const vk::ImageCreateInfo& image_info,
+      const VmaAllocationCreateInfo& allocation_info);
+
   std::unique_ptr<Buffer> CreateHostVisibleBufferCopy(
       vk::BufferUsageFlags usage,
       const void* buffer,
@@ -85,6 +99,16 @@ class MemoryAllocator {
       vk::BufferUsageFlags usage,
       const void* buffer,
       size_t buffer_size,
+      const CommandPool& pool,
+      vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+      vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+      vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+      std::function<void(void)> on_done);
+
+  std::unique_ptr<Image> CreateDeviceLocalImageCopy(
+      vk::ImageCreateInfo image_info,
+      const void* image_data,
+      size_t image_data_size,
       const CommandPool& pool,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
       vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,

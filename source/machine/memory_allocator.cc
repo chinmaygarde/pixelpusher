@@ -1,6 +1,7 @@
 #include "memory_allocator.h"
 
 #include "platform.h"
+#include "vulkan/vulkan.hpp"
 
 GCC_PRAGMA("GCC diagnostic push")
 GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-variable\"")
@@ -58,10 +59,16 @@ Buffer::Buffer(vk::Buffer p_buffer,
     : buffer(p_buffer), allocator(p_allocator), allocation(p_allocation) {}
 
 Buffer::~Buffer() {
-  if (!allocator || !allocation) {
-    return;
-  }
   vmaDestroyBuffer(allocator, buffer, allocation);
+}
+
+Image::Image(vk::Image p_image,
+             VmaAllocator p_allocator,
+             VmaAllocation p_allocation)
+    : image(p_image), allocator(p_allocator), allocation(p_allocation) {}
+
+Image::~Image() {
+  vmaDestroyImage(allocator, image, allocation);
 }
 
 MemoryAllocator::MemoryAllocator(const vk::PhysicalDevice& physical_device,
@@ -114,6 +121,25 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateBuffer(
   return std::make_unique<Buffer>(raw_buffer, allocator_, allocation);
 }
 
+std::unique_ptr<Image> MemoryAllocator::CreateImage(
+    const vk::ImageCreateInfo& image_info,
+    const VmaAllocationCreateInfo& allocation_info) {
+  VkImage raw_image = nullptr;
+  VmaAllocation allocation = nullptr;
+  VkImageCreateInfo image_create_info = image_info;
+  if (::vmaCreateImage(allocator_,          //
+                       &image_create_info,  //
+                       &allocation_info,    //
+                       &raw_image,          //
+                       &allocation,         //
+                       nullptr              // allocation info
+                       ) != VK_SUCCESS) {
+    return nullptr;
+  }
+
+  return std::make_unique<Image>(raw_image, allocator_, allocation);
+}
+
 bool MemoryAllocator::IsValid() const {
   return is_valid_;
 }
@@ -163,6 +189,14 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBuffer(
   return host_visible_buffer;
 }
 
+static VmaAllocationCreateInfo DeviceLocalAllocationInfo() {
+  VmaAllocationCreateInfo device_allocation_info = {};
+  device_allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
+  device_allocation_info.requiredFlags =
+      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  return device_allocation_info;
+}
+
 std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
     vk::BufferUsageFlags usage,
     const void* buffer,
@@ -172,6 +206,10 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
     vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
     vk::ArrayProxy<vk::Semaphore> signal_semaphores,
     std::function<void(void)> on_done) {
+  if (!IsValid()) {
+    return nullptr;
+  }
+
   // Create a host visible staging buffer.
   auto staging_buffer = CreateHostVisibleBufferCopy(
       usage | vk::BufferUsageFlagBits::eTransferSrc, buffer, buffer_size);
@@ -187,10 +225,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   device_buffer_info.setSize(buffer_size);
   device_buffer_info.setSharingMode(vk::SharingMode::eExclusive);
 
-  VmaAllocationCreateInfo device_allocation_info = {};
-  device_allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
-  device_allocation_info.requiredFlags =
-      VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+  auto device_allocation_info = DeviceLocalAllocationInfo();
 
   auto device_buffer = CreateBuffer(device_buffer_info, device_allocation_info);
 
@@ -221,7 +256,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
                           device_buffer.get()->buffer, {region});
   }
 
-  cmd_buffer.end();
+  { cmd_buffer.end(); }
 
   auto on_done_fence = device_.createFenceUnique({});
 
@@ -230,7 +265,6 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
        on_done]() mutable {
         // TODO: This is not thread safe as the command buffer must be released
         // on the same thread as it is allocated.
-
         transfer_command_buffer.reset();
         staging_buffer.reset();
         if (on_done) {
@@ -249,6 +283,78 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   }
 
   return device_buffer;
+}
+
+std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
+    vk::ImageCreateInfo image_info,
+    const void* image_data,
+    size_t image_data_size,
+    const CommandPool& pool,
+    vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+    vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+    vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+    std::function<void(void)> on_done) {
+  if (!IsValid()) {
+    return nullptr;
+  }
+
+  if (image_data == nullptr || image_data_size == 0) {
+    return nullptr;
+  }
+
+  auto staging_buffer = CreateHostVisibleBufferCopy(
+      vk::BufferUsageFlagBits::eTransferSrc, image_data, image_data_size);
+
+  if (!staging_buffer) {
+    return nullptr;
+  }
+
+  auto device_allocation_info = DeviceLocalAllocationInfo();
+
+  auto device_image = CreateImage(image_info, device_allocation_info);
+
+  if (!device_image) {
+    return nullptr;
+  }
+
+  auto transfer_command_buffer = pool.CreateCommandBuffer();
+
+  if (!transfer_command_buffer) {
+    return nullptr;
+  }
+
+  auto cmd_buffer = transfer_command_buffer->GetCommandBuffer();
+
+  {
+    vk::CommandBufferBeginInfo begin_info;
+    begin_info.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+    cmd_buffer.begin(begin_info);
+  }
+
+  {
+    vk::BufferImageCopy image_copy;
+    image_copy.setBufferOffset(0u);
+    image_copy.setBufferImageHeight(0u);  // tightly packed
+    image_copy.setBufferRowLength(0u);    // tightly packed
+    image_copy.setImageOffset(vk::Offset3D{0u, 0u});
+    image_copy.setImageExtent(image_info.extent);
+
+    vk::ImageSubresourceLayers image_subresource_layers;
+    image_subresource_layers.setBaseArrayLayer(0u);
+    image_subresource_layers.setMipLevel(0u);
+    image_subresource_layers.setLayerCount(1u);
+    image_subresource_layers.setAspectMask(vk::ImageAspectFlagBits::eColor);
+    image_copy.setImageSubresource(image_subresource_layers);
+
+    cmd_buffer.copyBufferToImage(
+        staging_buffer->buffer,                // buffer
+        device_image->image,                   // image
+        vk::ImageLayout::eTransferDstOptimal,  // image layout
+        {image_copy}                           // image copies
+    );
+  }
+
+  { cmd_buffer.end(); }
 }
 
 }  // namespace pixel
