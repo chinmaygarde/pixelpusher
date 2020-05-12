@@ -275,7 +275,7 @@ bool Renderer::Render() {
   }
 
   {
-    // auto marker = DebugMarkerBegin(buffer.value(), "Draw Triangle");
+    auto marker = DebugMarkerBegin(buffer.value(), "Draw Triangle");
     // Perform per frame rendering operations here.
     buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
                                 pipeline_.get());

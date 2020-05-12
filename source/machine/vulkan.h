@@ -38,6 +38,7 @@ inline auto UnwrapResult(vk::ResultValue<T> result) {
 
 template <class T>
 inline auto SetDebugName(vk::Device device, T object, const char* name) {
+  // TODO: This needs to be tied to the extension begin enabled.
   vk::DebugUtilsObjectNameInfoEXT object_name;
   object_name.setObjectHandle(reinterpret_cast<uint64_t>(
       static_cast<typename decltype(object)::CType>(object)));
@@ -52,9 +53,15 @@ inline auto SetDebugName(vk::Device device, T object, const char* name) {
 }
 
 struct AutoDebugMarkerEnd {
+  AutoDebugMarkerEnd() = default;
+
   AutoDebugMarkerEnd(vk::CommandBuffer buffer) : buffer(buffer) {}
 
-  ~AutoDebugMarkerEnd() { buffer.debugMarkerEndEXT(); }
+  ~AutoDebugMarkerEnd() {
+    if (buffer) {
+      buffer.debugMarkerEndEXT();
+    }
+  }
 
  private:
   vk::CommandBuffer buffer;
@@ -65,6 +72,11 @@ struct AutoDebugMarkerEnd {
 [[nodiscard]] inline AutoDebugMarkerEnd DebugMarkerBegin(
     vk::CommandBuffer command_buffer,
     const char* name) {
+  // TODO: This needs to be tied to the extension begin enabled.
+  if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdDebugMarkerBeginEXT == nullptr) {
+    // Debug marker support is missing.
+    return {};
+  }
   vk::DebugMarkerMarkerInfoEXT marker;
   marker.setPMarkerName(name);
   marker.setColor({0.0f, 1.0f, 0.0f, 1.0f});

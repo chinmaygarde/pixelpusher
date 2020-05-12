@@ -58,6 +58,7 @@ Size ImageDecoder::GetSize() const {
 }
 
 static std::optional<vk::Format> FormatForSTBImageFormat(int format) {
+  // TODO: The availability of these formats must be checked.
   switch (format) {
     case STBI_rgb_alpha:
       return vk::Format::eR8G8B8A8Srgb;
