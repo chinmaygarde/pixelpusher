@@ -2,8 +2,11 @@
 
 #include <vector>
 
+#include "assets_location.h"
 #include "command_buffer.h"
+#include "file.h"
 #include "glm.h"
+#include "image_decoder.h"
 #include "logging.h"
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
@@ -94,8 +97,28 @@ bool Renderer::Setup() {
           nullptr   // on done
       );
 
-  if (!vertex_buffer || !index_buffer) {
-    P_ERROR << "Could not allocate either the vertex or index buffers.";
+  auto image_file = OpenFile(PIXEL_ASSETS_LOCATION "Nighthawks.jpg");
+  if (!image_file) {
+    return false;
+  }
+
+  ImageDecoder decoder(*image_file);
+  if (!decoder.IsValid()) {
+    return false;
+  }
+
+  auto image = decoder.CreateDeviceLocalImageCopy(
+      connection_.GetMemoryAllocator(),  // allocator
+      *command_pool_,                    // command pool
+      nullptr,                           // wait semaphores
+      nullptr,                           // wait staged
+      nullptr,                           // signal semaphores
+      nullptr                            // on done
+  );
+
+  if (!vertex_buffer || !index_buffer || !image) {
+    P_ERROR << "Could not allocate either the vertex buffer, index buffer, or "
+               "image";
     return false;
   }
 

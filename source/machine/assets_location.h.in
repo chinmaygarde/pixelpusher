@@ -1,0 +1,3 @@
+#pragma once
+
+#cmakedefine PIXEL_ASSETS_LOCATION "@PIXEL_ASSETS_LOCATION@" "/"

@@ -1,2 +1,3 @@
+#pragma once
 
 #cmakedefine PIXEL_SHADERS_LOCATION "@PIXEL_SHADERS_LOCATION@"

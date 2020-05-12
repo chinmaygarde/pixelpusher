@@ -50,5 +50,7 @@ target_link_libraries(machine
 )
 
 get_filename_component(PIXEL_SHADERS_LOCATION ${CMAKE_BINARY_DIR}/shaders ABSOLUTE)
+get_filename_component(PIXEL_ASSETS_LOCATION assets ABSOLUTE)
 configure_file(shader_location.h.in shader_location.h @ONLY)
+configure_file(assets_location.h.in assets_location.h @ONLY)
 target_include_directories(machine PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
