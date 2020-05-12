@@ -1,3 +1,4 @@
+#include "GLFW/glfw3.h"
 #define GLFW_INCLUDE_VULKAN
 
 #include <cstdlib>
@@ -50,12 +51,17 @@ int Main(int argc, char const* argv[]) {
 
   AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
 
-  while (!glfwWindowShouldClose(window)) {
+  while (true) {
+    glfwPollEvents();
+
+    if (glfwWindowShouldClose(window)) {
+      break;
+    }
+
     if (!renderer.Render()) {
       P_ERROR << "Error while attempting to render.";
       return EXIT_FAILURE;
     }
-    glfwWaitEvents();
   }
 
   return EXIT_SUCCESS;

@@ -4,6 +4,7 @@
 
 #include "logging.h"
 #include "render_pass.h"
+#include "vulkan.h"
 
 namespace pixel {
 

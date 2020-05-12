@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 
 #include "command_pool.h"
@@ -26,6 +27,8 @@ class Renderer {
   bool Teardown();
 
  private:
+  using Clock = std::chrono::high_resolution_clock;
+
   VulkanConnection connection_;
   vk::Device device_;
   std::shared_ptr<CommandPool> command_pool_;

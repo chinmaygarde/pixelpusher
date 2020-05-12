@@ -195,6 +195,21 @@ bool Renderer::Setup() {
     return false;
   }
 
+  std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
+
+  for (size_t i = 0; i < descriptor_sets_.size(); i++) {
+    auto buffer_info = triangle_ubo_.GetBufferInfo();
+    vk::WriteDescriptorSet write_descriptor_set;
+    write_descriptor_set.setDescriptorCount(1u);
+    write_descriptor_set.setDescriptorType(vk::DescriptorType::eUniformBuffer);
+    write_descriptor_set.setDstArrayElement(0u);
+    write_descriptor_set.setDstSet(descriptor_sets_[i]);
+    write_descriptor_set.setPBufferInfo(&buffer_info);
+    write_descriptor_sets.push_back(write_descriptor_set);
+  }
+
+  device_.updateDescriptorSets(write_descriptor_sets, nullptr);
+
   descriptor_pool_ = std::move(descriptor_pool);
 
   std::vector<vk::DescriptorSetLayout> layouts2;
@@ -206,14 +221,6 @@ bool Renderer::Setup() {
   PipelineBuilder pipeline_builder;
 
   const auto extents = connection_.GetSwapchain().GetExtents();
-
-  triangle_ubo_->model = glm::identity<glm::mat4>();
-  triangle_ubo_->view =
-      glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                  glm::vec3(0.0f, 0.0f, 1.0f));
-  triangle_ubo_->projection = glm::perspective(
-      glm::radians(45.0f), static_cast<float>(extents.width) / extents.height,
-      0.1f, 10.0f);
 
   pipeline_builder.SetScissor({{0u, 0u}, {extents.width, extents.height}});
   pipeline_builder.SetViewport({0.0f, 0.0f, static_cast<float>(extents.width),
@@ -248,25 +255,27 @@ bool Renderer::Render() {
     return false;
   }
 
+  const auto extents = connection_.GetSwapchain().GetExtents();
+
+  auto rate =
+      std::chrono::duration<float>(Clock::now().time_since_epoch()).count();
+
+  triangle_ubo_->model =
+      glm::rotate(glm::mat4(1.0f),                     // model
+                  glm::radians<float>(rate * 180.0f),  // radians
+                  glm::vec3(0.0f, 0.0f, 1.0f)          // center
+      );
+  triangle_ubo_->view =
+      glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f));
+  triangle_ubo_->projection = glm::perspective(
+      glm::radians(90.0f), static_cast<float>(extents.width) / extents.height,
+      0.0f, 10.0f);
+
   if (!triangle_ubo_.UpdateUniformData()) {
     P_ERROR << "Could not write uniform data.";
     return false;
   }
-
-  const auto current_index = triangle_ubo_.GetCurrentIndex();
-
-  std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
-
-  auto buffer_info = triangle_ubo_.GetBufferInfo();
-  vk::WriteDescriptorSet write_descriptor_set;
-  write_descriptor_set.setDescriptorCount(1u);
-  write_descriptor_set.setDescriptorType(vk::DescriptorType::eUniformBuffer);
-  write_descriptor_set.setDstArrayElement(0u);
-  write_descriptor_set.setDstSet(descriptor_sets_[current_index]);
-  write_descriptor_set.setPBufferInfo(&buffer_info);
-  write_descriptor_sets.push_back(write_descriptor_set);
-
-  device_.updateDescriptorSets(write_descriptor_sets, nullptr);
 
   auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
   if (!buffer.has_value()) {
@@ -282,9 +291,9 @@ bool Renderer::Render() {
     buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
     buffer.value().bindIndexBuffer(index_buffer_->buffer, 0,
                                    vk::IndexType::eUint16);
-    buffer.value().bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                      pipeline_layout_.get(), 0u,
-                                      descriptor_sets_[current_index], nullptr);
+    buffer.value().bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, pipeline_layout_.get(), 0u,
+        descriptor_sets_[triangle_ubo_.GetCurrentIndex()], nullptr);
     buffer.value().drawIndexed(6, 1, 0, 0, 0);
   }
 
