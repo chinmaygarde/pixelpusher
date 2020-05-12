@@ -73,6 +73,10 @@ const vk::Queue& CommandPool::GetCommandQueue() const {
   return queue_;
 }
 
+vk::CommandPool CommandPool::GetCommandPool() const {
+  return *pool_;
+}
+
 FenceWaiter& CommandPool::GetFenceWaiter() const {
   return *waiter_;
 }

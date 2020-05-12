@@ -19,6 +19,8 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
 
   std::shared_ptr<CommandBuffer> CreateCommandBuffer() const;
 
+  vk::CommandPool GetCommandPool() const;
+
   const vk::Queue& GetCommandQueue() const;
 
   FenceWaiter& GetFenceWaiter() const;

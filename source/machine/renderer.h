@@ -27,6 +27,7 @@ class Renderer {
 
  private:
   VulkanConnection connection_;
+  vk::Device device_;
   std::shared_ptr<CommandPool> command_pool_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;

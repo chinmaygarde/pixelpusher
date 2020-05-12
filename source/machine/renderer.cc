@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include <stdint.h>
 
 #include <vector>
 
@@ -11,6 +12,8 @@
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
 #include "shader_loader.h"
+#include "vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include "vulkan_swapchain.h"
 
 namespace pixel {
@@ -20,6 +23,8 @@ Renderer::Renderer(GLFWwindow* window) : connection_(window) {
     P_ERROR << "Vulkan connection was invalid.";
     return;
   }
+
+  device_ = connection_.GetDevice();
 
   is_valid_ = true;
 }
@@ -35,15 +40,19 @@ bool Renderer::Setup() {
     return false;
   }
 
-  command_pool_ = CommandPool::Create(
-      connection_.GetDevice(), vk::CommandPoolCreateFlagBits::eTransient,
-      connection_.GetGraphicsQueueFamilyIndex());
+  command_pool_ =
+      CommandPool::Create(device_, vk::CommandPoolCreateFlagBits::eTransient,
+                          connection_.GetGraphicsQueueFamilyIndex());
+
+  if (!command_pool_) {
+    return false;
+  }
+
+  SetDebugName(device_, command_pool_->GetCommandPool(), "Main Command Pool");
 
   // Load shader stages.
-  auto vertex_shader_module =
-      LoadShaderModule(connection_.GetDevice(), "triangle.vert");
-  auto fragment_shader_module =
-      LoadShaderModule(connection_.GetDevice(), "triangle.frag");
+  auto vertex_shader_module = LoadShaderModule(device_, "triangle.vert");
+  auto fragment_shader_module = LoadShaderModule(device_, "triangle.frag");
 
   if (!vertex_shader_module || !fragment_shader_module) {
     P_ERROR << "Could not load shader modules.";
@@ -124,10 +133,15 @@ bool Renderer::Setup() {
 
   // TODO: For the transfer to the staging buffer to be complete. Get rid of
   // this and use fences instead.
-  connection_.GetDevice().waitIdle();
+  device_.waitIdle();
 
   vertex_buffer_ = std::move(vertex_buffer);
   index_buffer_ = std::move(index_buffer);
+  image_ = std::move(image);
+
+  SetDebugName(device_, image_->image, "Nighthawks");
+  SetDebugName(device_, vertex_buffer_->buffer, "Triangle Vertex Buffer");
+  SetDebugName(device_, index_buffer_->buffer, "Triangle Index Buffer");
 
   UniformBuffer<TriangleUBO> triangle_ubo(
       connection_.GetMemoryAllocator(), {},
@@ -140,8 +154,7 @@ bool Renderer::Setup() {
 
   triangle_ubo_ = std::move(triangle_ubo);
 
-  auto descriptor_set_layout =
-      TriangleUBO::CreateDescriptorSetLayout(connection_.GetDevice());
+  auto descriptor_set_layout = TriangleUBO::CreateDescriptorSetLayout(device_);
 
   if (!descriptor_set_layout) {
     P_ERROR << "Could not create descriptor set layout.";
@@ -159,8 +172,8 @@ bool Renderer::Setup() {
   descriptor_pool_info.setPPoolSizes(&pool_size);
   descriptor_pool_info.setMaxSets(connection_.GetSwapchain().GetImageCount());
 
-  auto descriptor_pool = UnwrapResult(
-      connection_.GetDevice().createDescriptorPoolUnique(descriptor_pool_info));
+  auto descriptor_pool =
+      UnwrapResult(device_.createDescriptorPoolUnique(descriptor_pool_info));
   if (!descriptor_pool) {
     P_ERROR << "Could not create descriptor pool.";
     return false;
@@ -174,8 +187,8 @@ bool Renderer::Setup() {
       connection_.GetSwapchain().GetImageCount(), descriptor_set_layout_.get()};
   descriptor_info.setPSetLayouts(layouts.data());
 
-  descriptor_sets_ = UnwrapResult(
-      connection_.GetDevice().allocateDescriptorSets(descriptor_info));
+  descriptor_sets_ =
+      UnwrapResult(device_.allocateDescriptorSets(descriptor_info));
 
   if (descriptor_sets_.size() != connection_.GetSwapchain().GetImageCount()) {
     P_ERROR << "Could not allocate descriptor sets.";
@@ -188,7 +201,7 @@ bool Renderer::Setup() {
   layouts2.push_back(descriptor_set_layout_.get());
 
   // Setup pipeline layout.
-  pipeline_layout_ = CreatePipelineLayout(connection_.GetDevice(), layouts2);
+  pipeline_layout_ = CreatePipelineLayout(device_, layouts2);
 
   PipelineBuilder pipeline_builder;
 
@@ -211,7 +224,7 @@ bool Renderer::Setup() {
       TriangleVertices::GetVertexInputAttributeDescription());
 
   auto pipeline = pipeline_builder.CreatePipeline(
-      connection_.GetDevice(),                    // device
+      device_,                                    // device
       shader_stages,                              // shader stages
       pipeline_layout_.get(),                     // pipeline layout
       connection_.GetSwapchain().GetRenderPass()  // render pass
@@ -221,6 +234,8 @@ bool Renderer::Setup() {
     P_ERROR << "Could not create pipeline.";
     return false;
   }
+
+  SetDebugName(device_, pipeline.get(), "Triangle Pipeline");
 
   pipeline_ = std::move(pipeline);
 
@@ -251,7 +266,7 @@ bool Renderer::Render() {
   write_descriptor_set.setPBufferInfo(&buffer_info);
   write_descriptor_sets.push_back(write_descriptor_set);
 
-  connection_.GetDevice().updateDescriptorSets(write_descriptor_sets, nullptr);
+  device_.updateDescriptorSets(write_descriptor_sets, nullptr);
 
   auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
   if (!buffer.has_value()) {
@@ -259,16 +274,19 @@ bool Renderer::Render() {
     return false;
   }
 
-  // Perform per frame rendering operations here.
-  buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
-                              pipeline_.get());
-  buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
-  buffer.value().bindIndexBuffer(index_buffer_->buffer, 0,
-                                 vk::IndexType::eUint16);
-  buffer.value().bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                    pipeline_layout_.get(), 0u,
-                                    descriptor_sets_[current_index], nullptr);
-  buffer.value().drawIndexed(6, 1, 0, 0, 0);
+  {
+    // auto marker = DebugMarkerBegin(buffer.value(), "Draw Triangle");
+    // Perform per frame rendering operations here.
+    buffer.value().bindPipeline(vk::PipelineBindPoint::eGraphics,
+                                pipeline_.get());
+    buffer.value().bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
+    buffer.value().bindIndexBuffer(index_buffer_->buffer, 0,
+                                   vk::IndexType::eUint16);
+    buffer.value().bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                      pipeline_layout_.get(), 0u,
+                                      descriptor_sets_[current_index], nullptr);
+    buffer.value().drawIndexed(6, 1, 0, 0, 0);
+  }
 
   if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {
     P_ERROR << "Could not submit the command buffer back to the swapchain.";
