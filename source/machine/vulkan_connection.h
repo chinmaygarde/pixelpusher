@@ -7,6 +7,7 @@
 #include "memory_allocator.h"
 #include "render_pass.h"
 #include "vulkan.h"
+#include "vulkan/vulkan.hpp"
 
 namespace pixel {
 
@@ -28,9 +29,12 @@ class VulkanConnection {
 
   uint32_t GetGraphicsQueueFamilyIndex() const;
 
+  const vk::PhysicalDeviceFeatures& GetAvailableFeatures() const;
+
  private:
   vk::UniqueInstance instance_;
   std::unique_ptr<PhysicalDeviceSelection> physical_device_selection_;
+  vk::PhysicalDeviceFeatures available_features_;
   vk::UniqueDevice device_;
   vk::SurfaceKHR surface_;
   std::unique_ptr<VulkanSwapchain> swapchain_;

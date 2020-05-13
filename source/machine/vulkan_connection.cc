@@ -8,6 +8,7 @@
 
 #include "logging.h"
 #include "macros.h"
+#include "vulkan/vulkan.hpp"
 #include "vulkan_swapchain.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -354,6 +355,17 @@ static std::optional<std::set<std::string>> GetRequiredInstanceExtensions() {
   return extensions;
 }
 
+static vk::PhysicalDeviceFeatures GetEnabledFeatures(
+    const vk::PhysicalDeviceFeatures& available_features) {
+  vk::PhysicalDeviceFeatures enabled_features;
+
+  if (available_features.samplerAnisotropy) {
+    enabled_features.samplerAnisotropy = true;
+  }
+
+  return enabled_features;
+}
+
 VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   if (glfw_window == nullptr) {
     P_ERROR << "GLFW window invalid.";
@@ -488,12 +500,16 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   const float queue_priority = 1.0f;
   queue_create_info.setPQueuePriorities(&queue_priority);
 
+  auto enabled_features = GetEnabledFeatures(
+      physical_devices[selection.device_index.value()].getFeatures());
+
   vk::DeviceCreateInfo device_create_info;
   device_create_info.setPQueueCreateInfos(&queue_create_info);
   device_create_info.setQueueCreateInfoCount(1u);
   device_create_info.setPpEnabledExtensionNames(
       kRequiredDeviceExtensions.data());
   device_create_info.setEnabledExtensionCount(kRequiredDeviceExtensions.size());
+  device_create_info.setPEnabledFeatures(&enabled_features);
 
   auto device_result =
       physical_devices[selection.device_index.value()].createDeviceUnique(
@@ -528,6 +544,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   swapchain_ = std::move(swapchain);
   memory_allocator_ = std::move(memory_allocator);
   debug_utils_messenger_ = std::move(debug_utils_messenger);
+  available_features_ = enabled_features;
 
   is_valid_ = true;
 }
@@ -574,6 +591,12 @@ MemoryAllocator& VulkanConnection::GetMemoryAllocator() const {
 uint32_t VulkanConnection::GetGraphicsQueueFamilyIndex() const {
   P_ASSERT(is_valid_);
   return physical_device_selection_->graphics_family_index.value();
+}
+
+const vk::PhysicalDeviceFeatures& VulkanConnection::GetAvailableFeatures()
+    const {
+  P_ASSERT(is_valid_);
+  return available_features_;
 }
 
 }  // namespace pixel

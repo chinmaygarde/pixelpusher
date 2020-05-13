@@ -215,9 +215,10 @@ bool Renderer::Setup() {
   sampler_info.setAddressModeW(vk::SamplerAddressMode::eClampToEdge);
   sampler_info.setMipLodBias(0.0f);
 
-  // TODO: Optional feature. Enable after checking device features.
-  // sampler_info.setAnisotropyEnable(false);
-  // sampler_info.setMaxAnisotropy(16.0f);
+  if (connection_.GetAvailableFeatures().samplerAnisotropy) {
+    sampler_info.setAnisotropyEnable(true);
+    sampler_info.setMaxAnisotropy(16.0f);
+  }
 
   sampler_info.setCompareEnable(false);
   sampler_info.setCompareOp(vk::CompareOp::eAlways);
