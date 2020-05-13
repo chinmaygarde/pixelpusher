@@ -9,6 +9,7 @@
 #include "memory_allocator.h"
 #include "shaders/triangle.h"
 #include "vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include "vulkan_connection.h"
 
 namespace pixel {
@@ -42,6 +43,7 @@ class Renderer {
   vk::UniquePipelineLayout pipeline_layout_;
   vk::UniqueDescriptorPool descriptor_pool_;
   std::vector<vk::DescriptorSet> descriptor_sets_;
+  vk::UniqueSampler sampler_;
 
   bool is_valid_ = false;
 

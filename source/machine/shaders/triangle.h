@@ -2,14 +2,14 @@
 
 #include <vector>
 
-#include "vulkan.h"
 #include "glm.h"
+#include "vulkan.h"
 
 namespace pixel {
 
 struct TriangleVertices {
   glm::vec2 position;
-  glm::vec3 color;
+  glm::vec2 color;
 
   static vk::VertexInputBindingDescription GetVertexInputBindingDescription() {
     vk::VertexInputBindingDescription desc;
@@ -31,11 +31,11 @@ struct TriangleVertices {
     desc[0].setLocation(0u);
     desc[0].setFormat(vk::Format::eR32G32Sfloat);
 
-    // Color.
+    // Texture Coordinate.
     desc[1].setBinding(0u);
     desc[1].setOffset(offsetof(TriangleVertices, color));
     desc[1].setLocation(1u);
-    desc[1].setFormat(vk::Format::eR32G32B32Sfloat);
+    desc[1].setFormat(vk::Format::eR32G32Sfloat);
 
     return desc;
   }
@@ -48,15 +48,29 @@ struct TriangleUBO {
 
   static vk::UniqueDescriptorSetLayout CreateDescriptorSetLayout(
       vk::Device device) {
-    vk::DescriptorSetLayoutBinding binding;
-    binding.setDescriptorType(vk::DescriptorType::eUniformBuffer);
-    binding.setBinding(0u);
-    binding.setDescriptorCount(1u);
-    binding.setStageFlags(vk::ShaderStageFlagBits::eVertex);
+    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+
+    {
+      vk::DescriptorSetLayoutBinding binding;
+      binding.setDescriptorType(vk::DescriptorType::eUniformBuffer);
+      binding.setBinding(0u);
+      binding.setDescriptorCount(1u);
+      binding.setStageFlags(vk::ShaderStageFlagBits::eVertex);
+      bindings.push_back(binding);
+    }
+
+    {
+      vk::DescriptorSetLayoutBinding binding;
+      binding.setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
+      binding.setBinding(1u);
+      binding.setDescriptorCount(1u);
+      binding.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+      bindings.push_back(binding);
+    }
 
     vk::DescriptorSetLayoutCreateInfo layout_info;
-    layout_info.setBindingCount(1u);
-    layout_info.setPBindings(&binding);
+    layout_info.setBindingCount(bindings.size());
+    layout_info.setPBindings(bindings.data());
 
     return UnwrapResult(device.createDescriptorSetLayoutUnique(layout_info));
   }

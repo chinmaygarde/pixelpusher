@@ -33,6 +33,10 @@ class ImageView {
 
   const vk::ImageView* operator->() const { return &view_.get(); }
 
+  const vk::ImageView& GetImageView() const { return view_.get(); }
+
+  const vk::Image& GetImage() const { return image_->image; };
+
  private:
   std::shared_ptr<Image> image_;
   vk::UniqueImageView view_;

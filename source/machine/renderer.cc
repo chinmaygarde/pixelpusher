@@ -74,10 +74,10 @@ bool Renderer::Setup() {
   };
 
   const std::vector<TriangleVertices> vertices = {
-      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+      {{-0.5f, -0.5f}, {0.0f, 0.0f}},
+      {{0.5f, -0.5f}, {1.0f, 0.0f}},
+      {{0.5f, 0.5f}, {1.0f, 1.0f}},
+      {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
 
   const std::vector<uint16_t> indices = {2, 1, 0, 0, 3, 2};
 
@@ -163,13 +163,24 @@ bool Renderer::Setup() {
 
   descriptor_set_layout_ = std::move(descriptor_set_layout);
 
-  vk::DescriptorPoolSize pool_size;
-  pool_size.setDescriptorCount(connection_.GetSwapchain().GetImageCount());
-  pool_size.setType(vk::DescriptorType::eUniformBuffer);
+  std::vector<vk::DescriptorPoolSize> pool_sizes;
+  {
+    vk::DescriptorPoolSize pool_size;
+    pool_size.setDescriptorCount(connection_.GetSwapchain().GetImageCount());
+    pool_size.setType(vk::DescriptorType::eUniformBuffer);
+    pool_sizes.push_back(pool_size);
+  }
+
+  {
+    vk::DescriptorPoolSize pool_size;
+    pool_size.setDescriptorCount(connection_.GetSwapchain().GetImageCount());
+    pool_size.setType(vk::DescriptorType::eCombinedImageSampler);
+    pool_sizes.push_back(pool_size);
+  }
 
   vk::DescriptorPoolCreateInfo descriptor_pool_info;
-  descriptor_pool_info.setPoolSizeCount(1u);
-  descriptor_pool_info.setPPoolSizes(&pool_size);
+  descriptor_pool_info.setPoolSizeCount(pool_sizes.size());
+  descriptor_pool_info.setPPoolSizes(pool_sizes.data());
   descriptor_pool_info.setMaxSets(connection_.GetSwapchain().GetImageCount());
 
   auto descriptor_pool =
@@ -195,17 +206,68 @@ bool Renderer::Setup() {
     return false;
   }
 
+  vk::SamplerCreateInfo sampler_info;
+  sampler_info.setMagFilter(vk::Filter::eLinear);
+  sampler_info.setMinFilter(vk::Filter::eLinear);
+  sampler_info.setMipmapMode(vk::SamplerMipmapMode::eNearest);
+  sampler_info.setAddressModeU(vk::SamplerAddressMode::eClampToEdge);
+  sampler_info.setAddressModeV(vk::SamplerAddressMode::eClampToEdge);
+  sampler_info.setAddressModeW(vk::SamplerAddressMode::eClampToEdge);
+  sampler_info.setMipLodBias(0.0f);
+
+  // TODO: Optional feature. Enable after checking device features.
+  // sampler_info.setAnisotropyEnable(false);
+  // sampler_info.setMaxAnisotropy(16.0f);
+
+  sampler_info.setCompareEnable(false);
+  sampler_info.setCompareOp(vk::CompareOp::eAlways);
+  sampler_info.setUnnormalizedCoordinates(false);
+  sampler_info.setBorderColor(vk::BorderColor::eIntOpaqueBlack);
+  sampler_info.setMinLod(0.0f);
+  sampler_info.setMaxLod(0.0f);
+
+  sampler_ = UnwrapResult(device_.createSamplerUnique(sampler_info));
+
+  if (!sampler_) {
+    P_ERROR << "Could not create sampler.";
+    return false;
+  }
+
   std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
+  auto triangl_ubo_buffer_info = triangle_ubo_.GetBufferInfo();
+  vk::DescriptorImageInfo triangle_sampler_info;
+  triangle_sampler_info.setSampler(sampler_.get());
+  triangle_sampler_info.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+  triangle_sampler_info.setImageView(image_->GetImageView());
 
   for (size_t i = 0; i < descriptor_sets_.size(); i++) {
-    auto buffer_info = triangle_ubo_.GetBufferInfo();
-    vk::WriteDescriptorSet write_descriptor_set;
-    write_descriptor_set.setDescriptorCount(1u);
-    write_descriptor_set.setDescriptorType(vk::DescriptorType::eUniformBuffer);
-    write_descriptor_set.setDstArrayElement(0u);
-    write_descriptor_set.setDstSet(descriptor_sets_[i]);
-    write_descriptor_set.setPBufferInfo(&buffer_info);
-    write_descriptor_sets.push_back(write_descriptor_set);
+    {
+      vk::WriteDescriptorSet write_descriptor_set;
+      write_descriptor_set.setDstSet(descriptor_sets_[i]);
+      write_descriptor_set.setDstBinding(0u);
+      write_descriptor_set.setDstArrayElement(0u);
+      write_descriptor_set.setDescriptorCount(1u);  // one UBO
+      write_descriptor_set.setDescriptorType(
+          vk::DescriptorType::eUniformBuffer);
+
+      write_descriptor_set.setPBufferInfo(&triangl_ubo_buffer_info);
+
+      write_descriptor_sets.push_back(write_descriptor_set);
+    }
+
+    {
+      vk::WriteDescriptorSet write_descriptor_set;
+      write_descriptor_set.setDstSet(descriptor_sets_[i]);
+      write_descriptor_set.setDstBinding(1u);
+      write_descriptor_set.setDstArrayElement(0u);
+      write_descriptor_set.setDescriptorCount(1u);  // one CombinedImageSampler
+      write_descriptor_set.setDescriptorType(
+          vk::DescriptorType::eCombinedImageSampler);
+
+      write_descriptor_set.setPImageInfo(&triangle_sampler_info);
+
+      write_descriptor_sets.push_back(write_descriptor_set);
+    }
   }
 
   device_.updateDescriptorSets(write_descriptor_sets, nullptr);
