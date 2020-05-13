@@ -1,9 +1,12 @@
 #include "image_decoder.h"
 
+#include <memory>
 #include <optional>
 
 #include "closure.h"
 #include "logging.h"
+#include "vulkan.h"
+#include "vulkan/vulkan.hpp"
 
 GCC_PRAGMA("GCC diagnostic push")
 GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-function\"")
@@ -66,7 +69,7 @@ static std::optional<vk::Format> FormatForSTBImageFormat(int format) {
   return std::nullopt;
 }
 
-std::unique_ptr<Image> ImageDecoder::CreateDeviceLocalImageCopy(
+std::unique_ptr<ImageView> ImageDecoder::CreateDeviceLocalImageCopy(
     MemoryAllocator& allocator,
     const CommandPool& pool,
     vk::ArrayProxy<vk::Semaphore> wait_semaphores,
@@ -105,15 +108,40 @@ std::unique_ptr<Image> ImageDecoder::CreateDeviceLocalImageCopy(
   image_info.setSharingMode(vk::SharingMode::eExclusive);
   image_info.setSamples(vk::SampleCountFlagBits::e1);
 
-  return allocator.CreateDeviceLocalImageCopy(image_info,                    //
-                                              image_.get(),                  //
-                                              image_data_size_,              //
-                                              pool,                          //
-                                              std::move(wait_semaphores),    //
-                                              std::move(wait_stages),        //
-                                              std::move(signal_semaphores),  //
-                                              on_transfer_done               //
-  );
+  auto image =
+      allocator.CreateDeviceLocalImageCopy(image_info,                    //
+                                           image_.get(),                  //
+                                           image_data_size_,              //
+                                           pool,                          //
+                                           std::move(wait_semaphores),    //
+                                           std::move(wait_stages),        //
+                                           std::move(signal_semaphores),  //
+                                           on_transfer_done               //
+      );
+
+  if (!image) {
+    return nullptr;
+  }
+
+  vk::ImageViewCreateInfo image_view_info;
+  image_view_info.setImage(image->image);
+  image_view_info.setFormat(format.value());
+  image_view_info.setViewType(vk::ImageViewType::e2D);
+  vk::ImageSubresourceRange subresource_range;
+  subresource_range.setLayerCount(1u);
+  subresource_range.setLevelCount(1u);
+  subresource_range.setBaseMipLevel(0u);
+  subresource_range.setBaseArrayLayer(0u);
+  subresource_range.setAspectMask(vk::ImageAspectFlagBits::eColor);
+  image_view_info.setSubresourceRange(subresource_range);
+
+  auto image_view =
+      UnwrapResult(pool.GetDevice().createImageViewUnique(image_view_info));
+  if (!image_view) {
+    return nullptr;
+  }
+
+  return std::make_unique<ImageView>(std::move(image), std::move(image_view));
 }
 
 }  // namespace pixel

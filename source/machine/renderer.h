@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "command_pool.h"
+#include "image_decoder.h"
 #include "macros.h"
 #include "memory_allocator.h"
 #include "shaders/triangle.h"
@@ -35,7 +36,7 @@ class Renderer {
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;
   std::unique_ptr<Buffer> index_buffer_;
-  std::unique_ptr<Image> image_;
+  std::unique_ptr<ImageView> image_;
   vk::UniquePipeline pipeline_;
   UniformBuffer<TriangleUBO> triangle_ubo_;
   vk::UniquePipelineLayout pipeline_layout_;

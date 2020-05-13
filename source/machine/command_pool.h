@@ -25,6 +25,8 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
 
   FenceWaiter& GetFenceWaiter() const;
 
+  vk::Device GetDevice() const;
+
  private:
   std::shared_ptr<FenceWaiter> waiter_;
   vk::Device device_;

@@ -81,4 +81,8 @@ FenceWaiter& CommandPool::GetFenceWaiter() const {
   return *waiter_;
 }
 
+vk::Device CommandPool::GetDevice() const {
+  return device_;
+}
+
 }  // namespace pixel

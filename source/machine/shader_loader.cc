@@ -6,6 +6,7 @@
 #include "file.h"
 #include "mapping.h"
 #include "shader_location.h"
+#include "vulkan.h"
 
 namespace pixel {
 
@@ -36,6 +37,8 @@ vk::UniqueShaderModule LoadShaderModule(const vk::Device& device,
   if (module.result != vk::Result::eSuccess) {
     return {};
   }
+
+  SetDebugName(device, module.value.get(), shader_name);
 
   return std::move(module.value);
 }

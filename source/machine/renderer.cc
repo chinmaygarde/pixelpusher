@@ -1,13 +1,12 @@
 #include "renderer.h"
-#include <stdint.h>
 
+#include <stdint.h>
 #include <vector>
 
 #include "assets_location.h"
 #include "command_buffer.h"
 #include "file.h"
 #include "glm.h"
-#include "image_decoder.h"
 #include "logging.h"
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
@@ -139,7 +138,8 @@ bool Renderer::Setup() {
   index_buffer_ = std::move(index_buffer);
   image_ = std::move(image);
 
-  SetDebugName(device_, image_->image, "Nighthawks");
+  image_->SetDebugName(device_, "Nighthawks");
+
   SetDebugName(device_, vertex_buffer_->buffer, "Triangle Vertex Buffer");
   SetDebugName(device_, index_buffer_->buffer, "Triangle Index Buffer");
 

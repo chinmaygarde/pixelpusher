@@ -8,8 +8,37 @@
 #include "mapping.h"
 #include "memory_allocator.h"
 #include "vulkan.h"
+#include "vulkan/vulkan.hpp"
 
 namespace pixel {
+
+class ImageView {
+ public:
+  ImageView(std::shared_ptr<Image> image, vk::UniqueImageView view)
+      : image_(std::move(image)), view_(std::move(view)) {}
+
+  ~ImageView() = default;
+
+  bool SetDebugName(vk::Device device, const char* name) const {
+    if (!IsValid()) {
+      return false;
+    }
+    return ::pixel::SetDebugName(device, image_->image, name) &&
+           ::pixel::SetDebugName(device, view_.get(), name);
+  }
+
+  operator bool() const { return IsValid(); }
+
+  bool IsValid() const { return view_ && image_; }
+
+  const vk::ImageView* operator->() const { return &view_.get(); }
+
+ private:
+  std::shared_ptr<Image> image_;
+  vk::UniqueImageView view_;
+
+  P_DISALLOW_COPY_AND_ASSIGN(ImageView);
+};
 
 class ImageDecoder {
  public:
@@ -21,7 +50,7 @@ class ImageDecoder {
 
   Size GetSize() const;
 
-  std::unique_ptr<Image> CreateDeviceLocalImageCopy(
+  std::unique_ptr<ImageView> CreateDeviceLocalImageCopy(
       MemoryAllocator& allocator,
       const CommandPool& pool,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
