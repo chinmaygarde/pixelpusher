@@ -318,6 +318,10 @@ bool Renderer::Render() {
     return false;
   }
 
+  if (!connection_.GetImguiConnection().BeginFrame()) {
+    return false;
+  }
+
   const auto extents = connection_.GetSwapchain().GetExtents();
 
   auto rate =
@@ -358,6 +362,14 @@ bool Renderer::Render() {
         vk::PipelineBindPoint::eGraphics, pipeline_layout_.get(), 0u,
         descriptor_sets_[triangle_ubo_.GetCurrentIndex()], nullptr);
     buffer.value().drawIndexed(6, 1, 0, 0, 0);
+  }
+
+  ImGui::Begin("Hello, world!");
+  ImGui::Text("This is some useful text.");
+  ImGui::End();
+
+  if (!connection_.GetImguiConnection().RenderFrame(buffer.value())) {
+    return false;
   }
 
   if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {

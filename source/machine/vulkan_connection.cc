@@ -536,15 +536,41 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
+  auto pipeline_cache =
+      UnwrapResult(device.get().createPipelineCacheUnique({}));
+  if (!pipeline_cache) {
+    P_ERROR << "Could not create pipeline cache.";
+    return;
+  }
+
+  auto imgui_connection = std::make_unique<ImguiConnection>(
+      glfw_window,                                       //
+      instance.get(),                                    //
+      physical_devices[selection.device_index.value()],  //
+      device.get(),                                      //
+      selection.graphics_family_index.value(),           //
+      pipeline_cache.get(),                              //
+      swapchain->GetImageCount(),                        //
+      swapchain->GetRenderPass()                         //
+  );
+
+  if (!imgui_connection->IsValid()) {
+    P_ERROR << "Could not setup ImGui connection";
+    return;
+  }
+
   instance_ = std::move(instance);
   physical_device_selection_ =
       std::make_unique<PhysicalDeviceSelection>(selection);
+  physical_device_ = physical_devices[selection.device_index.value()];
   device_ = std::move(device);
   surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
   memory_allocator_ = std::move(memory_allocator);
   debug_utils_messenger_ = std::move(debug_utils_messenger);
   available_features_ = enabled_features;
+  pipeline_cache_ = std::move(pipeline_cache);
+  imgui_connection_ = std::move(imgui_connection);
 
   is_valid_ = true;
 }
@@ -560,7 +586,11 @@ bool VulkanConnection::IsValid() const {
   return is_valid_;
 }
 
-const vk::Device& VulkanConnection::GetDevice() const {
+vk::Instance VulkanConnection::GetInstance() const {
+  return instance_.get();
+}
+
+vk::Device VulkanConnection::GetDevice() const {
   return device_.get();
 }
 
@@ -597,6 +627,21 @@ const vk::PhysicalDeviceFeatures& VulkanConnection::GetAvailableFeatures()
     const {
   P_ASSERT(is_valid_);
   return available_features_;
+}
+
+vk::PipelineCache VulkanConnection::GetPipelineCache() const {
+  P_ASSERT(is_valid_);
+  return pipeline_cache_.get();
+}
+
+vk::PhysicalDevice VulkanConnection::GetPhysicalDevice() const {
+  P_ASSERT(is_valid_);
+  return physical_device_;
+}
+
+ImguiConnection& VulkanConnection::GetImguiConnection() {
+  P_ASSERT(is_valid_);
+  return *imgui_connection_;
 }
 
 }  // namespace pixel

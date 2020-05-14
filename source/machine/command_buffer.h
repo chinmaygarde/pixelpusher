@@ -10,8 +10,6 @@ namespace pixel {
 
 class CommandBuffer {
  public:
-  const vk::CommandBuffer& GetCommandBuffer() const;
-
   bool Submit(vk::ArrayProxy<vk::Semaphore> wait_semaphores = nullptr,
               vk::ArrayProxy<vk::PipelineStageFlags> wait_stages = nullptr,
               vk::ArrayProxy<vk::Semaphore> signal_semaphores = nullptr,
@@ -24,6 +22,8 @@ class CommandBuffer {
       std::function<void(void)> on_done = nullptr);
 
   ~CommandBuffer();
+
+  const vk::CommandBuffer& GetCommandBuffer() const;
 
  private:
   friend class CommandPool;

@@ -33,5 +33,6 @@ set(SHADERC_SKIP_TESTS YES)
 add_subdirectory(third_party/shaderc        EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/googletest     EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/stb            EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/imgui          EXCLUDE_FROM_ALL)
 
 add_subdirectory(source)

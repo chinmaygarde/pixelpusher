@@ -8,6 +8,8 @@ add_executable(machine
   fence_waiter.h
   image_decoder.cc
   image_decoder.h
+  imgui_connection.cc
+  imgui_connection.h
   main.cc
   memory_allocator.cc
   memory_allocator.h
@@ -47,6 +49,7 @@ target_link_libraries(machine
     Vulkan::Headers
     glm
     stb
+    imgui
 )
 
 get_filename_component(PIXEL_SHADERS_LOCATION ${CMAKE_BINARY_DIR}/shaders ABSOLUTE)
