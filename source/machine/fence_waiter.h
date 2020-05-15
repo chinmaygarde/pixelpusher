@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include "closure.h"
 #include "macros.h"
 #include "vulkan.h"
 
@@ -21,7 +22,16 @@ class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
 
   ~FenceWaiter();
 
-  bool AddCompletionHandler(vk::Fence fence, std::function<void(void)> handler);
+  //----------------------------------------------------------------------------
+  /// @brief      Calls the completion handler on the calling thread once the
+  ///             fence is signaled on the queue.
+  ///
+  /// @param[in]  fence    The fence
+  /// @param[in]  handler  The handler
+  ///
+  /// @return     If the completion handler was registered.
+  ///
+  bool AddCompletionHandler(vk::Fence fence, Closure handler);
 
   bool IsValid() const;
 
@@ -31,7 +41,7 @@ class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
   std::unique_ptr<std::thread> waiter_;
   std::mutex fences_mutex_;
   std::condition_variable fences_cv_;
-  std::map<vk::Fence, std::function<void(void)>> awaited_fences_;
+  std::map<vk::Fence, Closure> awaited_fences_;
   bool is_valid_ = false;
 
   FenceWaiter(vk::Device device, vk::Queue queue);

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <limits>
 
+#include "closure.h"
+#include "event_loop.h"
 #include "logging.h"
 
 namespace pixel {
@@ -99,7 +101,7 @@ std::optional<std::vector<vk::Fence>> FenceWaiter::CreateWaitSetLocked() {
 }
 
 void FenceWaiter::ProcessSignalledFences(std::vector<vk::Fence> fences) {
-  std::vector<std::function<void(void)>> callbacks_to_fire;
+  std::vector<Closure> callbacks_to_fire;
 
   {
     // All access to fences must be guarded by the mutex.
@@ -119,14 +121,18 @@ void FenceWaiter::ProcessSignalledFences(std::vector<vk::Fence> fences) {
   }
 }
 
-bool FenceWaiter::AddCompletionHandler(vk::Fence fence,
-                                       std::function<void(void)> handler) {
+bool FenceWaiter::AddCompletionHandler(vk::Fence fence, Closure handler) {
   if (!fence || !handler) {
     return false;
   }
 
+  auto dispatcher = EventLoop::ForCurrentThread().GetDispatcher();
+  auto calling_thread_posted_handeler = [dispatcher, handler]() {
+    dispatcher->PostTask(handler);
+  };
+
   std::scoped_lock lock(fences_mutex_);
-  awaited_fences_[fence] = handler;
+  awaited_fences_[fence] = calling_thread_posted_handeler;
   fences_cv_.notify_one();
   return true;
 }

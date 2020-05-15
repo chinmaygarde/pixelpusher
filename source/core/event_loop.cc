@@ -54,6 +54,7 @@ bool EventLoop::IsRunning() const {
 
 bool EventLoop::Run() {
   if (thread_id_ != std::this_thread::get_id()) {
+    P_ASSERT(false);
     return false;
   }
 
@@ -76,6 +77,25 @@ bool EventLoop::Run() {
     for (const auto& task : tasks) {
       task();
     }
+  }
+
+  return true;
+}
+
+bool EventLoop::FlushTasksNow() {
+  if (thread_id_ != std::this_thread::get_id()) {
+    P_ASSERT(false);
+    return false;
+  }
+
+  std::unique_lock lock(tasks_heap_->tasks_mutex);
+
+  auto tasks = tasks_heap_->GetPendingTasksLocked();
+
+  lock.unlock();
+
+  for (const auto& task : tasks) {
+    task();
   }
 
   return true;
@@ -105,6 +125,7 @@ bool EventLoop::Dispatcher::PostTask(Closure closure) {
 
 bool EventLoop::Terminate() {
   if (thread_id_ != std::this_thread::get_id()) {
+    P_ASSERT(false);
     return false;
   }
   running_ = false;

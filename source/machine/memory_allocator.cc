@@ -263,8 +263,6 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   auto on_transfer_done = MakeCopyable(
       [transfer_command_buffer, staging_buffer = std::move(staging_buffer),
        on_done]() mutable {
-        // TODO: This is not thread safe as the command buffer must be released
-        // on the same thread as it is allocated.
         transfer_command_buffer.reset();
         staging_buffer.reset();
         if (on_done) {
@@ -403,7 +401,6 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
   auto on_transfer_done = MakeCopyable(
       [transfer_command_buffer, staging_buffer = std::move(staging_buffer),
        on_done]() mutable {
-        // TODO: Releasing the command buffer here is not thread safe.
         transfer_command_buffer.reset();
         staging_buffer.reset();
         if (on_done) {

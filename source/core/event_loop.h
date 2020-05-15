@@ -41,6 +41,8 @@ class EventLoop {
 
   bool Run();
 
+  bool FlushTasksNow();
+
   bool Terminate();
 
  private:

@@ -1,9 +1,11 @@
+#include <stdlib.h>
 #define GLFW_INCLUDE_VULKAN
 
 #include <cstdlib>
 #include <iostream>
 
 #include "closure.h"
+#include "event_loop.h"
 #include "logging.h"
 #include "renderer.h"
 #include "vulkan.h"
@@ -50,7 +52,14 @@ int Main(int argc, char const* argv[]) {
 
   AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
 
+  auto& loop = EventLoop::ForCurrentThread();
+
   while (true) {
+    if (!loop.FlushTasksNow()) {
+      P_ERROR << "Could not flush event loop tasks.";
+      return EXIT_FAILURE;
+    }
+
     glfwPollEvents();
 
     if (glfwWindowShouldClose(window)) {
