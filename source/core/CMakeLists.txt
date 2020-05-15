@@ -2,19 +2,21 @@
 # Core Library
 add_library(core
   closure.h
+  event_loop.cc
+  event_loop.h
   file.cc
   file.h
+  geometry.h
   logging.cc
   logging.h
   macros.cc
   macros.h
   mapping.cc
   mapping.h
-  unique_object.h
   platform.h
-  geometry.h
-  event_loop.h
-  event_loop.cc
+  thread.cc
+  thread.h
+  unique_object.h
 )
 
 target_include_directories(core

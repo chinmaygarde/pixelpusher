@@ -1,3 +1,5 @@
 #pragma once
 
 #cmakedefine PIXEL_ASSETS_LOCATION "@PIXEL_ASSETS_LOCATION@" "/"
+#cmakedefine PIXEL_GLTF_MODELS_LOCATION "@PIXEL_GLTF_MODELS_LOCATION@" "/"
+
