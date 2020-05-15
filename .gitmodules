@@ -22,3 +22,9 @@
 [submodule "third_party/imgui/imgui"]
 	path = third_party/imgui/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "third_party/tinygltf/tinygltf"]
+	path = third_party/tinygltf/tinygltf
+	url = https://github.com/syoyo/tinygltf.git
+[submodule "third_party/gltf_sample_models/gltf_sample_models"]
+	path = third_party/gltf_sample_models/gltf_sample_models
+	url = https://github.com/KhronosGroup/glTF-Sample-Models.git
