@@ -13,6 +13,8 @@ add_library(core
   unique_object.h
   platform.h
   geometry.h
+  event_loop.h
+  event_loop.cc
 )
 
 target_include_directories(core
@@ -28,6 +30,7 @@ configure_file(fixture.h.in fixture.h @ONLY)
 
 add_executable(core_unittests
   file_unittests.cc
+  event_loop_unittests.cc
 )
 
 target_include_directories(core_unittests
