@@ -15,41 +15,7 @@
 namespace pixel {
 namespace model {
 
-inline void ArchiveRead(glm::vec4& ret, const std::vector<double>& input) {
-  if (input.size() != 4) {
-    return;
-  }
-  ret = {input[0], input[1], input[2], input[3]};
-}
-
-inline void ArchiveRead(glm::vec3& ret, const std::vector<double>& input) {
-  if (input.size() != 3) {
-    return;
-  }
-
-  ret = {input[0], input[1], input[2]};
-}
-
-inline void ArchiveRead(glm::mat4& ret, const std::vector<double>& input) {
-  if (input.size() != 16) {
-    return;
-  }
-
-  ret = {
-      //
-      input[0], input[4], input[8],  input[12],  //
-      input[1], input[5], input[9],  input[13],  //
-      input[2], input[6], input[10], input[14],  //
-      input[3], input[7], input[11], input[15],  //
-  };
-}
-
-template <class GLTFType>
-class GLTFArchivable {
- public:
-  void ReadFromArchive(const GLTFType& archive_member);
-};
-
+class Model;
 class Accessor;
 class Animation;
 class Buffer;
@@ -66,22 +32,25 @@ class Camera;
 class Scene;
 class Light;
 
+template <class GLTFType>
+class GLTFArchivable {
+ public:
+  virtual void ReadFromArchive(const GLTFType& archive_member) = 0;
+
+  virtual void ResolveReferences(const Model& model,
+                                 const GLTFType& archive_member) = 0;
+};
+
 class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
  public:
-  Accessor() = default;
+  Accessor();
 
-  ~Accessor() = default;
+  ~Accessor();
 
-  void ReadFromArchive(const tinygltf::Accessor& accessor) {
-    name_ = accessor.name;
-    byte_offset_ = accessor.byteOffset;
-    normalized_ = accessor.normalized;
-    stride_ = std::max<int>(
-        0u, tinygltf::GetComponentSizeInBytes(accessor.componentType));
-    count_ = accessor.count;
-    min_values_ = accessor.minValues;
-    max_values_ = accessor.maxValues;
-  }
+  void ReadFromArchive(const tinygltf::Accessor& accessor) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Accessor& accessor) override;
 
  private:
   std::string name_;
@@ -101,11 +70,14 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
 class Animation final : public GLTFArchivable<tinygltf::Animation> {
  public:
-  Animation() = default;
+  Animation();
 
-  ~Animation() = default;
+  ~Animation();
 
-  void ReadFromArchive(const tinygltf::Animation& animation) {}
+  void ReadFromArchive(const tinygltf::Animation& animation) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Animation& animation) override;
 
  private:
   // TODO
@@ -114,15 +86,14 @@ class Animation final : public GLTFArchivable<tinygltf::Animation> {
 
 class Buffer final : public GLTFArchivable<tinygltf::Buffer> {
  public:
-  Buffer() = default;
+  Buffer();
 
-  ~Buffer() = default;
+  ~Buffer();
 
-  void ReadFromArchive(const tinygltf::Buffer& buffer) {
-    name_ = buffer.name;
-    data_ = CopyMapping(buffer.data.data(), buffer.data.size());
-    uri_ = buffer.uri;
-  }
+  void ReadFromArchive(const tinygltf::Buffer& buffer) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Buffer& buffer) override;
 
  private:
   std::string name_;
@@ -134,16 +105,14 @@ class Buffer final : public GLTFArchivable<tinygltf::Buffer> {
 
 class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
  public:
-  BufferView() = default;
+  BufferView();
 
-  ~BufferView() = default;
+  ~BufferView();
 
-  void ReadFromArchive(const tinygltf::BufferView& view) {
-    name_ = view.name;
-    byte_offset_ = view.byteOffset;
-    byte_length_ = view.byteLength;
-    byte_stride_ = view.byteStride;
-  }
+  void ReadFromArchive(const tinygltf::BufferView& view) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::BufferView& view) override;
 
  private:
   std::string name_;
@@ -158,11 +127,14 @@ class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
 
 class Material final : public GLTFArchivable<tinygltf::Material> {
  public:
-  Material() = default;
+  Material();
 
-  ~Material() = default;
+  ~Material();
 
-  void ReadFromArchive(const tinygltf::Material& material) {}
+  void ReadFromArchive(const tinygltf::Material& material) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Material& material) override;
 
  private:
   // TOOD
@@ -172,29 +144,14 @@ class Material final : public GLTFArchivable<tinygltf::Material> {
 
 class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
  public:
-  Primitive() = default;
+  Primitive();
 
-  ~Primitive() = default;
+  ~Primitive();
 
-  void ReadFromArchive(const tinygltf::Primitive& primitive) {
-    switch (primitive.mode) {
-      case TINYGLTF_MODE_POINTS:
-        mode_ = vk::PrimitiveTopology::ePointList;
-      case TINYGLTF_MODE_LINE:
-        mode_ = vk::PrimitiveTopology::eLineList;
-      case TINYGLTF_MODE_LINE_LOOP:
-        // TODO: WTF is this?
-        // mode_ = vk::PrimitiveTopology::elineloop;
-      case TINYGLTF_MODE_LINE_STRIP:
-        mode_ = vk::PrimitiveTopology::eLineStrip;
-      case TINYGLTF_MODE_TRIANGLES:
-        mode_ = vk::PrimitiveTopology::eTriangleList;
-      case TINYGLTF_MODE_TRIANGLE_STRIP:
-        mode_ = vk::PrimitiveTopology::eTriangleStrip;
-      case TINYGLTF_MODE_TRIANGLE_FAN:
-        mode_ = vk::PrimitiveTopology::eTriangleFan;
-    }
-  }
+  void ReadFromArchive(const tinygltf::Primitive& primitive) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Primitive& primitive) override;
 
  private:
   std::map<std::string, std::shared_ptr<Accessor>> attributes_;
@@ -202,15 +159,20 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
   std::shared_ptr<Accessor> indices_;
   vk::PrimitiveTopology mode_;
   // TODO: Target for morph targets.
+
+  P_DISALLOW_COPY_AND_ASSIGN(Primitive);
 };
 
 class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
  public:
-  Mesh() = default;
+  Mesh();
 
-  ~Mesh() = default;
+  ~Mesh();
 
-  void ReadFromArchive(const tinygltf::Mesh& mesh);
+  void ReadFromArchive(const tinygltf::Mesh& mesh) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Mesh& mesh) override;
 
  private:
   std::string name_;
@@ -222,18 +184,14 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
 
 class Node final : public GLTFArchivable<tinygltf::Node> {
  public:
-  Node() = default;
+  Node();
 
-  ~Node() = default;
+  ~Node();
 
-  void ReadFromArchive(const tinygltf::Node& node) {
-    name_ = node.name;
-    ArchiveRead(rotation_, node.rotation);
-    ArchiveRead(scale_, node.rotation);
-    ArchiveRead(translation_, node.rotation);
-    ArchiveRead(matrix_, node.rotation);
-    weights_ = node.weights;
-  }
+  void ReadFromArchive(const tinygltf::Node& node) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Node& node) override;
 
  private:
   std::string name_;
@@ -252,13 +210,14 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
 class Texture final : public GLTFArchivable<tinygltf::Texture> {
  public:
-  Texture() = default;
+  Texture();
 
-  ~Texture() = default;
+  ~Texture();
 
-  void ReadFromArchive(const tinygltf::Texture& texture) {
-    name_ = texture.name;
-  }
+  void ReadFromArchive(const tinygltf::Texture& texture) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Texture& texture) override;
 
  private:
   std::string name_;
@@ -270,22 +229,14 @@ class Texture final : public GLTFArchivable<tinygltf::Texture> {
 
 class Image final : public GLTFArchivable<tinygltf::Image> {
  public:
-  Image() = default;
+  Image();
 
-  ~Image() = default;
+  ~Image();
 
-  void ReadFromArchive(const tinygltf::Image& image) {
-    name_ = image.name;
-    width_ = std::max<int>(0u, image.width);
-    height_ = std::max<int>(0u, image.height);
-    components_ = std::max<int>(0u, image.component);
-    bits_per_channel_ = std::max<int>(0u, image.bits);
-    pixel_stride_ =
-        std::max<int>(0u, tinygltf::GetComponentSizeInBytes(image.pixel_type));
-    decompressed_image_ = CopyMapping(image.image.data(), image.image.size());
-    mime_type_ = image.mimeType;
-    uri_ = image.uri;
-  }
+  void ReadFromArchive(const tinygltf::Image& image) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Image& image) override;
 
  private:
   std::string name_;
@@ -306,62 +257,30 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
 
 class Skin final : public GLTFArchivable<tinygltf::Skin> {
  public:
-  Skin() = default;
+  Skin();
 
-  ~Skin() = default;
+  ~Skin();
 
-  void ReadFromArchive(const tinygltf::Skin& skin) {}
+  void ReadFromArchive(const tinygltf::Skin& skin) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Skin& skin) override;
 
  private:
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Skin);
 };
 
-inline std::pair<vk::Filter, vk::SamplerMipmapMode> ParseVkFilter(int filter) {
-  switch (filter) {
-    case TINYGLTF_TEXTURE_FILTER_NEAREST:
-      return {vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest};
-    case TINYGLTF_TEXTURE_FILTER_LINEAR:
-      return {vk::Filter::eLinear, vk::SamplerMipmapMode::eNearest};
-    case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
-      return {vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest};
-    case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
-      return {vk::Filter::eLinear, vk::SamplerMipmapMode::eNearest};
-    case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
-      return {vk::Filter::eNearest, vk::SamplerMipmapMode::eLinear};
-    case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
-      return {vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
-  }
-  return {{}, {}};
-}
-
-inline vk::SamplerAddressMode ParseVkSamplerAddressMode(int mode) {
-  switch (mode) {
-    case TINYGLTF_TEXTURE_WRAP_REPEAT:
-      return vk::SamplerAddressMode::eRepeat;
-    case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
-      return vk::SamplerAddressMode::eClampToEdge;
-    case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
-      return vk::SamplerAddressMode::eMirroredRepeat;
-  }
-  return {};
-}
-
 class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
  public:
-  Sampler() = default;
+  Sampler();
 
-  ~Sampler() = default;
+  ~Sampler();
 
-  void ReadFromArchive(const tinygltf::Sampler& sampler) {
-    name_ = sampler.name;
-    // https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/schema/sampler.schema.json
-    std::tie(mag_filter_, std::ignore) = ParseVkFilter(sampler.magFilter);
-    std::tie(min_filter_, mipmap_mode_) = ParseVkFilter(sampler.minFilter);
-    wrap_s_ = ParseVkSamplerAddressMode(sampler.wrapS);
-    wrap_t_ = ParseVkSamplerAddressMode(sampler.wrapT);
-    wrap_r_ = ParseVkSamplerAddressMode(sampler.wrapR);
-  }
+  void ReadFromArchive(const tinygltf::Sampler& sampler) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Sampler& sampler) override;
 
  private:
   std::string name_;
@@ -377,29 +296,14 @@ class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
 
 class Camera final : public GLTFArchivable<tinygltf::Camera> {
  public:
-  Camera() = default;
+  Camera();
 
-  ~Camera() = default;
+  ~Camera();
 
-  void ReadFromArchive(const tinygltf::Camera& camera) {
-    name_ = camera.name;
+  void ReadFromArchive(const tinygltf::Camera& camera) override;
 
-    if (camera.type == "perspective") {
-      projection_ = PerspectiveCamera{
-          .aspect_ratio = std::max<double>(0.0, camera.perspective.aspectRatio),
-          .y_fov = std::max<double>(0.0, camera.perspective.yfov),
-          .z_far = std::max<double>(0.0, camera.perspective.zfar),
-          .z_near = std::max<double>(0.0, camera.perspective.znear),
-      };
-    } else if (camera.type == "orthographic") {
-      projection_ = OrthographicCamera{
-          .x_mag = camera.orthographic.xmag,
-          .y_mag = camera.orthographic.ymag,
-          .z_far = camera.orthographic.zfar,
-          .z_near = camera.orthographic.znear,
-      };
-    }
-  }
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Camera& camera) override;
 
  private:
   std::string name_;
@@ -425,11 +329,14 @@ class Camera final : public GLTFArchivable<tinygltf::Camera> {
 
 class Scene final : public GLTFArchivable<tinygltf::Scene> {
  public:
-  Scene() = default;
+  Scene();
 
-  ~Scene() = default;
+  ~Scene();
 
-  void ReadFromArchive(const tinygltf::Scene& scene) { name_ = scene.name; }
+  void ReadFromArchive(const tinygltf::Scene& scene) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Scene& scene) override;
 
  private:
   std::string name_;
@@ -440,11 +347,14 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
 
 class Light final : public GLTFArchivable<tinygltf::Light> {
  public:
-  Light() = default;
+  Light();
 
-  ~Light() = default;
+  ~Light();
 
-  void ReadFromArchive(const tinygltf::Light& light) {}
+  void ReadFromArchive(const tinygltf::Light& light) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::Light& light) override;
 
  private:
   // TODO
@@ -458,6 +368,22 @@ class Model {
   ~Model();
 
  private:
+  friend class Accessor;
+  friend class Animation;
+  friend class Buffer;
+  friend class BufferView;
+  friend class Material;
+  friend class Primitive;
+  friend class Mesh;
+  friend class Node;
+  friend class Texture;
+  friend class Image;
+  friend class Skin;
+  friend class Sampler;
+  friend class Camera;
+  friend class Scene;
+  friend class Light;
+
   std::vector<std::shared_ptr<Accessor>> accessors_;
   std::vector<std::shared_ptr<Animation>> animations_;
   std::vector<std::shared_ptr<Buffer>> buffers_;
