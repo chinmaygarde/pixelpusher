@@ -63,6 +63,62 @@ Model::Model(const Asset& asset) {
 
 Model::~Model() = default;
 
+const Accessors& Model::GetAccessors() const {
+  return accessors_;
+}
+
+const Animations& Model::GetAnimations() const {
+  return animations_;
+}
+
+const Buffers& Model::GetBuffers() const {
+  return buffers_;
+}
+
+const BufferViews& Model::GetBufferViews() const {
+  return bufferViews_;
+}
+
+const Materials& Model::GetMaterials() const {
+  return materials_;
+}
+
+const Meshes& Model::GetMeshes() const {
+  return meshes_;
+}
+
+const Nodes& Model::GetNodes() const {
+  return nodes_;
+}
+
+const Textures& Model::GetTextures() const {
+  return textures_;
+}
+
+const Images& Model::GetImages() const {
+  return images_;
+}
+
+const Skins& Model::GetSkins() const {
+  return skins_;
+}
+
+const Samplers& Model::GetSamplers() const {
+  return samplers_;
+}
+
+const Cameras& Model::GetCameras() const {
+  return cameras_;
+}
+
+const Scenes& Model::GetScenes() const {
+  return scenes_;
+}
+
+const Lights& Model::GetLights() const {
+  return lights_;
+}
+
 static void ArchiveRead(glm::vec4& ret, const std::vector<double>& input) {
   if (input.size() != 4) {
     return;

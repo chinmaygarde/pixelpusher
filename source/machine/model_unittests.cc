@@ -30,6 +30,8 @@ TEST(ModelTest, CanLoadModelFromAsset) {
   ASSERT_TRUE(asset);
 
   Model model(*asset);
+
+  ASSERT_EQ(model.GetScenes().size(), 1u);
 };
 
 }  // namespace test

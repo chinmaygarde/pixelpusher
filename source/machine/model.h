@@ -32,6 +32,24 @@ class Camera;
 class Scene;
 class Light;
 
+template <class T>
+using Collection = std::vector<std::shared_ptr<T>>;
+
+using Accessors = Collection<Accessor>;
+using Animations = Collection<Animation>;
+using Buffers = Collection<Buffer>;
+using BufferViews = Collection<BufferView>;
+using Materials = Collection<Material>;
+using Meshes = Collection<Mesh>;
+using Nodes = Collection<Node>;
+using Textures = Collection<Texture>;
+using Images = Collection<Image>;
+using Skins = Collection<Skin>;
+using Samplers = Collection<Sampler>;
+using Cameras = Collection<Camera>;
+using Scenes = Collection<Scene>;
+using Lights = Collection<Light>;
+
 template <class GLTFType>
 class GLTFArchivable {
  public:
@@ -367,6 +385,34 @@ class Model {
 
   ~Model();
 
+  const Accessors& GetAccessors() const;
+
+  const Animations& GetAnimations() const;
+
+  const Buffers& GetBuffers() const;
+
+  const BufferViews& GetBufferViews() const;
+
+  const Materials& GetMaterials() const;
+
+  const Meshes& GetMeshes() const;
+
+  const Nodes& GetNodes() const;
+
+  const Textures& GetTextures() const;
+
+  const Images& GetImages() const;
+
+  const Skins& GetSkins() const;
+
+  const Samplers& GetSamplers() const;
+
+  const Cameras& GetCameras() const;
+
+  const Scenes& GetScenes() const;
+
+  const Lights& GetLights() const;
+
  private:
   friend class Accessor;
   friend class Animation;
@@ -384,20 +430,20 @@ class Model {
   friend class Scene;
   friend class Light;
 
-  std::vector<std::shared_ptr<Accessor>> accessors_;
-  std::vector<std::shared_ptr<Animation>> animations_;
-  std::vector<std::shared_ptr<Buffer>> buffers_;
-  std::vector<std::shared_ptr<BufferView>> bufferViews_;
-  std::vector<std::shared_ptr<Material>> materials_;
-  std::vector<std::shared_ptr<Mesh>> meshes_;
-  std::vector<std::shared_ptr<Node>> nodes_;
-  std::vector<std::shared_ptr<Texture>> textures_;
-  std::vector<std::shared_ptr<Image>> images_;
-  std::vector<std::shared_ptr<Skin>> skins_;
-  std::vector<std::shared_ptr<Sampler>> samplers_;
-  std::vector<std::shared_ptr<Camera>> cameras_;
-  std::vector<std::shared_ptr<Scene>> scenes_;
-  std::vector<std::shared_ptr<Light>> lights_;
+  Accessors accessors_;
+  Animations animations_;
+  Buffers buffers_;
+  BufferViews bufferViews_;
+  Materials materials_;
+  Meshes meshes_;
+  Nodes nodes_;
+  Textures textures_;
+  Images images_;
+  Skins skins_;
+  Samplers samplers_;
+  Cameras cameras_;
+  Scenes scenes_;
+  Lights lights_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Model);
 };
