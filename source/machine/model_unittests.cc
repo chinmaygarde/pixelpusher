@@ -4,15 +4,12 @@
 
 #include "asset_loader.h"
 #include "assets_location.h"
+#include "model.h"
 
 namespace pixel {
 namespace test {
 
-TEST(AssetLoaderTest, CanCreateAndDestroyLoader) {
-  AssetLoader loader;
-};
-
-TEST(AssetLoaderTest, CanLoadAsset) {
+TEST(ModelTest, CanLoadModelFromAsset) {
   auto base_dir = PIXEL_GLTF_MODELS_LOCATION "/DamagedHelmet/glTF";
   auto asset_file = "DamagedHelmet.gltf";
 
@@ -30,7 +27,9 @@ TEST(AssetLoaderTest, CanLoadAsset) {
 
   auto asset = future.get();
   ASSERT_TRUE(asset);
-}
+
+  Model model(*asset);
+};
 
 }  // namespace test
 }  // namespace pixel

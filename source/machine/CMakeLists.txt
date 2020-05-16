@@ -31,6 +31,8 @@ add_library(machine_lib
   vulkan_swapchain.h
   tiny_gltf.h
   tiny_gltf.cc
+  model.cc
+  model.h
 )
 
 target_include_directories(machine_lib
@@ -73,6 +75,7 @@ target_link_libraries(machine
 
 add_executable(machine_unittests
   asset_loader_unittests.cc
+  model_unittests.cc
 )
 
 target_link_libraries(machine_unittests
