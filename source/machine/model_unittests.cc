@@ -7,6 +7,7 @@
 #include "model.h"
 
 namespace pixel {
+namespace model {
 namespace test {
 
 TEST(ModelTest, CanLoadModelFromAsset) {
@@ -32,4 +33,5 @@ TEST(ModelTest, CanLoadModelFromAsset) {
 };
 
 }  // namespace test
+}  // namespace model
 }  // namespace pixel

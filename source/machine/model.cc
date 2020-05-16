@@ -1,6 +1,7 @@
 #include "model.h"
 
 namespace pixel {
+namespace model {
 
 template <class ResourceType, class GLTFResourceType>
 std::vector<std::shared_ptr<ResourceType>> Inflate(
@@ -41,4 +42,5 @@ void Mesh::ReadFromArchive(const tinygltf::Mesh& mesh) {
   weights_ = mesh.weights;
 }
 
+}  // namespace model
 }  // namespace pixel

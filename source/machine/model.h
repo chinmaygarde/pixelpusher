@@ -13,6 +13,7 @@
 #include "vulkan.h"
 
 namespace pixel {
+namespace model {
 
 inline void ArchiveRead(glm::vec4& ret, const std::vector<double>& input) {
   if (input.size() != 4) {
@@ -67,6 +68,10 @@ class Light;
 
 class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
  public:
+  Accessor() = default;
+
+  ~Accessor() = default;
+
   void ReadFromArchive(const tinygltf::Accessor& accessor) {
     name_ = accessor.name;
     byte_offset_ = accessor.byteOffset;
@@ -96,6 +101,10 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
 class Animation final : public GLTFArchivable<tinygltf::Animation> {
  public:
+  Animation() = default;
+
+  ~Animation() = default;
+
   void ReadFromArchive(const tinygltf::Animation& animation) {}
 
  private:
@@ -105,6 +114,10 @@ class Animation final : public GLTFArchivable<tinygltf::Animation> {
 
 class Buffer final : public GLTFArchivable<tinygltf::Buffer> {
  public:
+  Buffer() = default;
+
+  ~Buffer() = default;
+
   void ReadFromArchive(const tinygltf::Buffer& buffer) {
     name_ = buffer.name;
     data_ = CopyMapping(buffer.data.data(), buffer.data.size());
@@ -121,6 +134,10 @@ class Buffer final : public GLTFArchivable<tinygltf::Buffer> {
 
 class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
  public:
+  BufferView() = default;
+
+  ~BufferView() = default;
+
   void ReadFromArchive(const tinygltf::BufferView& view) {
     name_ = view.name;
     byte_offset_ = view.byteOffset;
@@ -141,6 +158,10 @@ class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
 
 class Material final : public GLTFArchivable<tinygltf::Material> {
  public:
+  Material() = default;
+
+  ~Material() = default;
+
   void ReadFromArchive(const tinygltf::Material& material) {}
 
  private:
@@ -151,6 +172,10 @@ class Material final : public GLTFArchivable<tinygltf::Material> {
 
 class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
  public:
+  Primitive() = default;
+
+  ~Primitive() = default;
+
   void ReadFromArchive(const tinygltf::Primitive& primitive) {
     switch (primitive.mode) {
       case TINYGLTF_MODE_POINTS:
@@ -181,6 +206,10 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
 class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
  public:
+  Mesh() = default;
+
+  ~Mesh() = default;
+
   void ReadFromArchive(const tinygltf::Mesh& mesh);
 
  private:
@@ -193,6 +222,10 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
 
 class Node final : public GLTFArchivable<tinygltf::Node> {
  public:
+  Node() = default;
+
+  ~Node() = default;
+
   void ReadFromArchive(const tinygltf::Node& node) {
     name_ = node.name;
     ArchiveRead(rotation_, node.rotation);
@@ -219,6 +252,10 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
 class Texture final : public GLTFArchivable<tinygltf::Texture> {
  public:
+  Texture() = default;
+
+  ~Texture() = default;
+
   void ReadFromArchive(const tinygltf::Texture& texture) {
     name_ = texture.name;
   }
@@ -233,6 +270,10 @@ class Texture final : public GLTFArchivable<tinygltf::Texture> {
 
 class Image final : public GLTFArchivable<tinygltf::Image> {
  public:
+  Image() = default;
+
+  ~Image() = default;
+
   void ReadFromArchive(const tinygltf::Image& image) {
     name_ = image.name;
     width_ = std::max<int>(0u, image.width);
@@ -265,6 +306,10 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
 
 class Skin final : public GLTFArchivable<tinygltf::Skin> {
  public:
+  Skin() = default;
+
+  ~Skin() = default;
+
   void ReadFromArchive(const tinygltf::Skin& skin) {}
 
  private:
@@ -304,6 +349,10 @@ inline vk::SamplerAddressMode ParseVkSamplerAddressMode(int mode) {
 
 class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
  public:
+  Sampler() = default;
+
+  ~Sampler() = default;
+
   void ReadFromArchive(const tinygltf::Sampler& sampler) {
     name_ = sampler.name;
     // https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/schema/sampler.schema.json
@@ -328,11 +377,34 @@ class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
 
 class Camera final : public GLTFArchivable<tinygltf::Camera> {
  public:
-  void ReadFromArchive(const tinygltf::Camera& camera) {}
+  Camera() = default;
+
+  ~Camera() = default;
+
+  void ReadFromArchive(const tinygltf::Camera& camera) {
+    name_ = camera.name;
+
+    if (camera.type == "perspective") {
+      projection_ = PerspectiveCamera{
+          .aspect_ratio = std::max<double>(0.0, camera.perspective.aspectRatio),
+          .y_fov = std::max<double>(0.0, camera.perspective.yfov),
+          .z_far = std::max<double>(0.0, camera.perspective.zfar),
+          .z_near = std::max<double>(0.0, camera.perspective.znear),
+      };
+    } else if (camera.type == "orthographic") {
+      projection_ = OrthographicCamera{
+          .x_mag = camera.orthographic.xmag,
+          .y_mag = camera.orthographic.ymag,
+          .z_far = camera.orthographic.zfar,
+          .z_near = camera.orthographic.znear,
+      };
+    }
+  }
 
  private:
+  std::string name_;
   struct PerspectiveCamera {
-    double aspect_ratio_ = 0.0;
+    double aspect_ratio = 0.0;
     double y_fov = 0.0;
     double z_far = 0.0;
     double z_near = 0.0;
@@ -345,16 +417,22 @@ class Camera final : public GLTFArchivable<tinygltf::Camera> {
     double z_near = 0.0;
   };
 
-  std::variant<PerspectiveCamera, OrthographicCamera> projection_;
+  std::variant<PerspectiveCamera, OrthographicCamera> projection_ =
+      OrthographicCamera{};
 
   P_DISALLOW_COPY_AND_ASSIGN(Camera);
 };
 
 class Scene final : public GLTFArchivable<tinygltf::Scene> {
  public:
-  void ReadFromArchive(const tinygltf::Scene& scene) {}
+  Scene() = default;
+
+  ~Scene() = default;
+
+  void ReadFromArchive(const tinygltf::Scene& scene) { name_ = scene.name; }
 
  private:
+  std::string name_;
   std::vector<std::shared_ptr<Node>> nodes_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Scene);
@@ -362,6 +440,10 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
 
 class Light final : public GLTFArchivable<tinygltf::Light> {
  public:
+  Light() = default;
+
+  ~Light() = default;
+
   void ReadFromArchive(const tinygltf::Light& light) {}
 
  private:
@@ -394,4 +476,5 @@ class Model {
   P_DISALLOW_COPY_AND_ASSIGN(Model);
 };
 
+}  // namespace model
 }  // namespace pixel
