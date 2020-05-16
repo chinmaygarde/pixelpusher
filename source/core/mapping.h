@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <memory>
 
 #include "macros.h"
 
@@ -8,9 +8,9 @@ namespace pixel {
 
 class Mapping {
  public:
-  Mapping() = default;
+  Mapping();
 
-  virtual ~Mapping() = default;
+  virtual ~Mapping();
 
   virtual const uint8_t* GetData() const = 0;
 
@@ -19,5 +19,7 @@ class Mapping {
  private:
   P_DISALLOW_COPY_AND_ASSIGN(Mapping);
 };
+
+std::unique_ptr<Mapping> CopyMapping(const uint8_t* data, size_t size);
 
 }  // namespace pixel
