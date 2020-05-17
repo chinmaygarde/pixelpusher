@@ -32,6 +32,7 @@ TEST(ModelTest, CanLoadModelFromAsset) {
   Model model(*asset);
 
   ASSERT_EQ(model.GetScenes().size(), 1u);
+  ASSERT_EQ(model.GetScenes()[0]->GetNodes().size(), 1u);
 };
 
 }  // namespace test

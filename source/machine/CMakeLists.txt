@@ -13,6 +13,10 @@ add_library(machine_lib
   imgui_connection.h
   memory_allocator.cc
   memory_allocator.h
+  model.cc
+  model.h
+  model_renderer.cc
+  model_renderer.h
   pipeline_builder.cc
   pipeline_builder.h
   pipeline_layout.cc
@@ -21,18 +25,18 @@ add_library(machine_lib
   render_pass.h
   renderer.cc
   renderer.h
+  rendering_context.cc
+  rendering_context.h
   shader_loader.cc
   shader_loader.h
   shaders/triangle.h
+  tiny_gltf.cc
+  tiny_gltf.h
   vulkan.h
   vulkan_connection.cc
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
-  tiny_gltf.h
-  tiny_gltf.cc
-  model.cc
-  model.h
 )
 
 target_include_directories(machine_lib

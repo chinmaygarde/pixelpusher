@@ -73,11 +73,9 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
  private:
   std::string name_;
   std::shared_ptr<BufferView> buffer_view_;
-
   size_t byte_offset_ = 0;
   bool normalized_ = false;
   size_t stride_ = 0;
-
   size_t count_ = 0;
   std::vector<double> min_values_;
   std::vector<double> max_values_;
@@ -350,6 +348,8 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   Scene();
 
   ~Scene();
+
+  const Nodes& GetNodes() const;
 
   void ReadFromArchive(const tinygltf::Scene& scene) override;
 

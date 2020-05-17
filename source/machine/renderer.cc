@@ -364,10 +364,6 @@ bool Renderer::Render() {
     buffer.value().drawIndexed(6, 1, 0, 0, 0);
   }
 
-  ImGui::Begin("Hello, world!");
-  ImGui::Text("This is some useful text.");
-  ImGui::End();
-
   if (!connection_.GetImguiConnection().RenderFrame(buffer.value())) {
     return false;
   }

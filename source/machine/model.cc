@@ -487,6 +487,10 @@ Scene::Scene() = default;
 
 Scene::~Scene() = default;
 
+const Nodes& Scene::GetNodes() const {
+  return nodes_;
+}
+
 void Scene::ReadFromArchive(const tinygltf::Scene& scene) {
   name_ = scene.name;
 }
