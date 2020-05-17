@@ -9,6 +9,10 @@
 
 namespace pixel {
 
+static std::mutex sFenceWaitersMutex;
+static std::unordered_map<vk::Queue, std::shared_ptr<FenceWaiter>>
+    gFenceWaiters;
+
 FenceWaiter::FenceWaiter(vk::Device device, vk::Queue queue)
     : device_(std::move(device)), queue_(std::move(queue)) {
   is_valid_ = true;
@@ -28,6 +32,19 @@ bool FenceWaiter::StartThread() {
 
 std::shared_ptr<FenceWaiter> FenceWaiter::Create(vk::Device device,
                                                  vk::Queue queue) {
+  if (!device || !queue) {
+    return nullptr;
+  }
+
+  std::scoped_lock lock(sFenceWaitersMutex);
+
+  // There can only be one global waiter per device queue.
+  auto found = gFenceWaiters.find(queue);
+
+  if (found != gFenceWaiters.end()) {
+    return found->second;
+  }
+
   auto waiter = std::shared_ptr<FenceWaiter>(
       new FenceWaiter(std::move(device), std::move(queue)));
   if (!waiter->IsValid()) {
@@ -40,6 +57,7 @@ std::shared_ptr<FenceWaiter> FenceWaiter::Create(vk::Device device,
     return nullptr;
   }
 
+  gFenceWaiters[queue] = waiter;
   return waiter;
 }
 

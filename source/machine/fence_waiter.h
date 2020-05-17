@@ -14,7 +14,6 @@
 
 namespace pixel {
 
-// TODO: There can only be one of these per queue. Enfore this in the API.
 class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
  public:
   static std::shared_ptr<FenceWaiter> Create(vk::Device device,
@@ -33,8 +32,6 @@ class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
   ///
   bool AddCompletionHandler(vk::Fence fence, Closure handler);
 
-  bool IsValid() const;
-
  private:
   vk::Device device_;
   vk::Queue queue_;
@@ -45,6 +42,8 @@ class FenceWaiter : public std::enable_shared_from_this<FenceWaiter> {
   bool is_valid_ = false;
 
   FenceWaiter(vk::Device device, vk::Queue queue);
+
+  bool IsValid() const;
 
   bool StartThread();
 

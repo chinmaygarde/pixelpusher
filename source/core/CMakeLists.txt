@@ -17,6 +17,8 @@ add_library(core
   thread.cc
   thread.h
   unique_object.h
+  hash.h
+  hash.cc
 )
 
 target_include_directories(core

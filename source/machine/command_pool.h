@@ -13,7 +13,8 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
  public:
   static std::shared_ptr<CommandPool> Create(vk::Device device,
                                              vk::CommandPoolCreateFlags flags,
-                                             uint32_t queue_family_index);
+                                             uint32_t queue_family_index,
+                                             vk::Queue queue);
 
   ~CommandPool();
 
@@ -21,7 +22,7 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
 
   vk::CommandPool GetCommandPool() const;
 
-  const vk::Queue& GetCommandQueue() const;
+  vk::Queue GetCommandQueue() const;
 
   FenceWaiter& GetFenceWaiter() const;
 

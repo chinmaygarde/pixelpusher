@@ -5,7 +5,9 @@
 namespace pixel {
 
 RenderingContext::RenderingContext(vk::PhysicalDevice physical_device,
-                                   vk::Device device) {
+                                   vk::Device device,
+                                   QueueSelection graphics_queue,
+                                   QueueSelection transfer_queue) {
   memory_allocator_ =
       std::make_unique<MemoryAllocator>(physical_device, device);
   if (!memory_allocator_->IsValid()) {
@@ -14,6 +16,20 @@ RenderingContext::RenderingContext(vk::PhysicalDevice physical_device,
 
   pipeline_cache_ = UnwrapResult(device.createPipelineCacheUnique({}));
   if (!pipeline_cache_) {
+    return;
+  }
+
+  graphics_command_pool_ = CommandPool::Create(
+      device, vk::CommandPoolCreateFlagBits::eTransient,
+      graphics_queue.queue_family_index, graphics_queue.queue);
+  if (!graphics_command_pool_) {
+    return;
+  }
+
+  transfer_command_pool_ = CommandPool::Create(
+      device, vk::CommandPoolCreateFlagBits::eTransient,
+      transfer_queue.queue_family_index, transfer_queue.queue);
+  if (!transfer_command_pool_) {
     return;
   }
 
@@ -34,6 +50,16 @@ MemoryAllocator& RenderingContext::GetMemoryAllocator() const {
 vk::PipelineCache RenderingContext::GetPipelineCache() const {
   P_ASSERT(is_valid_);
   return *pipeline_cache_;
+}
+
+const CommandPool& RenderingContext::GetGraphicsCommandPool() const {
+  P_ASSERT(is_valid_);
+  return *graphics_command_pool_;
+}
+
+const CommandPool& RenderingContext::GetTransferCommandPool() const {
+  P_ASSERT(is_valid_);
+  return *transfer_command_pool_;
 }
 
 }  // namespace pixel

@@ -19,7 +19,8 @@ CommandPool::~CommandPool() = default;
 std::shared_ptr<CommandPool> CommandPool::Create(
     vk::Device device,
     vk::CommandPoolCreateFlags flags,
-    uint32_t queue_family_index) {
+    uint32_t queue_family_index,
+    vk::Queue queue) {
   if (!device) {
     P_ERROR << "Device was invalid.";
     return nullptr;
@@ -35,9 +36,6 @@ std::shared_ptr<CommandPool> CommandPool::Create(
     P_ERROR << "Could not create command pool.";
     return nullptr;
   }
-
-  // TODO: Allow acquisition of a queue with a different index.
-  auto queue = device.getQueue(queue_family_index, 0u);
 
   auto fence_waiter = FenceWaiter::Create(device, queue);
   if (!fence_waiter) {
@@ -69,7 +67,7 @@ std::shared_ptr<CommandBuffer> CommandPool::CreateCommandBuffer() const {
       device_, shared_from_this(), std::move(result.value.front())));
 }
 
-const vk::Queue& CommandPool::GetCommandQueue() const {
+vk::Queue CommandPool::GetCommandQueue() const {
   return queue_;
 }
 

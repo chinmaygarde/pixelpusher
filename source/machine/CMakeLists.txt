@@ -37,6 +37,8 @@ add_library(machine_lib
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
+  queue_selection.h
+  queue_selection.cc
 )
 
 target_include_directories(machine_lib
