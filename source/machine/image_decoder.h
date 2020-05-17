@@ -8,7 +8,6 @@
 #include "mapping.h"
 #include "memory_allocator.h"
 #include "vulkan.h"
-#include "vulkan/vulkan.hpp"
 
 namespace pixel {
 

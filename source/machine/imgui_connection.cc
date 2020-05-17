@@ -5,22 +5,20 @@
 #include "imgui.h"
 #include "macros.h"
 #include "vulkan.h"
-#include "vulkan/vulkan.hpp"
-#include "vulkan/vulkan_core.h"
 //
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
 namespace pixel {
 
-ImguiConnection::ImguiConnection(GLFWwindow* window,
-                                 vk::Instance instance,
-                                 vk::PhysicalDevice physical_device,
-                                 vk::Device device,
-                                 uint32_t graphics_queue_family_index,
-                                 vk::PipelineCache pipeline_cache,
-                                 size_t swapchain_image_count,
-                                 vk::RenderPass onscreen_render_pass) {
+ImguiRenderer::ImguiRenderer(GLFWwindow* window,
+                             vk::Instance instance,
+                             vk::PhysicalDevice physical_device,
+                             vk::Device device,
+                             uint32_t graphics_queue_family_index,
+                             vk::PipelineCache pipeline_cache,
+                             size_t swapchain_image_count,
+                             vk::RenderPass onscreen_render_pass) {
   constexpr size_t kPoolSize = 1024;
   vk::DescriptorPoolCreateInfo pool_info;
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
@@ -133,7 +131,7 @@ ImguiConnection::ImguiConnection(GLFWwindow* window,
   is_valid_ = true;
 }
 
-ImguiConnection::~ImguiConnection() {
+ImguiRenderer::~ImguiRenderer() {
   if (vulkan_initialized_) {
     ::ImGui_ImplVulkan_Shutdown();
   }
@@ -145,11 +143,11 @@ ImguiConnection::~ImguiConnection() {
   ImGui::DestroyContext(imgui_context_);
 }
 
-bool ImguiConnection::IsValid() const {
+bool ImguiRenderer::IsValid() const {
   return is_valid_;
 }
 
-bool ImguiConnection::BeginFrame() const {
+bool ImguiRenderer::BeginFrame() const {
   if (!IsValid()) {
     return false;
   }
@@ -161,7 +159,7 @@ bool ImguiConnection::BeginFrame() const {
   return true;
 }
 
-bool ImguiConnection::RenderFrame(vk::CommandBuffer buffer) const {
+bool ImguiRenderer::RenderFrame(vk::CommandBuffer buffer) const {
   if (!IsValid()) {
     return false;
   }

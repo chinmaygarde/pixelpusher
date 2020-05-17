@@ -1,7 +1,6 @@
 #include "memory_allocator.h"
 
 #include "platform.h"
-#include "vulkan/vulkan.hpp"
 
 GCC_PRAGMA("GCC diagnostic push")
 GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-variable\"")

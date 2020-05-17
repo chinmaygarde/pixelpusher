@@ -5,7 +5,6 @@
 
 #include "imgui_connection.h"
 #include "macros.h"
-#include "memory_allocator.h"
 #include "render_pass.h"
 #include "vulkan.h"
 
@@ -30,15 +29,9 @@ class VulkanConnection {
 
   VulkanSwapchain& GetSwapchain() const;
 
-  MemoryAllocator& GetMemoryAllocator() const;
-
   uint32_t GetGraphicsQueueFamilyIndex() const;
 
   const vk::PhysicalDeviceFeatures& GetAvailableFeatures() const;
-
-  vk::PipelineCache GetPipelineCache() const;
-
-  ImguiConnection& GetImguiConnection();
 
  private:
   vk::UniqueInstance instance_;
@@ -48,10 +41,7 @@ class VulkanConnection {
   vk::UniqueDevice device_;
   vk::SurfaceKHR surface_;
   std::unique_ptr<VulkanSwapchain> swapchain_;
-  std::unique_ptr<MemoryAllocator> memory_allocator_;
   vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
-  vk::UniquePipelineCache pipeline_cache_;
-  std::unique_ptr<ImguiConnection> imgui_connection_;
   bool is_valid_ = false;
 
   static bool OnDebugUtilsMessengerCallback(

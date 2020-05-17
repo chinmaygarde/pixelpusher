@@ -6,7 +6,6 @@
 #include "closure.h"
 #include "logging.h"
 #include "vulkan.h"
-#include "vulkan/vulkan.hpp"
 
 GCC_PRAGMA("GCC diagnostic push")
 GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-function\"")

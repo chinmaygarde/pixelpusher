@@ -8,18 +8,18 @@
 
 namespace pixel {
 
-class ImguiConnection {
+class ImguiRenderer {
  public:
-  ImguiConnection(GLFWwindow* window,
-                  vk::Instance instance,
-                  vk::PhysicalDevice physical_device,
-                  vk::Device device,
-                  uint32_t graphics_queue_family_index,
-                  vk::PipelineCache pipeline_cache,
-                  size_t swapchain_image_count,
-                  vk::RenderPass onscreen_render_pass);
+  ImguiRenderer(GLFWwindow* window,
+                vk::Instance instance,
+                vk::PhysicalDevice physical_device,
+                vk::Device device,
+                uint32_t graphics_queue_family_index,
+                vk::PipelineCache pipeline_cache,
+                size_t swapchain_image_count,
+                vk::RenderPass onscreen_render_pass);
 
-  ~ImguiConnection();
+  ~ImguiRenderer();
 
   bool IsValid() const;
 
@@ -35,7 +35,7 @@ class ImguiConnection {
   bool is_valid_ = false;
   ImGuiContext* imgui_context_ = nullptr;
 
-  P_DISALLOW_COPY_AND_ASSIGN(ImguiConnection);
+  P_DISALLOW_COPY_AND_ASSIGN(ImguiRenderer);
 };
 
 }  // namespace pixel

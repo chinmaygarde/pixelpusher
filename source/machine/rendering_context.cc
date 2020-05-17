@@ -7,7 +7,8 @@ namespace pixel {
 RenderingContext::RenderingContext(vk::PhysicalDevice physical_device,
                                    vk::Device device,
                                    QueueSelection graphics_queue,
-                                   QueueSelection transfer_queue) {
+                                   QueueSelection transfer_queue,
+                                   vk::RenderPass onscreen_render_pass) {
   memory_allocator_ =
       std::make_unique<MemoryAllocator>(physical_device, device);
   if (!memory_allocator_->IsValid()) {
@@ -30,6 +31,11 @@ RenderingContext::RenderingContext(vk::PhysicalDevice physical_device,
       device, vk::CommandPoolCreateFlagBits::eTransient,
       transfer_queue.queue_family_index, transfer_queue.queue);
   if (!transfer_command_pool_) {
+    return;
+  }
+
+  onscreen_render_pass_ = onscreen_render_pass;
+  if (!onscreen_render_pass_) {
     return;
   }
 
@@ -60,6 +66,11 @@ const CommandPool& RenderingContext::GetGraphicsCommandPool() const {
 const CommandPool& RenderingContext::GetTransferCommandPool() const {
   P_ASSERT(is_valid_);
   return *transfer_command_pool_;
+}
+
+vk::RenderPass RenderingContext::GetOnScreenRenderPass() const {
+  P_ASSERT(is_valid_);
+  return onscreen_render_pass_;
 }
 
 }  // namespace pixel

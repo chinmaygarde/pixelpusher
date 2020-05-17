@@ -8,7 +8,6 @@
 
 #include "logging.h"
 #include "macros.h"
-#include "vulkan/vulkan.hpp"
 #include "vulkan_swapchain.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -529,36 +528,6 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     return;
   }
 
-  auto memory_allocator = std::make_unique<MemoryAllocator>(
-      physical_devices[selection.device_index.value()], device.get());
-  if (!memory_allocator->IsValid()) {
-    P_ERROR << "Could not create device memory allocator.";
-    return;
-  }
-
-  auto pipeline_cache =
-      UnwrapResult(device.get().createPipelineCacheUnique({}));
-  if (!pipeline_cache) {
-    P_ERROR << "Could not create pipeline cache.";
-    return;
-  }
-
-  auto imgui_connection = std::make_unique<ImguiConnection>(
-      glfw_window,                                       //
-      instance.get(),                                    //
-      physical_devices[selection.device_index.value()],  //
-      device.get(),                                      //
-      selection.graphics_family_index.value(),           //
-      pipeline_cache.get(),                              //
-      swapchain->GetImageCount(),                        //
-      swapchain->GetRenderPass()                         //
-  );
-
-  if (!imgui_connection->IsValid()) {
-    P_ERROR << "Could not setup ImGui connection";
-    return;
-  }
-
   instance_ = std::move(instance);
   physical_device_selection_ =
       std::make_unique<PhysicalDeviceSelection>(selection);
@@ -570,7 +539,6 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   debug_utils_messenger_ = std::move(debug_utils_messenger);
   available_features_ = enabled_features;
   pipeline_cache_ = std::move(pipeline_cache);
-  imgui_connection_ = std::move(imgui_connection);
 
   is_valid_ = true;
 }
@@ -613,11 +581,6 @@ VulkanSwapchain& VulkanConnection::GetSwapchain() const {
   return *swapchain_.get();
 }
 
-MemoryAllocator& VulkanConnection::GetMemoryAllocator() const {
-  P_ASSERT(is_valid_);
-  return *memory_allocator_.get();
-}
-
 uint32_t VulkanConnection::GetGraphicsQueueFamilyIndex() const {
   P_ASSERT(is_valid_);
   return physical_device_selection_->graphics_family_index.value();
@@ -629,19 +592,9 @@ const vk::PhysicalDeviceFeatures& VulkanConnection::GetAvailableFeatures()
   return available_features_;
 }
 
-vk::PipelineCache VulkanConnection::GetPipelineCache() const {
-  P_ASSERT(is_valid_);
-  return pipeline_cache_.get();
-}
-
 vk::PhysicalDevice VulkanConnection::GetPhysicalDevice() const {
   P_ASSERT(is_valid_);
   return physical_device_;
-}
-
-ImguiConnection& VulkanConnection::GetImguiConnection() {
-  P_ASSERT(is_valid_);
-  return *imgui_connection_;
 }
 
 }  // namespace pixel

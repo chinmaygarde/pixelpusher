@@ -13,7 +13,8 @@ class RenderingContext {
   RenderingContext(vk::PhysicalDevice physical_device,
                    vk::Device logical_device,
                    QueueSelection graphics_queue,
-                   QueueSelection transfer_queue);
+                   QueueSelection transfer_queue,
+                   vk::RenderPass onscreen_render_pass);
 
   ~RenderingContext();
 
@@ -27,11 +28,14 @@ class RenderingContext {
 
   const CommandPool& GetTransferCommandPool() const;
 
+  vk::RenderPass GetOnScreenRenderPass() const;
+
  private:
   std::unique_ptr<MemoryAllocator> memory_allocator_;
   vk::UniquePipelineCache pipeline_cache_;
   std::shared_ptr<CommandPool> graphics_command_pool_;
   std::shared_ptr<CommandPool> transfer_command_pool_;
+  vk::RenderPass onscreen_render_pass_;
   bool is_valid_ = false;
 
   P_DISALLOW_COPY_AND_ASSIGN(RenderingContext);

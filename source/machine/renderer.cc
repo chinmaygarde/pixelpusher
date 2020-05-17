@@ -12,7 +12,6 @@
 #include "pipeline_layout.h"
 #include "shader_loader.h"
 #include "vulkan.h"
-#include "vulkan/vulkan.hpp"
 #include "vulkan_swapchain.h"
 
 namespace pixel {

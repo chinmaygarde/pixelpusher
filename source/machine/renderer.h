@@ -9,7 +9,6 @@
 #include "memory_allocator.h"
 #include "shaders/triangle.h"
 #include "vulkan.h"
-#include "vulkan/vulkan.hpp"
 #include "vulkan_connection.h"
 
 namespace pixel {
