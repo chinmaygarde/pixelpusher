@@ -535,10 +535,8 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   device_ = std::move(device);
   surface_ = std::move(surface);
   swapchain_ = std::move(swapchain);
-  memory_allocator_ = std::move(memory_allocator);
   debug_utils_messenger_ = std::move(debug_utils_messenger);
   available_features_ = enabled_features;
-  pipeline_cache_ = std::move(pipeline_cache);
 
   is_valid_ = true;
 }
@@ -577,24 +575,52 @@ bool VulkanConnection::OnDebugUtilsMessengerCallback(
 }
 
 VulkanSwapchain& VulkanConnection::GetSwapchain() const {
-  P_ASSERT(is_valid_);
   return *swapchain_.get();
 }
 
 uint32_t VulkanConnection::GetGraphicsQueueFamilyIndex() const {
-  P_ASSERT(is_valid_);
   return physical_device_selection_->graphics_family_index.value();
 }
 
 const vk::PhysicalDeviceFeatures& VulkanConnection::GetAvailableFeatures()
     const {
-  P_ASSERT(is_valid_);
   return available_features_;
 }
 
 vk::PhysicalDevice VulkanConnection::GetPhysicalDevice() const {
-  P_ASSERT(is_valid_);
   return physical_device_;
+}
+
+std::shared_ptr<RenderingContext> VulkanConnection::CreateRenderingContext()
+    const {
+  if (!IsValid()) {
+    return nullptr;
+  }
+
+  auto family_index = physical_device_selection_->graphics_family_index.value();
+  auto queue = device_.get().getQueue(family_index, 0u);
+
+  // TODO: Both graphics and transfer queues are same. Separate them out.
+  QueueSelection graphics_queue = {family_index, queue};
+  QueueSelection transfer_queue = {family_index, queue};
+
+  auto context = std::make_shared<RenderingContext>(
+      instance_.get(),              // instance
+      physical_device_,             // physical device
+      device_.get(),                // logical device
+      graphics_queue,               // graphics queue
+      transfer_queue,               // transfer queue
+      swapchain_->GetRenderPass(),  // onscreen render_pass
+      swapchain_->GetImageCount(),  // swapchain image count
+      available_features_,          // features
+      swapchain_->GetExtents()      // extents
+  );
+
+  if (!context->IsValid()) {
+    return nullptr;
+  }
+
+  return context;
 }
 
 }  // namespace pixel

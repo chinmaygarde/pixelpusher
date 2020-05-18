@@ -84,10 +84,16 @@ PipelineBuilder& PipelineBuilder::SetVertexInputDescription(
 }
 
 vk::UniquePipeline PipelineBuilder::CreatePipeline(
-    const vk::Device& device,
-    const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages,
+    vk::Device device,
+    vk::PipelineCache cache,
     vk::PipelineLayout pipeline_layout,
-    vk::RenderPass render_pass) const {
+    vk::RenderPass render_pass,
+    const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages) const {
+  if (!cache) {
+    P_ERROR << "A pipeline cache must be supplied.";
+    return {};
+  }
+
   vk::PipelineVertexInputStateCreateInfo vertex_input_state;
   vertex_input_state.setVertexBindingDescriptionCount(
       vertex_input_binding_descriptions_.size());
@@ -112,8 +118,7 @@ vk::UniquePipeline PipelineBuilder::CreatePipeline(
   pipeline_info.setLayout(pipeline_layout);
   pipeline_info.setRenderPass(render_pass);
 
-  auto result = device.createGraphicsPipelineUnique(nullptr,  // pipeline cache
-                                                    pipeline_info);
+  auto result = device.createGraphicsPipelineUnique(cache, pipeline_info);
   if (result.result != vk::Result::eSuccess) {
     P_ERROR << "Could not create graphics pipeline.";
     return {};

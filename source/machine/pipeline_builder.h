@@ -15,10 +15,12 @@ class PipelineBuilder {
   ~PipelineBuilder();
 
   vk::UniquePipeline CreatePipeline(
-      const vk::Device& device,
-      const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages,
+      vk::Device device,
+      vk::PipelineCache cache,
       vk::PipelineLayout pipeline_layout,
-      vk::RenderPass render_pass) const;
+      vk::RenderPass render_pass,
+      const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages)
+      const;
 
   PipelineBuilder& SetScissor(vk::Rect2D rect);
 

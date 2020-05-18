@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#define GLFW_INCLUDE_VULKAN
 
 #include <cstdlib>
 #include <iostream>
@@ -7,8 +6,10 @@
 #include "closure.h"
 #include "event_loop.h"
 #include "logging.h"
+#include "main_renderer.h"
 #include "renderer.h"
 #include "vulkan.h"
+#include "vulkan_connection.h"
 
 namespace pixel {
 
@@ -38,7 +39,19 @@ int Main(int argc, char const* argv[]) {
 
   AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
 
-  Renderer renderer(window);
+  VulkanConnection connection(window);
+
+  if (!connection.IsValid()) {
+    return EXIT_FAILURE;
+  }
+
+  auto rendering_context = connection.CreateRenderingContext();
+
+  if (!rendering_context || !rendering_context->IsValid()) {
+    return EXIT_FAILURE;
+  }
+
+  MainRenderer renderer(connection, rendering_context, window);
 
   if (!renderer.IsValid()) {
     P_ERROR << "Could not create a valid renderer.";

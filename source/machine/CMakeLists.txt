@@ -5,12 +5,16 @@ add_library(machine_lib
   command_buffer.h
   command_pool.cc
   command_pool.h
+  descriptor_pool.cc
+  descriptor_pool.h
   fence_waiter.cc
   fence_waiter.h
   image_decoder.cc
   image_decoder.h
-  imgui_connection.cc
-  imgui_connection.h
+  imgui_renderer.cc
+  imgui_renderer.h
+  main_renderer.cc
+  main_renderer.h
   memory_allocator.cc
   memory_allocator.h
   model.cc
@@ -21,6 +25,8 @@ add_library(machine_lib
   pipeline_builder.h
   pipeline_layout.cc
   pipeline_layout.h
+  queue_selection.cc
+  queue_selection.h
   render_pass.cc
   render_pass.h
   renderer.cc
@@ -32,13 +38,13 @@ add_library(machine_lib
   shaders/triangle.h
   tiny_gltf.cc
   tiny_gltf.h
+  tutorial_renderer.cc
+  tutorial_renderer.h
   vulkan.h
   vulkan_connection.cc
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
-  queue_selection.h
-  queue_selection.cc
 )
 
 target_include_directories(machine_lib

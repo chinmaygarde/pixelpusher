@@ -3,9 +3,9 @@
 #include <memory>
 #include <vector>
 
-#include "imgui_connection.h"
 #include "macros.h"
 #include "render_pass.h"
+#include "rendering_context.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -33,6 +33,8 @@ class VulkanConnection {
 
   const vk::PhysicalDeviceFeatures& GetAvailableFeatures() const;
 
+  std::shared_ptr<RenderingContext> CreateRenderingContext() const;
+
  private:
   vk::UniqueInstance instance_;
   std::unique_ptr<PhysicalDeviceSelection> physical_device_selection_;
@@ -40,6 +42,7 @@ class VulkanConnection {
   vk::PhysicalDeviceFeatures available_features_;
   vk::UniqueDevice device_;
   vk::SurfaceKHR surface_;
+  // TODO: Don't make the connection own the swapchain.
   std::unique_ptr<VulkanSwapchain> swapchain_;
   vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
   bool is_valid_ = false;
