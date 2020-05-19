@@ -1,7 +1,10 @@
 #pragma once
 
+#include "asset_loader.h"
 #include "macros.h"
+#include "model.h"
 #include "renderer.h"
+#include "unshared_weak.h"
 
 namespace pixel {
 
@@ -15,6 +18,11 @@ class ModelRenderer : public Renderer {
   ~ModelRenderer() override;
 
  private:
+  std::unique_ptr<model::Model> model_;
+  bool is_valid_ = false;
+
+  UnsharedWeakFactory<ModelRenderer> weak_factory_;
+
   // |Renderer|
   bool IsValid() const override;
 

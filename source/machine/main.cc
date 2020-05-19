@@ -23,8 +23,6 @@ int Main(int argc, char const* argv[]) {
     return EXIT_FAILURE;
   }
 
-  EventLoop::SetMainDispatcher(EventLoop::ForCurrentThread().GetDispatcher());
-
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
   AutoClosure glfw_terminate([]() { glfwTerminate(); });

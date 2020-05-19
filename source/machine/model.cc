@@ -188,6 +188,38 @@ void Accessor::ResolveReferences(const Model& model,
   buffer_view_ = BoundsCheckGet(model.bufferViews_, accessor.bufferView);
 }
 
+const std::string& Accessor::GetName() const {
+  return name_;
+}
+
+const std::shared_ptr<BufferView>& Accessor::GetBufferView() const {
+  return buffer_view_;
+}
+
+const size_t& Accessor::GetByteOffset() const {
+  return byte_offset_;
+}
+
+const bool& Accessor::GetNormalized() const {
+  return normalized_;
+}
+
+const size_t& Accessor::GetStride() const {
+  return stride_;
+}
+
+const size_t& Accessor::GetCount() const {
+  return count_;
+}
+
+const std::vector<double>& Accessor::GetMinValues() const {
+  return min_values_;
+}
+
+const std::vector<double>& Accessor::GetMaxValues() const {
+  return max_values_;
+}
+
 // *****************************************************************************
 // *** Animation
 // *****************************************************************************
@@ -295,6 +327,31 @@ void Primitive::ResolveReferences(const Model& model,
   indices_ = BoundsCheckGet(model.accessors_, primitive.indices);
 }
 
+std::shared_ptr<Accessor> Primitive::GetPositionAttribute() const {
+  auto found = attributes_.find("POSITION");
+  if (found == attributes_.end()) {
+    return nullptr;
+  }
+  return found->second;
+}
+
+const std::map<std::string, std::shared_ptr<Accessor>>&
+Primitive::GetAttributes() const {
+  return attributes_;
+}
+
+const std::shared_ptr<Material>& Primitive::GetMaterial() const {
+  return material_;
+}
+
+const std::shared_ptr<Accessor>& Primitive::GetIndices() const {
+  return indices_;
+}
+
+const vk::PrimitiveTopology& Primitive::GetMode() const {
+  return mode_;
+}
+
 // *****************************************************************************
 // *** Mesh
 // *****************************************************************************
@@ -311,6 +368,18 @@ void Mesh::ReadFromArchive(const tinygltf::Mesh& mesh) {
 
 void Mesh::ResolveReferences(const Model& model, const tinygltf::Mesh& mesh) {
   ResolveCollectionReferences(model, primitives_, mesh.primitives);
+}
+
+const std::string& Mesh::GetName() const {
+  return name_;
+}
+
+const std::vector<std::shared_ptr<Primitive>>& Mesh::GetPrimitives() const {
+  return primitives_;
+}
+
+const std::vector<double>& Mesh::GetWeights() const {
+  return weights_;
 }
 
 // *****************************************************************************
@@ -339,6 +408,46 @@ void Node::ResolveReferences(const Model& model, const tinygltf::Node& node) {
       children_.emplace_back(std::move(node));
     }
   }
+}
+
+const std::string& Node::GetName() const {
+  return name_;
+}
+
+const std::shared_ptr<Camera>& Node::GetCamera() const {
+  return camera_;
+}
+
+const std::shared_ptr<Skin>& Node::GetSkin() const {
+  return skin_;
+}
+
+const std::shared_ptr<Mesh>& Node::GetMesh() const {
+  return mesh_;
+}
+
+const std::vector<std::shared_ptr<Node>>& Node::GetChildren() const {
+  return children_;
+}
+
+const glm::vec4& Node::GetRotation() const {
+  return rotation_;
+}
+
+const glm::vec3& Node::GetScale() const {
+  return scale_;
+}
+
+const glm::vec3& Node::GetTranslation() const {
+  return translation_;
+}
+
+const glm::mat4& Node::GetMatrix() const {
+  return matrix_;
+}
+
+const std::vector<double>& Node::GetWeights() const {
+  return weights_;
 }
 
 // *****************************************************************************

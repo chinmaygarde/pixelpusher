@@ -73,7 +73,9 @@ class UnsharedWeakFactory {
       : object_(object),
         control_block_(std::make_unique<UnsharedControlBlock<T>>()) {}
 
-  ~UnsharedWeakFactory() { control_block_->Invalidate(); }
+  void Invalidate() { control_block_->Invalidate(); }
+
+  ~UnsharedWeakFactory() { Invalidate(); }
 
   auto CreateWeakPtr() { return UnsharedWeak<T>(object_, control_block_); }
 

@@ -10,6 +10,7 @@
 #include "asset_loader.h"
 #include "glm.h"
 #include "macros.h"
+#include "rendering_context.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -69,6 +70,22 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
   void ResolveReferences(const Model& model,
                          const tinygltf::Accessor& accessor) override;
+
+  const std::string& GetName() const;
+
+  const std::shared_ptr<BufferView>& GetBufferView() const;
+
+  const size_t& GetByteOffset() const;
+
+  const bool& GetNormalized() const;
+
+  const size_t& GetStride() const;
+
+  const size_t& GetCount() const;
+
+  const std::vector<double>& GetMinValues() const;
+
+  const std::vector<double>& GetMaxValues() const;
 
  private:
   std::string name_;
@@ -169,6 +186,16 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Primitive& primitive) override;
 
+  std::shared_ptr<Accessor> GetPositionAttribute() const;
+
+  const std::map<std::string, std::shared_ptr<Accessor>>& GetAttributes() const;
+
+  const std::shared_ptr<Material>& GetMaterial() const;
+
+  const std::shared_ptr<Accessor>& GetIndices() const;
+
+  const vk::PrimitiveTopology& GetMode() const;
+
  private:
   std::map<std::string, std::shared_ptr<Accessor>> attributes_;
   std::shared_ptr<Material> material_;
@@ -190,6 +217,12 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Mesh& mesh) override;
 
+  const std::string& GetName() const;
+
+  const std::vector<std::shared_ptr<Primitive>>& GetPrimitives() const;
+
+  const std::vector<double>& GetWeights() const;
+
  private:
   std::string name_;
   std::vector<std::shared_ptr<Primitive>> primitives_;
@@ -208,6 +241,26 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
   void ResolveReferences(const Model& model,
                          const tinygltf::Node& node) override;
+
+  const std::string& GetName() const;
+
+  const std::shared_ptr<Camera>& GetCamera() const;
+
+  const std::shared_ptr<Skin>& GetSkin() const;
+
+  const std::shared_ptr<Mesh>& GetMesh() const;
+
+  const std::vector<std::shared_ptr<Node>>& GetChildren() const;
+
+  const glm::vec4& GetRotation() const;
+
+  const glm::vec3& GetScale() const;
+
+  const glm::vec3& GetTranslation() const;
+
+  const glm::mat4& GetMatrix() const;
+
+  const std::vector<double>& GetWeights() const;
 
  private:
   std::string name_;
@@ -379,7 +432,7 @@ class Light final : public GLTFArchivable<tinygltf::Light> {
   P_DISALLOW_COPY_AND_ASSIGN(Light);
 };
 
-class Model {
+class Model final {
  public:
   Model(const Asset& asset);
 

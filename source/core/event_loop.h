@@ -36,10 +36,6 @@ class EventLoop {
 
   static EventLoop& ForCurrentThread();
 
-  static void SetMainDispatcher(std::shared_ptr<Dispatcher> dispatcher);
-
-  static std::shared_ptr<Dispatcher> GetMainDispatcher();
-
   ~EventLoop();
 
   bool IsRunning() const;

@@ -139,17 +139,4 @@ bool EventLoop::Terminate() {
   return true;
 }
 
-static std::shared_ptr<EventLoop::Dispatcher> sDispatcher;
-
-void EventLoop::SetMainDispatcher(
-    std::shared_ptr<EventLoop::Dispatcher> dispatcher) {
-  P_ASSERT(sDispatcher == nullptr);
-  sDispatcher = std::move(dispatcher);
-}
-
-std::shared_ptr<EventLoop::Dispatcher> EventLoop::GetMainDispatcher() {
-  P_ASSERT(sDispatcher != nullptr);
-  return sDispatcher;
-}
-
 }  // namespace pixel
