@@ -1,6 +1,8 @@
 #include "main_renderer.h"
 
+#include "assets_location.h"
 #include "imgui_renderer.h"
+#include "model_renderer.h"
 #include "tutorial_renderer.h"
 #include "vulkan_swapchain.h"
 
@@ -11,7 +13,10 @@ MainRenderer::MainRenderer(VulkanConnection& connection,
                            GLFWwindow* window)
     : Renderer(context), connection_(connection) {
   is_valid_ = PushRenderer(std::make_unique<TutorialRenderer>(context)) &&
-              PushRenderer(std::make_unique<ImguiRenderer>(context, window));
+              PushRenderer(std::make_unique<ImguiRenderer>(context, window)) &&
+              PushRenderer(std::make_unique<ModelRenderer>(
+                  context, PIXEL_GLTF_MODELS_LOCATION "/Triangle/glTF",
+                  "Triangle.gltf"));
 }
 
 MainRenderer::~MainRenderer() = default;

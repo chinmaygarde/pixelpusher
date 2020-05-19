@@ -17,6 +17,8 @@ struct Asset {
 
 class AssetLoader {
  public:
+  static std::shared_ptr<AssetLoader> GetGlobal();
+
   AssetLoader();
 
   ~AssetLoader();

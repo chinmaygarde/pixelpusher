@@ -44,7 +44,8 @@ EventLoop& EventLoop::ForCurrentThread() {
 EventLoop::EventLoop()
     : thread_id_(std::this_thread::get_id()),
       tasks_heap_(std::make_shared<TasksHeap>()),
-      dispatcher_(std::shared_ptr<Dispatcher>(new Dispatcher(tasks_heap_))) {}
+      dispatcher_(std::shared_ptr<Dispatcher>(
+          new Dispatcher(tasks_heap_, std::this_thread::get_id()))) {}
 
 EventLoop::~EventLoop() = default;
 
@@ -105,8 +106,9 @@ std::shared_ptr<EventLoop::Dispatcher> EventLoop::GetDispatcher() const {
   return dispatcher_;
 }
 
-EventLoop::Dispatcher::Dispatcher(std::weak_ptr<TasksHeap> heap)
-    : tasks_heap_(std::move(heap)) {}
+EventLoop::Dispatcher::Dispatcher(std::weak_ptr<TasksHeap> heap,
+                                  std::thread::id thread_id)
+    : tasks_heap_(std::move(heap)), thread_id_(thread_id) {}
 
 EventLoop::Dispatcher::~Dispatcher() = default;
 
@@ -123,6 +125,10 @@ bool EventLoop::Dispatcher::PostTask(Closure closure) {
   return false;
 };
 
+bool EventLoop::Dispatcher::RunsTasksOnCurrentThread() const {
+  return std::this_thread::get_id() == thread_id_;
+}
+
 bool EventLoop::Terminate() {
   if (thread_id_ != std::this_thread::get_id()) {
     P_ASSERT(false);
@@ -131,6 +137,19 @@ bool EventLoop::Terminate() {
   running_ = false;
   tasks_heap_->tasks_cv.notify_all();
   return true;
+}
+
+static std::shared_ptr<EventLoop::Dispatcher> sDispatcher;
+
+void EventLoop::SetMainDispatcher(
+    std::shared_ptr<EventLoop::Dispatcher> dispatcher) {
+  P_ASSERT(sDispatcher == nullptr);
+  sDispatcher = std::move(dispatcher);
+}
+
+std::shared_ptr<EventLoop::Dispatcher> EventLoop::GetMainDispatcher() {
+  P_ASSERT(sDispatcher != nullptr);
+  return sDispatcher;
 }
 
 }  // namespace pixel

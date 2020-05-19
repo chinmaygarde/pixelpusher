@@ -7,6 +7,11 @@
 
 namespace pixel {
 
+std::shared_ptr<AssetLoader> AssetLoader::GetGlobal() {
+  static auto sLoader = std::make_shared<AssetLoader>();
+  return sLoader;
+}
+
 AssetLoader::AssetLoader() : thread_("AssetLoader") {}
 
 AssetLoader::~AssetLoader() {

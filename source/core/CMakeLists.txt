@@ -1,6 +1,7 @@
 
 # Core Library
 add_library(core
+  closure.cc
   closure.h
   event_loop.cc
   event_loop.h

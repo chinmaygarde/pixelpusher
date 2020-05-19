@@ -19,19 +19,26 @@ class EventLoop {
    public:
     bool PostTask(Closure closure);
 
+    bool RunsTasksOnCurrentThread() const;
+
     ~Dispatcher();
 
    private:
     friend class EventLoop;
 
     std::weak_ptr<TasksHeap> tasks_heap_;
+    const std::thread::id thread_id_;
 
-    Dispatcher(std::weak_ptr<TasksHeap> heap);
+    Dispatcher(std::weak_ptr<TasksHeap> heap, std::thread::id thread_id);
 
     P_DISALLOW_COPY_AND_ASSIGN(Dispatcher);
   };
 
   static EventLoop& ForCurrentThread();
+
+  static void SetMainDispatcher(std::shared_ptr<Dispatcher> dispatcher);
+
+  static std::shared_ptr<Dispatcher> GetMainDispatcher();
 
   ~EventLoop();
 
