@@ -8,6 +8,8 @@ add_library(core
   file.cc
   file.h
   geometry.h
+  hash.cc
+  hash.h
   logging.cc
   logging.h
   macros.cc
@@ -18,8 +20,8 @@ add_library(core
   thread.cc
   thread.h
   unique_object.h
-  hash.h
-  hash.cc
+  unshared_weak.cc
+  unshared_weak.h
 )
 
 target_include_directories(core
@@ -34,8 +36,9 @@ set(P_FIXTURES_LOCATION ${FIXTURES_DIRECTORY})
 configure_file(fixture.h.in fixture.h @ONLY)
 
 add_executable(core_unittests
-  file_unittests.cc
   event_loop_unittests.cc
+  file_unittests.cc
+  unshared_weak_unittests.cc
 )
 
 target_include_directories(core_unittests
