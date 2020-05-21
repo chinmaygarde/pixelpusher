@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <vector>
 
 #include "macros.h"
@@ -21,6 +22,8 @@ class PipelineBuilder {
       vk::RenderPass render_pass,
       const std::vector<vk::PipelineShaderStageCreateInfo>& shader_stages)
       const;
+
+  PipelineBuilder& AddDynamicState(vk::DynamicState state);
 
   PipelineBuilder& SetScissor(vk::Rect2D rect);
 
@@ -44,8 +47,7 @@ class PipelineBuilder {
   vk::PipelineDepthStencilStateCreateInfo depth_stencil_state_;
   vk::PipelineColorBlendAttachmentState color_blend_attachment_state_;
   vk::PipelineColorBlendStateCreateInfo color_blend_state_;
-  std::vector<vk::DynamicState> dynamic_states_;
-  vk::PipelineDynamicStateCreateInfo dynamic_state_;
+  std::set<vk::DynamicState> dynamic_states_;
 
   P_DISALLOW_COPY_AND_ASSIGN(PipelineBuilder);
 };

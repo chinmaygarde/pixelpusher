@@ -55,15 +55,14 @@ PipelineBuilder::PipelineBuilder() {
   color_blend_state_.setAttachmentCount(1u);
   color_blend_state_.setPAttachments(&color_blend_attachment_state_);
   color_blend_state_.setBlendConstants({0.0f, 0.0f, 0.0f, 0.0f});
-
-  dynamic_states_ = {
-      // vk::DynamicState::eViewport,
-  };
-  dynamic_state_.setDynamicStateCount(dynamic_states_.size());
-  dynamic_state_.setPDynamicStates(dynamic_states_.data());
 };
 
 PipelineBuilder::~PipelineBuilder() = default;
+
+PipelineBuilder& PipelineBuilder::AddDynamicState(vk::DynamicState state) {
+  dynamic_states_.insert(state);
+  return *this;
+};
 
 PipelineBuilder& PipelineBuilder::SetScissor(vk::Rect2D rect) {
   scissor_ = rect;
@@ -104,6 +103,14 @@ vk::UniquePipeline PipelineBuilder::CreatePipeline(
   vertex_input_state.setPVertexAttributeDescriptions(
       vertex_input_attribute_descriptions_.data());
 
+  std::vector<vk::DynamicState> dynamic_states;
+  for (auto state : dynamic_states_) {
+    dynamic_states.push_back(state);
+  }
+  vk::PipelineDynamicStateCreateInfo dynamic_state;
+  dynamic_state.setPDynamicStates(dynamic_states.data());
+  dynamic_state.setDynamicStateCount(dynamic_states.size());
+
   vk::GraphicsPipelineCreateInfo pipeline_info;
   pipeline_info.setStageCount(shader_stages.size());
   pipeline_info.setPStages(shader_stages.data());
@@ -114,7 +121,7 @@ vk::UniquePipeline PipelineBuilder::CreatePipeline(
   pipeline_info.setPMultisampleState(&multisample_state_);
   pipeline_info.setPDepthStencilState(&depth_stencil_state_);
   pipeline_info.setPColorBlendState(&color_blend_state_);
-  pipeline_info.setPDynamicState(&dynamic_state_);
+  pipeline_info.setPDynamicState(&dynamic_state);
   pipeline_info.setLayout(pipeline_layout);
   pipeline_info.setRenderPass(render_pass);
 

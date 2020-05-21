@@ -54,6 +54,8 @@ target_include_directories(machine_lib
 )
 
 compile_shaders(machine_lib
+  shaders/model_renderer.frag
+  shaders/model_renderer.vert
   shaders/triangle.frag
   shaders/triangle.vert
 )

@@ -11,7 +11,9 @@
 #include "asset_loader.h"
 #include "glm.h"
 #include "macros.h"
+#include "pipeline_builder.h"
 #include "rendering_context.h"
+#include "shader_loader.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -549,6 +551,8 @@ class Model final {
     std::unique_ptr<pixel::Buffer> index_buffer;
     std::map<Buffer*, size_t> vertex_buffer_offsets;
     std::map<Buffer*, size_t> index_buffer_offsets;
+    vk::UniquePipelineLayout pipeline_layout;
+    vk::UniquePipeline pipeline;
   };
 
   bool PrepareToRender(RenderingContext& context) {
@@ -653,6 +657,70 @@ class Model final {
                                       CommandBuffer::kMaxFenceWaitTime);
     state.vertex_buffer = std::move(device_vertex_buffer);
     state.index_buffer = std::move(device_index_buffer);
+
+    auto vertex_shader_module =
+        LoadShaderModule(context.GetDevice(), "model_renderer.vert");
+    auto fragment_shader_module =
+        LoadShaderModule(context.GetDevice(), "model_renderer.frag");
+
+    if (!vertex_shader_module || !fragment_shader_module) {
+      return false;
+    }
+
+    std::vector<vk::PipelineShaderStageCreateInfo> shader_stages = {
+        // Vertex shader.
+        {{},
+         vk::ShaderStageFlagBits::eVertex,
+         vertex_shader_module.get(),
+         "main"},
+        // Fragment shader.
+        {{},
+         vk::ShaderStageFlagBits::eFragment,
+         fragment_shader_module.get(),
+         "main"},
+    };
+
+    std::vector<vk::DescriptorSetLayout> descriptor_set_layouts;
+    std::vector<vk::PushConstantRange> push_constant_ranges;
+
+    vk::PipelineLayoutCreateInfo layout_info = {
+        {},                                                    // flags
+        static_cast<uint32_t>(descriptor_set_layouts.size()),  //
+        descriptor_set_layouts.data(),                         //
+        static_cast<uint32_t>(push_constant_ranges.size()),    //
+        push_constant_ranges.data()                            //
+    };
+
+    std::vector<vk::VertexInputBindingDescription> vertex_input_bindings;
+    std::vector<vk::VertexInputAttributeDescription> vertex_input_attributes;
+
+    auto pipeline_layout = UnwrapResult(
+        context.GetDevice().createPipelineLayoutUnique(layout_info));
+
+    if (!pipeline_layout) {
+      return false;
+    }
+
+    PipelineBuilder builder;
+    builder.AddDynamicState(vk::DynamicState::eViewport);
+    builder.AddDynamicState(vk::DynamicState::eScissor);
+    builder.SetVertexInputDescription(vertex_input_bindings,
+                                      vertex_input_attributes);
+
+    auto pipeline = builder.CreatePipeline(context.GetDevice(),              //
+                                           context.GetPipelineCache(),       //
+                                           pipeline_layout.get(),            //
+                                           context.GetOnScreenRenderPass(),  //
+                                           shader_stages                     //
+    );
+
+    if (!pipeline) {
+      return false;
+    }
+
+    state.pipeline_layout = std::move(pipeline_layout);
+    state.pipeline = std::move(pipeline);
+
     renderable_state_ = std::move(state);
     return true;
   }
