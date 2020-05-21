@@ -555,6 +555,10 @@ class Model final {
     vk::UniquePipeline pipeline;
   };
 
+  struct ModelVertex {
+    glm::vec3 position;
+  };
+
   bool PrepareToRender(RenderingContext& context) {
     RenderableState state;
     // Transfer a single vertex buffer.
@@ -691,8 +695,18 @@ class Model final {
         push_constant_ranges.data()                            //
     };
 
-    std::vector<vk::VertexInputBindingDescription> vertex_input_bindings;
-    std::vector<vk::VertexInputAttributeDescription> vertex_input_attributes;
+    std::vector<vk::VertexInputBindingDescription> vertex_input_bindings = {
+        {0u, sizeof(ModelVertex), vk::VertexInputRate::eVertex}  //
+    };
+    std::vector<vk::VertexInputAttributeDescription> vertex_input_attributes = {
+        {
+            // Position
+            0u,                                             // location
+            0u,                                             // binding
+            ToVKFormat<decltype(ModelVertex::position)>(),  // format
+            offsetof(ModelVertex, position)                 // offset
+        },
+    };
 
     auto pipeline_layout = UnwrapResult(
         context.GetDevice().createPipelineLayoutUnique(layout_info));
