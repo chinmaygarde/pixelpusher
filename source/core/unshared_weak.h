@@ -77,7 +77,9 @@ class UnsharedWeakFactory {
 
   ~UnsharedWeakFactory() { Invalidate(); }
 
-  auto CreateWeakPtr() { return UnsharedWeak<T>(object_, control_block_); }
+  auto CreateWeakPtr() const {
+    return UnsharedWeak<T>(object_, control_block_);
+  }
 
  private:
   T* object_;

@@ -196,6 +196,26 @@ static VmaAllocationCreateInfo DeviceLocalAllocationInfo() {
   return device_allocation_info;
 }
 
+std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBuffer(
+    vk::BufferUsageFlags usage,
+    size_t buffer_size) {
+  vk::BufferCreateInfo device_buffer_info;
+  device_buffer_info.setUsage(usage | vk::BufferUsageFlagBits::eTransferDst);
+  device_buffer_info.setSize(buffer_size);
+  device_buffer_info.setSharingMode(vk::SharingMode::eExclusive);
+
+  auto device_allocation_info = DeviceLocalAllocationInfo();
+
+  auto device_buffer = CreateBuffer(device_buffer_info, device_allocation_info);
+
+  if (!device_buffer) {
+    P_ERROR << "Could not create device buffer.";
+    return nullptr;
+  }
+
+  return device_buffer;
+}
+
 std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
     vk::BufferUsageFlags usage,
     const void* buffer,
@@ -219,14 +239,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   }
 
   // Copy the staging buffer to the device.
-  vk::BufferCreateInfo device_buffer_info;
-  device_buffer_info.setUsage(usage | vk::BufferUsageFlagBits::eTransferDst);
-  device_buffer_info.setSize(buffer_size);
-  device_buffer_info.setSharingMode(vk::SharingMode::eExclusive);
-
-  auto device_allocation_info = DeviceLocalAllocationInfo();
-
-  auto device_buffer = CreateBuffer(device_buffer_info, device_allocation_info);
+  auto device_buffer = CreateDeviceLocalBuffer(usage, buffer_size);
 
   if (!device_buffer) {
     P_ERROR << "Could not create device buffer.";

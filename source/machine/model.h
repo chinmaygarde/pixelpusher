@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <optional>
@@ -88,6 +89,8 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
   const std::vector<double>& GetMaxValues() const;
 
  private:
+  friend class Model;
+
   std::string name_;
   std::shared_ptr<BufferView> buffer_view_;
   size_t byte_offset_ = 0;
@@ -113,6 +116,8 @@ class Animation final : public GLTFArchivable<tinygltf::Animation> {
                          const tinygltf::Animation& animation) override;
 
  private:
+  friend class Model;
+
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Animation);
 };
@@ -128,7 +133,13 @@ class Buffer final : public GLTFArchivable<tinygltf::Buffer> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Buffer& buffer) override;
 
+  bool HasMapping() const { return data_ != nullptr; }
+
+  const std::unique_ptr<Mapping>& GetMapping() const { return data_; }
+
  private:
+  friend class Model;
+
   std::string name_;
   std::unique_ptr<Mapping> data_;
   std::string uri_;
@@ -147,7 +158,11 @@ class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
   void ResolveReferences(const Model& model,
                          const tinygltf::BufferView& view) override;
 
+  std::shared_ptr<Buffer> GetBuffer() const { return buffer_; }
+
  private:
+  friend class Model;
+
   std::string name_;
   std::shared_ptr<Buffer> buffer_;
   size_t byte_offset_ = 0;
@@ -170,6 +185,8 @@ class Material final : public GLTFArchivable<tinygltf::Material> {
                          const tinygltf::Material& material) override;
 
  private:
+  friend class Model;
+
   // TOOD
 
   P_DISALLOW_COPY_AND_ASSIGN(Material);
@@ -196,7 +213,23 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
   const vk::PrimitiveTopology& GetMode() const;
 
+  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
+    for (const auto& attr : attributes_) {
+      auto buffer = attr.second->GetBufferView()->GetBuffer();
+      if (buffer->HasMapping()) {
+        vertex_buffers.push_back(std::move(buffer));
+      }
+    }
+
+    auto index_buffer = indices_->GetBufferView()->GetBuffer();
+    if (index_buffer->HasMapping()) {
+      index_buffers.push_back(std::move(index_buffer));
+    }
+  }
+
  private:
+  friend class Model;
+
   std::map<std::string, std::shared_ptr<Accessor>> attributes_;
   std::shared_ptr<Material> material_;
   std::shared_ptr<Accessor> indices_;
@@ -223,7 +256,15 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
 
   const std::vector<double>& GetWeights() const;
 
+  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
+    for (const auto& primitive : primitives_) {
+      primitive->CollectBuffers(vertex_buffers, index_buffers);
+    }
+  }
+
  private:
+  friend class Model;
+
   std::string name_;
   std::vector<std::shared_ptr<Primitive>> primitives_;
   std::vector<double> weights_;
@@ -262,7 +303,18 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
   const std::vector<double>& GetWeights() const;
 
+  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
+    if (mesh_) {
+      mesh_->CollectBuffers(vertex_buffers, index_buffers);
+    }
+    for (const auto& child : children_) {
+      child->CollectBuffers(vertex_buffers, index_buffers);
+    }
+  }
+
  private:
+  friend class Model;
+
   std::string name_;
   std::shared_ptr<Camera> camera_;
   std::shared_ptr<Skin> skin_;
@@ -289,6 +341,8 @@ class Texture final : public GLTFArchivable<tinygltf::Texture> {
                          const tinygltf::Texture& texture) override;
 
  private:
+  friend class Model;
+
   std::string name_;
   std::shared_ptr<Sampler> sampler_;
   std::shared_ptr<Image> source_;
@@ -308,6 +362,8 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
                          const tinygltf::Image& image) override;
 
  private:
+  friend class Model;
+
   std::string name_;
   size_t width_ = 0;
   size_t height_ = 0;
@@ -336,6 +392,8 @@ class Skin final : public GLTFArchivable<tinygltf::Skin> {
                          const tinygltf::Skin& skin) override;
 
  private:
+  friend class Model;
+
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Skin);
 };
@@ -352,6 +410,8 @@ class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
                          const tinygltf::Sampler& sampler) override;
 
  private:
+  friend class Model;
+
   std::string name_;
   vk::Filter min_filter_;
   vk::Filter mag_filter_;
@@ -375,6 +435,8 @@ class Camera final : public GLTFArchivable<tinygltf::Camera> {
                          const tinygltf::Camera& camera) override;
 
  private:
+  friend class Model;
+
   std::string name_;
   struct PerspectiveCamera {
     double aspect_ratio = 0.0;
@@ -409,7 +471,15 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Scene& scene) override;
 
+  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
+    for (const auto& node : nodes_) {
+      node->CollectBuffers(vertex_buffers, index_buffers);
+    }
+  }
+
  private:
+  friend class Model;
+
   std::string name_;
   std::vector<std::shared_ptr<Node>> nodes_;
 
@@ -428,6 +498,8 @@ class Light final : public GLTFArchivable<tinygltf::Light> {
                          const tinygltf::Light& light) override;
 
  private:
+  friend class Model;
+
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Light);
 };
@@ -466,6 +538,125 @@ class Model final {
 
   const Lights& GetLights() const;
 
+  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
+    for (const auto& scene : scenes_) {
+      scene->CollectBuffers(vertex_buffers, index_buffers);
+    }
+  }
+
+  struct RenderableState {
+    std::unique_ptr<pixel::Buffer> vertex_buffer;
+    std::unique_ptr<pixel::Buffer> index_buffer;
+    std::map<Buffer*, size_t> vertex_buffer_offsets;
+    std::map<Buffer*, size_t> index_buffer_offsets;
+  };
+
+  bool PrepareToRender(RenderingContext& context) {
+    RenderableState state;
+    // Transfer a single vertex buffer.
+    Buffers vertex_buffers, index_buffers;
+    CollectBuffers(vertex_buffers, index_buffers);
+
+    size_t vertex_buffers_size = 0;
+    for (const auto& vertex_buffer : vertex_buffers) {
+      vertex_buffers_size += vertex_buffer->GetMapping()->GetSize();
+    }
+
+    size_t index_buffers_size = 0;
+    for (const auto& index_buffer : index_buffers) {
+      index_buffers_size += index_buffer->GetMapping()->GetSize();
+    }
+
+    auto host_vertex_buffer =
+        context.GetMemoryAllocator().CreateHostVisibleBuffer(
+            vk::BufferUsageFlagBits::eVertexBuffer |
+                vk::BufferUsageFlagBits::eTransferSrc,
+            vertex_buffers_size);
+    auto host_index_buffer =
+        context.GetMemoryAllocator().CreateHostVisibleBuffer(
+            vk::BufferUsageFlagBits::eIndexBuffer |
+                vk::BufferUsageFlagBits::eTransferSrc,
+            index_buffers_size);
+
+    if (!host_vertex_buffer || !host_index_buffer) {
+      return false;
+    }
+
+    {
+      BufferMapping mapping(*host_vertex_buffer);
+      if (!mapping) {
+        return false;
+      }
+      size_t offset = 0;
+      auto host_mapping = reinterpret_cast<uint8_t*>(mapping.GetMapping());
+      for (const auto& vertex_buffer : vertex_buffers) {
+        ::memcpy(host_mapping + offset, vertex_buffer->GetMapping()->GetData(),
+                 vertex_buffer->GetMapping()->GetSize());
+        state.vertex_buffer_offsets[vertex_buffer.get()] = offset;
+        offset += vertex_buffer->GetMapping()->GetSize();
+      }
+    }
+
+    {
+      BufferMapping mapping(*host_index_buffer);
+      if (!mapping) {
+        return false;
+      }
+      size_t offset = 0;
+      auto host_mapping = reinterpret_cast<uint8_t*>(mapping.GetMapping());
+      for (const auto& index_buffer : index_buffers) {
+        ::memcpy(host_mapping + offset, index_buffer->GetMapping()->GetData(),
+                 index_buffer->GetMapping()->GetSize());
+        state.index_buffer_offsets[index_buffer.get()] = offset;
+        offset += index_buffer->GetMapping()->GetSize();
+      }
+    }
+
+    auto device_vertex_buffer =
+        context.GetMemoryAllocator().CreateDeviceLocalBuffer(
+            vk::BufferUsageFlagBits::eVertexBuffer |
+                vk::BufferUsageFlagBits::eTransferDst,
+            vertex_buffers_size);
+    auto device_index_buffer =
+        context.GetMemoryAllocator().CreateDeviceLocalBuffer(
+            vk::BufferUsageFlagBits::eIndexBuffer |
+                vk::BufferUsageFlagBits::eTransferDst,
+            index_buffers_size);
+
+    if (!device_vertex_buffer || !device_index_buffer) {
+      return false;
+    }
+
+    auto transfer_command_buffer =
+        context.GetTransferCommandPool().CreateCommandBuffer();
+    if (!transfer_command_buffer) {
+      return false;
+    }
+
+    vk::CommandBuffer buffer = transfer_command_buffer->GetCommandBuffer();
+
+    buffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    buffer.copyBuffer(
+        host_vertex_buffer->buffer, device_vertex_buffer->buffer,
+        std::vector<vk::BufferCopy>{{{}, {}, vertex_buffers_size}});
+    buffer.copyBuffer(
+        host_index_buffer->buffer, device_index_buffer->buffer,
+        std::vector<vk::BufferCopy>{{{}, {}, index_buffers_size}});
+    buffer.end();
+
+    auto fence = UnwrapResult(context.GetDevice().createFenceUnique({}));
+    if (!fence) {
+      return false;
+    }
+    transfer_command_buffer->Submit(nullptr, nullptr, nullptr, fence.get());
+    context.GetDevice().waitForFences(std::vector<vk::Fence>{fence.get()}, true,
+                                      CommandBuffer::kMaxFenceWaitTime);
+    state.vertex_buffer = std::move(device_vertex_buffer);
+    state.index_buffer = std::move(device_index_buffer);
+    renderable_state_ = std::move(state);
+    return true;
+  }
+
  private:
   friend class Accessor;
   friend class Animation;
@@ -497,6 +688,8 @@ class Model final {
   Cameras cameras_;
   Scenes scenes_;
   Lights lights_;
+
+  RenderableState renderable_state_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Model);
 };

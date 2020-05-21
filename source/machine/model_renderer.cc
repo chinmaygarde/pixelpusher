@@ -33,38 +33,11 @@ bool ModelRenderer::IsValid() const {
 
 // |Renderer|
 bool ModelRenderer::Setup() {
-  if (!model_) {
+  if (!is_valid_) {
     return false;
   }
 
-  const auto& scenes = model_->GetScenes();
-  if (scenes.size() == 0) {
-    return false;
-  }
-
-  const auto& nodes = scenes.front()->GetNodes();
-  if (nodes.empty()) {
-    return false;
-  }
-
-  const auto& root_node = nodes.front();
-  auto mesh = root_node->GetMesh();
-  if (!mesh) {
-    return false;
-  }
-
-  const auto& primitives = mesh->GetPrimitives();
-  if (primitives.empty()) {
-    return false;
-  }
-
-  auto position_accessor = primitives.front()->GetPositionAttribute();
-  if (!position_accessor) {
-    return false;
-  }
-
-  auto buffer = position_accessor->GetBufferView();
-  if (!buffer) {
+  if (!model_->PrepareToRender(GetContext())) {
     return false;
   }
 

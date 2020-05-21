@@ -95,6 +95,9 @@ class MemoryAllocator {
   std::unique_ptr<Buffer> CreateHostVisibleBuffer(vk::BufferUsageFlags usage,
                                                   size_t buffer_size);
 
+  std::unique_ptr<Buffer> CreateDeviceLocalBuffer(vk::BufferUsageFlags usage,
+                                                  size_t buffer_size);
+
   std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
       vk::BufferUsageFlags usage,
       const void* buffer,

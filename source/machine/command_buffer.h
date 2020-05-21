@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <limits>
 
 #include "command_pool.h"
 #include "macros.h"
@@ -10,6 +11,9 @@ namespace pixel {
 
 class CommandBuffer {
  public:
+  static const uint64_t kMaxFenceWaitTime =
+      std::numeric_limits<uint64_t>::max();
+
   bool Submit(vk::ArrayProxy<vk::Semaphore> wait_semaphores = nullptr,
               vk::ArrayProxy<vk::PipelineStageFlags> wait_stages = nullptr,
               vk::ArrayProxy<vk::Semaphore> signal_semaphores = nullptr,
