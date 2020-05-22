@@ -141,10 +141,22 @@ static void ArchiveRead(glm::mat4& ret, const std::vector<double>& input) {
 
   ret = {
       //
-      input[0], input[4], input[8],  input[12],  //
-      input[1], input[5], input[9],  input[13],  //
-      input[2], input[6], input[10], input[14],  //
-      input[3], input[7], input[11], input[15],  //
+      input[0],  input[1],  input[2],  input[3],   //
+      input[4],  input[5],  input[6],  input[7],   //
+      input[8],  input[9],  input[10], input[11],  //
+      input[12], input[13], input[14], input[15],  //
+  };
+}
+
+static void ArchiveRead(glm::quat& ret, const std::vector<double>& input) {
+  if (input.size() != 4) {
+    return;
+  }
+
+  ret = {
+      //
+      static_cast<float>(input[0]), static_cast<float>(input[1]),
+      static_cast<float>(input[2]), static_cast<float>(input[3]),  //
   };
 }
 

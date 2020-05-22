@@ -4,7 +4,7 @@
 #include "macros.h"
 #include "model.h"
 #include "renderer.h"
-#include "unshared_weak.h"
+#include "shaders/model_renderer.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -20,9 +20,15 @@ class ModelRenderer : public Renderer {
 
  private:
   std::unique_ptr<model::Model> model_;
-  bool is_valid_ = false;
+  vk::UniqueDescriptorSetLayout descriptor_set_layout_;
+  vk::UniquePipelineLayout pipeline_layout_;
+  std::unique_ptr<Buffer> vertex_buffer_;
+  std::unique_ptr<Buffer> index_buffer_;
+  std::unique_ptr<UniformBuffer<shaders::model_renderer::UniformBuffer>>
+      uniform_buffer_;
+  vk::UniquePipeline pipeline_;
 
-  UnsharedWeakFactory<ModelRenderer> weak_factory_;
+  bool is_valid_ = false;
 
   // |Renderer|
   bool IsValid() const override;

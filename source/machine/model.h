@@ -109,13 +109,7 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
   const std::vector<double>& GetMaxValues() const;
 
-  bool BindAsVertexBuffer(vk::CommandBuffer buffer) const {
-    if (!buffer_view_) {
-      return false;
-    }
-
-    if
-  }
+  bool BindAsVertexBuffer(vk::CommandBuffer buffer) const;
 
  private:
   friend class Model;
@@ -281,9 +275,7 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
     // Bind Index buffer.
     {
-      if (!indices_->BindAsIndexBuffer(buffer)) {
-        return false;
-      }
+
     }
 
     // Bind Descriptor Sets.
