@@ -54,6 +54,10 @@ class RenderingContext {
   // TODO: Get rid of this.
   const vk::Extent2D& GetExtents() const;
 
+  vk::Viewport GetViewport() const;
+
+  vk::Rect2D GetScissorRect() const;
+
   const vk::PhysicalDeviceFeatures& GetFeatures() const;
 
  private:

@@ -5,6 +5,7 @@
 #include "model.h"
 #include "renderer.h"
 #include "unshared_weak.h"
+#include "vulkan.h"
 
 namespace pixel {
 

@@ -46,12 +46,15 @@ bool ModelRenderer::Setup() {
 
 // |Renderer|
 bool ModelRenderer::Render(vk::CommandBuffer render_command_buffer) {
-  return true;
-}
+  if (!is_valid_) {
+    return false;
+  }
 
-// |Renderer|
-bool ModelRenderer::Teardown() {
-  return true;
-}
+  if (!model_->Render(GetContext(), render_command_buffer)) {
+    return true;
+  }
+
+  // |Renderer|
+  bool ModelRenderer::Teardown() { return true; }
 
 }  // namespace pixel

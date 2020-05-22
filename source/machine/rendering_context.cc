@@ -125,4 +125,17 @@ const vk::Extent2D& RenderingContext::GetExtents() const {
   return extents_;
 }
 
+vk::Viewport RenderingContext::GetViewport() const {
+  return {0,
+          0,
+          static_cast<float>(extents_.width),
+          static_cast<float>(extents_.height),
+          0.0,
+          1.0};
+}
+
+vk::Rect2D RenderingContext::GetScissorRect() const {
+  return {extents_.width, extents_.height};
+}
+
 }  // namespace pixel

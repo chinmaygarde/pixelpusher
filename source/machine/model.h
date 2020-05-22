@@ -63,6 +63,23 @@ class GLTFArchivable {
                                  const GLTFType& archive_member) = 0;
 };
 
+struct ModelRendererState {
+  std::unique_ptr<pixel::Buffer> vertex_buffer;
+  std::unique_ptr<pixel::Buffer> index_buffer;
+  std::map<const model::Buffer*, size_t> vertex_buffer_offsets;
+  std::map<const model::Buffer*, size_t> index_buffer_offsets;
+  vk::UniquePipelineLayout pipeline_layout;
+  vk::UniquePipeline pipeline;
+};
+
+struct ModelRendererStack {
+  glm::mat4 transformation;
+};
+
+struct ModelRendererUniformBufferObject {
+  glm::mat4 mvp;
+};
+
 class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
  public:
   Accessor();
@@ -78,6 +95,8 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
   const std::shared_ptr<BufferView>& GetBufferView() const;
 
+  const model::Buffer* GetBuffer() const;
+
   const size_t& GetByteOffset() const;
 
   const bool& GetNormalized() const;
@@ -89,6 +108,14 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
   const std::vector<double>& GetMinValues() const;
 
   const std::vector<double>& GetMaxValues() const;
+
+  bool BindAsVertexBuffer(vk::CommandBuffer buffer) const {
+    if (!buffer_view_) {
+      return false;
+    }
+
+    if
+  }
 
  private:
   friend class Model;
@@ -229,6 +256,51 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
     }
   }
 
+  bool Render(RenderingContext& context,
+              const ModelRendererState& state,
+              const ModelRendererStack& stack,
+              vk::CommandBuffer buffer) const {
+    auto position = GetPositionAttribute();
+    if (!position || !indices_) {
+      return false;
+    }
+
+    // Bind Pipeline.
+    {
+      // TODO: There needs to be a pipeline per topology.
+      buffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                          state.pipeline.get());
+    }
+
+    // Bind Vertex buffer.
+    {
+      if (!position->BindAsVertexBuffer(buffer)) {
+        return false;
+      }
+    }
+
+    // Bind Index buffer.
+    {
+      if (!indices_->BindAsIndexBuffer(buffer)) {
+        return false;
+      }
+    }
+
+    // Bind Descriptor Sets.
+    {
+
+    }
+
+    // Update uniform buffer data.
+    {
+
+    }
+
+    // Draw.
+    {}
+    return true;
+  }
+
  private:
   friend class Model;
 
@@ -262,6 +334,19 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
     for (const auto& primitive : primitives_) {
       primitive->CollectBuffers(vertex_buffers, index_buffers);
     }
+  }
+
+  bool Render(RenderingContext& context,
+              const ModelRendererState& state,
+              const ModelRendererStack& stack,
+              vk::CommandBuffer buffer) const {
+    for (const auto& primitive : primitives_) {
+      if (!primitive->Render(context, state, stack, buffer)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
  private:
@@ -314,6 +399,32 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
     }
   }
 
+  bool Render(RenderingContext& context,
+              const ModelRendererState& state,
+              ModelRendererStack stack,
+              vk::CommandBuffer buffer) const {
+    const auto scale = glm::scale(glm::mat4(), scale_);
+    const auto rotate = glm::mat4(rotation_);
+    const auto translate = glm::translate(glm::mat4(), translation_);
+
+    stack.transformation =
+        stack.transformation * translate * rotate * scale * matrix_;
+
+    if (mesh_) {
+      if (!mesh_->Render(context, state, stack, buffer)) {
+        return false;
+      }
+    }
+
+    for (const auto& node : children_) {
+      if (!node->Render(context, state, stack, buffer)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
  private:
   friend class Model;
 
@@ -322,10 +433,10 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
   std::shared_ptr<Skin> skin_;
   std::shared_ptr<Mesh> mesh_;
   std::vector<std::shared_ptr<Node>> children_;
-  glm::vec4 rotation_ = glm::vec4(0.0);
+  glm::quat rotation_;
   glm::vec3 scale_ = glm::vec4(1.0);
   glm::vec3 translation_ = glm::vec3(0.0);
-  glm::mat4 matrix_ = glm::mat4();
+  glm::mat4 matrix_ = glm::identity<glm::mat4>();
   std::vector<double> weights_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Node);
@@ -479,6 +590,18 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
     }
   }
 
+  bool Render(RenderingContext& context,
+              const ModelRendererState& state,
+              vk::CommandBuffer buffer) const {
+    for (const auto& node : nodes_) {
+      ModelRendererStack stack;
+      if (!node->Render(context, state, stack, buffer)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
  private:
   friend class Model;
 
@@ -546,21 +669,12 @@ class Model final {
     }
   }
 
-  struct RenderableState {
-    std::unique_ptr<pixel::Buffer> vertex_buffer;
-    std::unique_ptr<pixel::Buffer> index_buffer;
-    std::map<Buffer*, size_t> vertex_buffer_offsets;
-    std::map<Buffer*, size_t> index_buffer_offsets;
-    vk::UniquePipelineLayout pipeline_layout;
-    vk::UniquePipeline pipeline;
-  };
-
   struct ModelVertex {
     glm::vec3 position;
   };
 
   bool PrepareToRender(RenderingContext& context) {
-    RenderableState state;
+    ModelRendererState state;
     // Transfer a single vertex buffer.
     Buffers vertex_buffers, index_buffers;
     CollectBuffers(vertex_buffers, index_buffers);
@@ -739,6 +853,18 @@ class Model final {
     return true;
   }
 
+  bool Render(RenderingContext& context, vk::CommandBuffer buffer) {
+    buffer.setScissor(0u, {context.GetScissorRect()});
+    buffer.setViewport(0u, {context.GetViewport()});
+
+    for (const auto& scene : scenes_) {
+      if (!scene->Render(context, renderable_state_, buffer)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
  private:
   friend class Accessor;
   friend class Animation;
@@ -771,7 +897,7 @@ class Model final {
   Scenes scenes_;
   Lights lights_;
 
-  RenderableState renderable_state_;
+  ModelRendererState renderable_state_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Model);
 };
