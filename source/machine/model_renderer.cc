@@ -39,6 +39,13 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
+  ShaderLibrary library(GetContext().GetDevice());
+
+  if (!library.AddDefaultVertexShader("model_renderer.vert") ||
+      !library.AddDefaultFragmentShader("model_renderer.frag")) {
+    return false;
+  }
+
   descriptor_set_layout_ =
       shaders::model_renderer::UniformBuffer::CreateDescriptorSetLayout(
           GetContext().GetDevice());
@@ -67,6 +74,20 @@ bool ModelRenderer::Setup() {
   pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
   pipeline_builder.SetVertexInputDescription(vertex_input_bindings,
                                              vertex_input_attributes);
+
+  pipeline_ = pipeline_builder.CreatePipeline(
+      GetContext().GetDevice(),                    //
+      GetContext().GetPipelineCache(),             //
+      pipeline_layout_.get(),                      //
+      GetContext().GetOnScreenRenderPass(),        //
+      library.GetPipelineShaderStageCreateInfos()  //
+  );
+
+  uniform_buffer_ = {
+      GetContext().GetMemoryAllocator(),     // allocator
+      {},                                    // prototype
+      GetContext().GetSwapchainImageCount()  // image count
+  };
 
   if (!model_->PrepareToRender(GetContext())) {
     return false;

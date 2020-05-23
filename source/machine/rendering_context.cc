@@ -135,7 +135,7 @@ vk::Viewport RenderingContext::GetViewport() const {
 }
 
 vk::Rect2D RenderingContext::GetScissorRect() const {
-  return {extents_.width, extents_.height};
+  return {{0, 0}, {extents_.width, extents_.height}};
 }
 
 }  // namespace pixel

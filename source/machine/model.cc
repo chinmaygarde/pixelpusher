@@ -119,13 +119,6 @@ const Lights& Model::GetLights() const {
   return lights_;
 }
 
-static void ArchiveRead(glm::vec4& ret, const std::vector<double>& input) {
-  if (input.size() != 4) {
-    return;
-  }
-  ret = {input[0], input[1], input[2], input[3]};
-}
-
 static void ArchiveRead(glm::vec3& ret, const std::vector<double>& input) {
   if (input.size() != 3) {
     return;
@@ -442,7 +435,7 @@ const std::vector<std::shared_ptr<Node>>& Node::GetChildren() const {
   return children_;
 }
 
-const glm::vec4& Node::GetRotation() const {
+const glm::quat& Node::GetRotation() const {
   return rotation_;
 }
 

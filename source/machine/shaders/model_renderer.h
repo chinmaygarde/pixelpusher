@@ -36,6 +36,8 @@ struct Vertex {
 struct UniformBuffer {
   glm::mat4 mvp;
 
+  UniformBuffer() = default;
+
   static vk::UniqueDescriptorSetLayout CreateDescriptorSetLayout(
       vk::Device device) {
     std::vector<vk::DescriptorSetLayoutBinding> layout_bindings = {
@@ -55,7 +57,7 @@ struct UniformBuffer {
     return UnwrapResult(
         device.createDescriptorSetLayoutUnique(layout_create_info));
   }
-}
+};
 
 }  // namespace model_renderer
 }  // namespace shaders

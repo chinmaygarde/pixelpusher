@@ -372,7 +372,7 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
   const std::vector<std::shared_ptr<Node>>& GetChildren() const;
 
-  const glm::vec4& GetRotation() const;
+  const glm::quat& GetRotation() const;
 
   const glm::vec3& GetScale() const;
 

@@ -45,6 +45,8 @@ add_library(machine_lib
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
+  shader_library.h
+  shader_library.cc
 )
 
 target_include_directories(machine_lib

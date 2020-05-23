@@ -4,6 +4,7 @@
 #include "macros.h"
 #include "model.h"
 #include "renderer.h"
+#include "shader_library.h"
 #include "shaders/model_renderer.h"
 #include "vulkan.h"
 
@@ -24,8 +25,7 @@ class ModelRenderer : public Renderer {
   vk::UniquePipelineLayout pipeline_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;
   std::unique_ptr<Buffer> index_buffer_;
-  std::unique_ptr<UniformBuffer<shaders::model_renderer::UniformBuffer>>
-      uniform_buffer_;
+  UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
   vk::UniquePipeline pipeline_;
 
   bool is_valid_ = false;
