@@ -14,6 +14,7 @@
 #include "pipeline_builder.h"
 #include "rendering_context.h"
 #include "shader_loader.h"
+#include "shaders/model_renderer.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -35,6 +36,8 @@ class Sampler;
 class Camera;
 class Scene;
 class Light;
+
+using DrawData = shaders::model_renderer::DrawData;
 
 template <class T>
 using Collection = std::vector<std::shared_ptr<T>>;
@@ -67,6 +70,18 @@ struct TransformationStack {
   glm::mat4 transformation = glm::identity<glm::mat4>();
 };
 
+enum class DataType {
+  kDataTypeUnknown,
+  kDataTypeByte,
+  kDataTypeUnsignedByte,
+  kDataTypeShort,
+  kDataTypeUnsignedShort,
+  kDataTypeInt,
+  kDataTypeUnsignedInt,
+  kDataTypeFloat,
+  kDataTypeDouble,
+};
+
 class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
  public:
   Accessor();
@@ -78,32 +93,14 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Accessor& accessor) override;
 
-  const std::string& GetName() const;
-
-  const std::shared_ptr<BufferView>& GetBufferView() const;
-
-  const model::Buffer* GetBuffer() const;
-
-  const size_t& GetByteOffset() const;
-
-  const bool& GetNormalized() const;
-
-  const size_t& GetStride() const;
-
-  const size_t& GetCount() const;
-
-  const std::vector<double>& GetMinValues() const;
-
-  const std::vector<double>& GetMaxValues() const;
+  std::optional<std::vector<uint32_t>> ReadIndexList() const;
 
  private:
-  friend class Model;
-
   std::string name_;
   std::shared_ptr<BufferView> buffer_view_;
   size_t byte_offset_ = 0;
   bool normalized_ = false;
-  size_t stride_ = 0;
+  DataType data_type_ = DataType::kDataTypeUnknown;
   size_t count_ = 0;
   std::vector<double> min_values_;
   std::vector<double> max_values_;
@@ -124,8 +121,6 @@ class Animation final : public GLTFArchivable<tinygltf::Animation> {
                          const tinygltf::Animation& animation) override;
 
  private:
-  friend class Model;
-
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Animation);
 };
@@ -141,13 +136,10 @@ class Buffer final : public GLTFArchivable<tinygltf::Buffer> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Buffer& buffer) override;
 
-  bool HasMapping() const { return data_ != nullptr; }
-
-  const std::unique_ptr<Mapping>& GetMapping() const { return data_; }
+  std::optional<const uint8_t*> GetByteMapping(size_t byte_offset,
+                                               size_t byte_length) const;
 
  private:
-  friend class Model;
-
   std::string name_;
   std::unique_ptr<Mapping> data_;
   std::string uri_;
@@ -166,11 +158,10 @@ class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
   void ResolveReferences(const Model& model,
                          const tinygltf::BufferView& view) override;
 
-  std::shared_ptr<Buffer> GetBuffer() const { return buffer_; }
+  std::optional<const uint8_t*> GetByteMapping(size_t offset,
+                                               size_t length) const;
 
  private:
-  friend class Model;
-
   std::string name_;
   std::shared_ptr<Buffer> buffer_;
   size_t byte_offset_ = 0;
@@ -193,8 +184,6 @@ class Material final : public GLTFArchivable<tinygltf::Material> {
                          const tinygltf::Material& material) override;
 
  private:
-  friend class Model;
-
   // TOOD
 
   P_DISALLOW_COPY_AND_ASSIGN(Material);
@@ -213,21 +202,18 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
   std::shared_ptr<Accessor> GetPositionAttribute() const;
 
-  const std::map<std::string, std::shared_ptr<Accessor>>& GetAttributes() const;
-
-  const std::shared_ptr<Material>& GetMaterial() const;
-
-  const std::shared_ptr<Accessor>& GetIndices() const;
-
-  const vk::PrimitiveTopology& GetMode() const;
-
   bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
-
+    if (indices_) {
+      auto index_data = indices_->ReadIndexList();
+      if (!index_data.has_value()) {
+        P_ERROR << "Could not read index data.";
+        return false;
+      }
+    }
+    return true;
   }
 
  private:
-  friend class Model;
-
   std::map<std::string, std::shared_ptr<Accessor>> attributes_;
   std::shared_ptr<Material> material_;
   std::shared_ptr<Accessor> indices_;
@@ -264,8 +250,6 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
   }
 
  private:
-  friend class Model;
-
   std::string name_;
   std::vector<std::shared_ptr<Primitive>> primitives_;
   std::vector<double> weights_;
@@ -306,7 +290,7 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
   bool CollectDrawData(DrawData& data, TransformationStack stack) const {
     auto scale = glm::scale(glm::identity<glm::mat4>(), scale_);
-    auto rotate = glm::rotate(glm::identity<glm::mat4>(), rotation_);
+    auto rotate = glm::mat4(rotation_);
     auto translate = glm::translate(glm::identity<glm::mat4>(), translation_);
 
     stack.transformation *= translate * rotate * scale * matrix_;
@@ -327,8 +311,6 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
   }
 
  private:
-  friend class Model;
-
   std::string name_;
   std::shared_ptr<Camera> camera_;
   std::shared_ptr<Skin> skin_;
@@ -355,8 +337,6 @@ class Texture final : public GLTFArchivable<tinygltf::Texture> {
                          const tinygltf::Texture& texture) override;
 
  private:
-  friend class Model;
-
   std::string name_;
   std::shared_ptr<Sampler> sampler_;
   std::shared_ptr<Image> source_;
@@ -376,8 +356,6 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
                          const tinygltf::Image& image) override;
 
  private:
-  friend class Model;
-
   std::string name_;
   size_t width_ = 0;
   size_t height_ = 0;
@@ -406,8 +384,6 @@ class Skin final : public GLTFArchivable<tinygltf::Skin> {
                          const tinygltf::Skin& skin) override;
 
  private:
-  friend class Model;
-
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Skin);
 };
@@ -424,8 +400,6 @@ class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
                          const tinygltf::Sampler& sampler) override;
 
  private:
-  friend class Model;
-
   std::string name_;
   vk::Filter min_filter_;
   vk::Filter mag_filter_;
@@ -449,8 +423,6 @@ class Camera final : public GLTFArchivable<tinygltf::Camera> {
                          const tinygltf::Camera& camera) override;
 
  private:
-  friend class Model;
-
   std::string name_;
   struct PerspectiveCamera {
     double aspect_ratio = 0.0;
@@ -487,7 +459,7 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
 
   bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
     for (const auto& node : nodes_) {
-      if (!node_->CollectDrawData(data, stack)) {
+      if (!node->CollectDrawData(data, stack)) {
         return false;
       }
     }
@@ -495,8 +467,6 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   }
 
  private:
-  friend class Model;
-
   std::string name_;
   std::vector<std::shared_ptr<Node>> nodes_;
 
@@ -515,8 +485,6 @@ class Light final : public GLTFArchivable<tinygltf::Light> {
                          const tinygltf::Light& light) override;
 
  private:
-  friend class Model;
-
   // TODO
   P_DISALLOW_COPY_AND_ASSIGN(Light);
 };
@@ -560,7 +528,7 @@ class Model final {
     TransformationStack stack;
     for (const auto& scene : scenes_) {
       if (!scene->CollectDrawData(data, stack)) {
-        return false;
+        return {};
       }
     }
     return data;

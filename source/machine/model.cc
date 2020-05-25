@@ -169,6 +169,52 @@ auto BoundsCheckGet(const T& collection, int index) {
   return collection[index];
 }
 
+static DataType DataTypeFromComponentType(uint32_t component_type) {
+  switch (component_type) {
+    case TINYGLTF_COMPONENT_TYPE_BYTE:
+      return DataType::kDataTypeByte;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+      return DataType::kDataTypeUnsignedByte;
+    case TINYGLTF_COMPONENT_TYPE_SHORT:
+      return DataType::kDataTypeShort;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+      return DataType::kDataTypeUnsignedShort;
+    case TINYGLTF_COMPONENT_TYPE_INT:
+      return DataType::kDataTypeInt;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+      return DataType::kDataTypeUnsignedInt;
+    case TINYGLTF_COMPONENT_TYPE_FLOAT:
+      return DataType::kDataTypeFloat;
+    case TINYGLTF_COMPONENT_TYPE_DOUBLE:
+      return DataType::kDataTypeDouble;
+  }
+  return DataType::kDataTypeUnknown;
+}
+
+static size_t SizeOfDataType(DataType type) {
+  switch (type) {
+    case DataType::kDataTypeUnknown:
+      return 0;
+    case DataType::kDataTypeByte:
+      return 1;
+    case DataType::kDataTypeUnsignedByte:
+      return 1;
+    case DataType::kDataTypeShort:
+      return 2;
+    case DataType::kDataTypeUnsignedShort:
+      return 2;
+    case DataType::kDataTypeInt:
+      return 4;
+    case DataType::kDataTypeUnsignedInt:
+      return 4;
+    case DataType::kDataTypeFloat:
+      return 4;
+    case DataType::kDataTypeDouble:
+      return 8;
+  }
+  return 0;
+}
+
 // *****************************************************************************
 // *** Accessor
 // *****************************************************************************
@@ -181,8 +227,7 @@ void Accessor::ReadFromArchive(const tinygltf::Accessor& accessor) {
   name_ = accessor.name;
   byte_offset_ = accessor.byteOffset;
   normalized_ = accessor.normalized;
-  stride_ = std::max<int>(
-      0u, tinygltf::GetComponentSizeInBytes(accessor.componentType));
+  data_type_ = DataTypeFromComponentType(accessor.componentType);
   count_ = accessor.count;
   min_values_ = accessor.minValues;
   max_values_ = accessor.maxValues;
@@ -193,36 +238,71 @@ void Accessor::ResolveReferences(const Model& model,
   buffer_view_ = BoundsCheckGet(model.bufferViews_, accessor.bufferView);
 }
 
-const std::string& Accessor::GetName() const {
-  return name_;
+template <class T>
+std::vector<T> CopyToVector(const void* ptr, size_t size) {
+  auto typed_ptr = static_cast<const T*>(ptr);
+  return {typed_ptr, typed_ptr + size};
 }
 
-const std::shared_ptr<BufferView>& Accessor::GetBufferView() const {
-  return buffer_view_;
+template <class FinalType, class NativeType>
+std::vector<FinalType> CopyAndConvertVector(const void* ptr, size_t size) {
+  auto native_copy = CopyToVector<NativeType>(ptr, size);
+  return {native_copy.begin(), native_copy.end()};
 }
 
-const size_t& Accessor::GetByteOffset() const {
-  return byte_offset_;
-}
+std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
+  if (!buffer_view_) {
+    P_ERROR << "Buffer view was nullptr.";
+    return std::nullopt;
+  }
 
-const bool& Accessor::GetNormalized() const {
-  return normalized_;
-}
+  const auto stride = SizeOfDataType(data_type_);
+  if (stride == 0) {
+    P_ERROR << "Unknown data stride.";
+    return std::nullopt;
+  }
 
-const size_t& Accessor::GetStride() const {
-  return stride_;
-}
+  auto buffer = buffer_view_->GetByteMapping(byte_offset_, stride * count_);
 
-const size_t& Accessor::GetCount() const {
-  return count_;
-}
+  if (!buffer.has_value()) {
+    P_ERROR << "Accessor mapping was unavailable or out of bounds.";
+    return std::nullopt;
+  }
 
-const std::vector<double>& Accessor::GetMinValues() const {
-  return min_values_;
-}
+  const auto buffer_ptr = buffer.value();
+  const auto buffer_size = stride * count_;
 
-const std::vector<double>& Accessor::GetMaxValues() const {
-  return max_values_;
+  switch (data_type_) {
+    case DataType::kDataTypeUnknown: {
+      P_ERROR << "Unknown buffer view data type.";
+      return std::nullopt;
+    }
+    case DataType::kDataTypeByte: {
+      return CopyAndConvertVector<uint32_t, int8_t>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeUnsignedByte: {
+      return CopyAndConvertVector<uint32_t, uint8_t>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeShort: {
+      return CopyAndConvertVector<uint32_t, int16_t>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeUnsignedShort: {
+      return CopyAndConvertVector<uint32_t, uint16_t>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeInt: {
+      return CopyAndConvertVector<uint32_t, int32_t>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeUnsignedInt: {
+      return CopyAndConvertVector<uint32_t, uint32_t>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeFloat: {
+      return CopyAndConvertVector<uint32_t, float>(buffer_ptr, count_);
+    }
+    case DataType::kDataTypeDouble: {
+      return CopyAndConvertVector<uint32_t, double>(buffer_ptr, count_);
+    }
+  }
+  return std::nullopt;
 }
 
 // *****************************************************************************
@@ -255,6 +335,23 @@ void Buffer::ReadFromArchive(const tinygltf::Buffer& buffer) {
 void Buffer::ResolveReferences(const Model& model,
                                const tinygltf::Buffer& buffer) {}
 
+std::optional<const uint8_t*> Buffer::GetByteMapping(size_t byte_offset,
+                                                     size_t byte_length) const {
+  if (!data_ || data_->GetData() == nullptr) {
+    P_ERROR << "Buffer data could not be resolved.";
+    return std::nullopt;
+  }
+
+  if (byte_offset + byte_length > data_->GetSize()) {
+    P_ERROR << "Buffer specified ranges with overruns.";
+    return std::nullopt;
+  }
+
+  auto data_ptr = reinterpret_cast<const uint8_t*>(data_->GetData());
+
+  return data_ptr + byte_offset;
+}
+
 // *****************************************************************************
 // *** BufferView
 // *****************************************************************************
@@ -273,6 +370,36 @@ void BufferView::ReadFromArchive(const tinygltf::BufferView& view) {
 void BufferView::ResolveReferences(const Model& model,
                                    const tinygltf::BufferView& view) {
   buffer_ = BoundsCheckGet(model.buffers_, view.buffer);
+}
+
+std::optional<const uint8_t*> BufferView::GetByteMapping(
+    size_t accessor_offset,
+    size_t accessor_length) const {
+  if (byte_stride_ != 0) {
+    // TODO: This must be fixed in the Accessor.
+    P_ERROR << "This renderer cannot work with non zero byte strides. The data "
+               "must be tightly packed.";
+    return std::nullopt;
+  }
+
+  if (!buffer_) {
+    P_ERROR << "Buffer was not present.";
+    return std::nullopt;
+  }
+
+  auto buffer_ptr = buffer_->GetByteMapping(byte_offset_, byte_length_);
+
+  if (!buffer_ptr.has_value()) {
+    P_ERROR << "Could not map the buffer from the buffer view.";
+    return std::nullopt;
+  }
+
+  if (accessor_offset + accessor_length > byte_length_) {
+    P_ERROR << "Buffer view specified ranges with overruns.";
+    return std::nullopt;
+  }
+
+  return buffer_ptr.value() + accessor_offset;
 }
 
 // *****************************************************************************
@@ -338,23 +465,6 @@ std::shared_ptr<Accessor> Primitive::GetPositionAttribute() const {
     return nullptr;
   }
   return found->second;
-}
-
-const std::map<std::string, std::shared_ptr<Accessor>>&
-Primitive::GetAttributes() const {
-  return attributes_;
-}
-
-const std::shared_ptr<Material>& Primitive::GetMaterial() const {
-  return material_;
-}
-
-const std::shared_ptr<Accessor>& Primitive::GetIndices() const {
-  return indices_;
-}
-
-const vk::PrimitiveTopology& Primitive::GetMode() const {
-  return mode_;
 }
 
 // *****************************************************************************

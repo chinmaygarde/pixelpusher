@@ -147,6 +147,8 @@ bool ModelRenderer::Setup() {
 
   index_count_ = indices.size();
 
+  auto draw_data = model_->GetDrawData();
+
   return true;
 }
 

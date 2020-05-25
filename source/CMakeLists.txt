@@ -5,6 +5,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 		/WX
 		/wd4267
 		/wd4305
+		/wd4244
 	)
 
 	add_definitions(
