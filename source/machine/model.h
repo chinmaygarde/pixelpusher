@@ -210,6 +210,10 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
         return false;
       }
     }
+
+    auto position = GetPositionAttribute();
+    if (position) {
+    }
     return true;
   }
 

@@ -1,5 +1,7 @@
 #include "model.h"
 
+#include <type_traits>
+
 namespace pixel {
 namespace model {
 
@@ -247,7 +249,11 @@ std::vector<T> CopyToVector(const void* ptr, size_t size) {
 template <class FinalType, class NativeType>
 std::vector<FinalType> CopyAndConvertVector(const void* ptr, size_t size) {
   auto native_copy = CopyToVector<NativeType>(ptr, size);
-  return {native_copy.begin(), native_copy.end()};
+  if constexpr (std::is_same<FinalType, NativeType>::value) {
+    return native_copy;
+  } else {
+    return {native_copy.begin(), native_copy.end()};
+  }
 }
 
 std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
@@ -270,7 +276,6 @@ std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
   }
 
   const auto buffer_ptr = buffer.value();
-  const auto buffer_size = stride * count_;
 
   switch (data_type_) {
     case DataType::kDataTypeUnknown: {
