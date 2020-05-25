@@ -15,8 +15,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 namespace pixel {
 
 static const std::vector<const char*> kRequiredDeviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 struct SwapchainDetails {
   VkSurfaceCapabilitiesKHR capabilities = {};
@@ -183,6 +182,13 @@ static bool DeviceHasRequiredExtensions(const vk::PhysicalDevice& device) {
   for (const auto& extension : device_extensions.value) {
     required_extensions.erase(
         static_cast<const char*>(extension.extensionName));
+  }
+
+  if (!required_extensions.empty()) {
+    P_ERROR << "The following required device extensions were absent:";
+    for (const auto& extension : required_extensions) {
+      P_ERROR << extension;
+    }
   }
 
   return required_extensions.empty();
