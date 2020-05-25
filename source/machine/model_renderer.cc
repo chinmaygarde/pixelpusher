@@ -2,6 +2,8 @@
 
 #include <future>
 
+#include <imgui.h>
+
 #include "pipeline_layout.h"
 
 namespace pixel {
@@ -156,14 +158,17 @@ bool ModelRenderer::Render(vk::CommandBuffer buffer) {
 
   const auto extents = GetContext().GetExtents();
 
-  // auto view =
-  //     glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-  //                 glm::vec3(0.0f, 0.0f, 1.0f));
-  auto projection =
-      glm::ortho(0.0f, static_cast<float>(extents.width),
-                 static_cast<float>(extents.height), 0.0f, 0.0f, 1.0f);
+  auto model = glm::identity<glm::mat4>();
+  auto view = glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f),  // eye
+                          glm::vec3(0.0f),              // center
+                          glm::vec3(0.0f, 0.0f, 1.0f)   // up
+  );
+  auto projection = glm::perspective(
+      glm::radians(90.0f),
+      static_cast<float>(extents.width) / static_cast<float>(extents.height),
+      0.0f, 10.0f);
 
-  uniform_buffer_->mvp = projection;
+  uniform_buffer_->mvp = projection * view * model;
 
   if (!uniform_buffer_.UpdateUniformData()) {
     return false;
