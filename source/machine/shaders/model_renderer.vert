@@ -8,5 +8,5 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 void main() {
-  gl_Position = vec4(inPosition, 1.0);
+  gl_Position = ubo.mvp * vec4(inPosition, 1.0);
 }

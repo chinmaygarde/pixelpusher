@@ -99,6 +99,20 @@ class MemoryAllocator {
   std::unique_ptr<Buffer> CreateDeviceLocalBuffer(vk::BufferUsageFlags usage,
                                                   size_t buffer_size);
 
+  template <class U>
+  std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
+      vk::BufferUsageFlags usage,
+      const std::vector<U>& buffer,
+      const CommandPool& pool,
+      vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+      vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+      vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+      std::function<void(void)> on_done) {
+    return CreateDeviceLocalBufferCopy(
+        usage, buffer.data(), buffer.size() * sizeof(U), pool, wait_semaphores,
+        wait_stages, signal_semaphores, on_done);
+  }
+
   std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
       vk::BufferUsageFlags usage,
       const void* buffer,

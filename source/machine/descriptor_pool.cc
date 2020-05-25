@@ -60,17 +60,17 @@ bool DescriptorSets::UpdateDescriptorSets(
     return false;
   }
 
-  std::vector<vk::WriteDescriptorSet> write_sets;
+  std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
 
   for (size_t i = 0, count = descriptor_sets_.size(); i < count; i++) {
     auto write_sets = write_set_callback(i);
     for (auto& set : write_sets) {
       set.setDstSet(descriptor_sets_[i].get());
-      write_sets.push_back(set);
+      write_descriptor_sets.push_back(set);
     }
   }
 
-  device_.updateDescriptorSets(write_sets, nullptr);
+  device_.updateDescriptorSets(write_descriptor_sets, nullptr);
   return true;
 }
 

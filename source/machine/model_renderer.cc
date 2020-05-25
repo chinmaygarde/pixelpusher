@@ -119,6 +119,32 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
+  std::vector<shaders::model_renderer::Vertex> vertices = {
+      {{-0.5, 0.5, 0.0}},
+      {{0.5, -0.5, 0.0}},
+      {{-0.5, -0.5, 0.0}},
+  };
+
+  std::vector<uint32_t> indices = {0, 1, 2};
+
+  vertex_buffer_ =
+      GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+          vk::BufferUsageFlagBits::eVertexBuffer, vertices,
+          GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
+          nullptr);
+  index_buffer_ = GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+      vk::BufferUsageFlagBits::eIndexBuffer, indices,
+      GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
+      nullptr);
+
+  GetContext().GetTransferQueue().queue.waitIdle();
+
+  if (!vertex_buffer_ || !index_buffer_) {
+    return false;
+  }
+
+  index_count_ = indices.size();
+
   return true;
 }
 
@@ -128,12 +154,25 @@ bool ModelRenderer::Render(vk::CommandBuffer buffer) {
     return true;
   }
 
+  const auto extents = GetContext().GetExtents();
+
+  // auto view =
+  //     glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+  //                 glm::vec3(0.0f, 0.0f, 1.0f));
+  auto projection =
+      glm::ortho(0.0f, static_cast<float>(extents.width),
+                 static_cast<float>(extents.height), 0.0f, 0.0f, 1.0f);
+
+  uniform_buffer_->mvp = projection;
+
   if (!uniform_buffer_.UpdateUniformData()) {
     return false;
   }
 
   const auto uniform_index = uniform_buffer_.GetCurrentIndex();
 
+  buffer.setScissor(0u, {GetContext().GetScissorRect()});
+  buffer.setViewport(0u, {GetContext().GetViewport()});
   buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_.get());
   buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
   buffer.bindIndexBuffer(index_buffer_->buffer, 0u, vk::IndexType::eUint32);
