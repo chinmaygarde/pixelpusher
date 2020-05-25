@@ -112,16 +112,12 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
-  if (!model_->PrepareToRender(GetContext())) {
-    return false;
-  }
-
   return true;
 }
 
 // |Renderer|
 bool ModelRenderer::Render(vk::CommandBuffer render_command_buffer) {
-  return false;
+  return true;
 }
 
 // |Renderer|

@@ -11,12 +11,16 @@
 
 namespace pixel {
 
+constexpr size_t kFrameSamplesCount = 1500u;
+
 ImguiRenderer::ImguiRenderer(std::shared_ptr<RenderingContext> context,
                              GLFWwindow* window)
     : Renderer(context) {
   if (!context) {
     return;
   }
+
+  frame_times_millis_.resize(kFrameSamplesCount);
 
   imgui_context_ = ImGui::CreateContext();
 
@@ -130,7 +134,7 @@ bool ImguiRenderer::Teardown() {
   return true;
 }
 
-bool ImguiRenderer::BeginFrame() const {
+bool ImguiRenderer::BeginFrame() {
   if (!IsValid()) {
     return false;
   }
@@ -142,8 +146,29 @@ bool ImguiRenderer::BeginFrame() const {
   return true;
 }
 
-bool ImguiRenderer::RenderFrame(vk::CommandBuffer buffer) const {
+bool ImguiRenderer::RenderPerformanceMetrics() const {
+  ::ImGui::Begin("Timing");
+  ::ImGui::LabelText(
+      "Last Frame Time", "%.2f ms",
+      frame_times_millis_[frames_rendered_ % kFrameSamplesCount]);
+  ::ImGui::PlotLines("Frame History (ms)", frame_times_millis_.data(),
+                     frame_times_millis_.size());
+  ::ImGui::End();
+  return true;
+}
+
+bool ImguiRenderer::RenderFrame(vk::CommandBuffer buffer) {
   if (!IsValid()) {
+    return false;
+  }
+
+  frames_rendered_++;
+  auto now = Clock::now();
+  std::chrono::duration<float, std::milli> duration = now - last_frame_begin_;
+  frame_times_millis_[frames_rendered_ % kFrameSamplesCount] = duration.count();
+  last_frame_begin_ = now;
+
+  if (!RenderPerformanceMetrics()) {
     return false;
   }
 
