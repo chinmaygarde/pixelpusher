@@ -11,6 +11,8 @@ GCC_PRAGMA("GCC diagnostic ignored \"-Wunused-function\"")
 
 GCC_PRAGMA("GCC diagnostic pop")
 
+#include <imgui.h>
+
 #include "closure.h"
 #include "command_buffer.h"
 #include "command_pool.h"
@@ -426,6 +428,24 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
   }
 
   return device_image;
+}
+
+void MemoryAllocator::TraceUsageStatistics() const {
+  auto is_open = ::ImGui::Begin("Device Memory Stats");
+
+  if (is_open) {
+    VmaStats stats = {};
+    ::vmaCalculateStats(allocator_, &stats);
+
+    ::ImGui::Text("Total Usage");
+    ::ImGui::Text("Device Memory Blocks: %u", stats.total.blockCount);
+    ::ImGui::Text("Allocations: %u", stats.total.allocationCount);
+    ::ImGui::Text("Unused Ranges: %u", stats.total.unusedRangeCount);
+    ::ImGui::Text("Used MBytes: %.2f", stats.total.usedBytes / 1e6);
+    ::ImGui::Text("Unused MBytes: %.2f", stats.total.unusedBytes / 1e6);
+  }
+
+  ::ImGui::End();
 }
 
 }  // namespace pixel

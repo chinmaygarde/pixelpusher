@@ -119,6 +119,8 @@ class MemoryAllocator {
       vk::ArrayProxy<vk::Semaphore> signal_semaphores,
       std::function<void(void)> on_done);
 
+  void TraceUsageStatistics() const;
+
  private:
   vk::Device device_;
   VmaVulkanFunctions proc_table_;

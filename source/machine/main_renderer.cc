@@ -87,6 +87,8 @@ bool MainRenderer::Render() {
     return false;
   }
 
+  GetContext().GetMemoryAllocator().TraceUsageStatistics();
+
   for (const auto& renderer : renderers_) {
     if (!renderer->Render(buffer.value())) {
       return false;
