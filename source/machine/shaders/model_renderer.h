@@ -33,6 +33,11 @@ struct Vertex {
   }
 };
 
+struct DrawData {
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+};
+
 struct UniformBuffer {
   glm::mat4 mvp;
 

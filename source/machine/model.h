@@ -63,12 +63,8 @@ class GLTFArchivable {
                                  const GLTFType& archive_member) = 0;
 };
 
-struct ModelRendererStack {
-  glm::mat4 transformation;
-};
-
-struct ModelRendererUniformBufferObject {
-  glm::mat4 mvp;
+struct TransformationStack {
+  glm::mat4 transformation = glm::identity<glm::mat4>();
 };
 
 class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
@@ -99,8 +95,6 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
   const std::vector<double>& GetMinValues() const;
 
   const std::vector<double>& GetMaxValues() const;
-
-  bool BindAsVertexBuffer(vk::CommandBuffer buffer) const;
 
  private:
   friend class Model;
@@ -227,6 +221,10 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
   const vk::PrimitiveTopology& GetMode() const;
 
+  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
+
+  }
+
  private:
   friend class Model;
 
@@ -255,6 +253,15 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
   const std::vector<std::shared_ptr<Primitive>>& GetPrimitives() const;
 
   const std::vector<double>& GetWeights() const;
+
+  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
+    for (const auto& primitive : primitives_) {
+      if (!primitive->CollectDrawData(data, stack)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
  private:
   friend class Model;
@@ -296,6 +303,28 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
   const glm::mat4& GetMatrix() const;
 
   const std::vector<double>& GetWeights() const;
+
+  bool CollectDrawData(DrawData& data, TransformationStack stack) const {
+    auto scale = glm::scale(glm::identity<glm::mat4>(), scale_);
+    auto rotate = glm::rotate(glm::identity<glm::mat4>(), rotation_);
+    auto translate = glm::translate(glm::identity<glm::mat4>(), translation_);
+
+    stack.transformation *= translate * rotate * scale * matrix_;
+
+    if (mesh_) {
+      if (!mesh_->CollectDrawData(data, stack)) {
+        return false;
+      }
+    }
+
+    for (const auto& child : children_) {
+      if (!child->CollectDrawData(data, stack)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
  private:
   friend class Model;
@@ -456,6 +485,15 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Scene& scene) override;
 
+  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
+    for (const auto& node : nodes_) {
+      if (!node_->CollectDrawData(data, stack)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
  private:
   friend class Model;
 
@@ -516,6 +554,17 @@ class Model final {
   const Scenes& GetScenes() const;
 
   const Lights& GetLights() const;
+
+  DrawData GetDrawData() const {
+    DrawData data;
+    TransformationStack stack;
+    for (const auto& scene : scenes_) {
+      if (!scene->CollectDrawData(data, stack)) {
+        return false;
+      }
+    }
+    return data;
+  }
 
  private:
   friend class Accessor;
