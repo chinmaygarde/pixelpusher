@@ -44,7 +44,7 @@ class RenderingContext {
 
   const CommandPool& GetTransferCommandPool() const;
 
-  const DescriptorPool& GetDescriptorPool() const;
+  DescriptorPool& GetDescriptorPool() const;
 
   vk::RenderPass GetOnScreenRenderPass() const;
 

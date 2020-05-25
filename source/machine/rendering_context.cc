@@ -109,7 +109,7 @@ vk::RenderPass RenderingContext::GetOnScreenRenderPass() const {
   return onscreen_render_pass_;
 }
 
-const DescriptorPool& RenderingContext::GetDescriptorPool() const {
+DescriptorPool& RenderingContext::GetDescriptorPool() const {
   return *descriptor_pool_;
 }
 

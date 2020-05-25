@@ -54,6 +54,13 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
+  descriptor_sets_ = GetContext().GetDescriptorPool().AllocateDescriptorSets(
+      descriptor_set_layout_.get(), GetContext().GetSwapchainImageCount());
+
+  if (!descriptor_sets_) {
+    return false;
+  }
+
   PipelineLayoutBuilder pipeline_layout_builder;
   pipeline_layout_builder.AddDescriptorSetLayout(descriptor_set_layout_.get());
 
@@ -88,6 +95,22 @@ bool ModelRenderer::Setup() {
       {},                                    // prototype
       GetContext().GetSwapchainImageCount()  // image count
   };
+
+  auto buffer_info = uniform_buffer_.GetBufferInfo();
+  if (!descriptor_sets_.UpdateDescriptorSets(
+          // TODO: This must be moved to the shaders namespace.
+          std::vector<vk::WriteDescriptorSet>{{
+              nullptr,  // dst set (will be filled out later)
+              0u,       // binding
+              0u,       // array element
+              1u,       // descriptor count
+              vk::DescriptorType::eUniformBuffer,  // type
+              nullptr,                             // image
+              &buffer_info,                        // buffer
+              nullptr,                             // buffer view
+          }})) {
+    return false;
+  }
 
   if (!model_->PrepareToRender(GetContext())) {
     return false;

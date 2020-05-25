@@ -26,8 +26,8 @@ class ModelRenderer : public Renderer {
   std::unique_ptr<Buffer> vertex_buffer_;
   std::unique_ptr<Buffer> index_buffer_;
   UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
+  DescriptorSets descriptor_sets_;
   vk::UniquePipeline pipeline_;
-
   bool is_valid_ = false;
 
   // |Renderer|
