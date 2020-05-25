@@ -20,7 +20,7 @@ class ModelRenderer : public Renderer {
   ~ModelRenderer() override;
 
  private:
-  std::unique_ptr<model::Model> model_;
+  std::unique_ptr<const model::Model> model_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   vk::UniquePipelineLayout pipeline_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;
@@ -28,6 +28,7 @@ class ModelRenderer : public Renderer {
   UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
   DescriptorSets descriptor_sets_;
   vk::UniquePipeline pipeline_;
+  size_t index_count_ = 0;
   bool is_valid_ = false;
 
   // |Renderer|

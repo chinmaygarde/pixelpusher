@@ -20,6 +20,8 @@ class DescriptorSets {
 
   DescriptorSets& operator=(DescriptorSets&&);
 
+  vk::DescriptorSet operator[](size_t index) const;
+
   size_t GetSize() const;
 
   void Reset();

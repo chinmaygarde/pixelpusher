@@ -63,15 +63,6 @@ class GLTFArchivable {
                                  const GLTFType& archive_member) = 0;
 };
 
-struct ModelRendererState {
-  std::unique_ptr<pixel::Buffer> vertex_buffer;
-  std::unique_ptr<pixel::Buffer> index_buffer;
-  std::map<const model::Buffer*, size_t> vertex_buffer_offsets;
-  std::map<const model::Buffer*, size_t> index_buffer_offsets;
-  vk::UniquePipelineLayout pipeline_layout;
-  vk::UniquePipeline pipeline;
-};
-
 struct ModelRendererStack {
   glm::mat4 transformation;
 };
@@ -236,63 +227,6 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
   const vk::PrimitiveTopology& GetMode() const;
 
-  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
-    for (const auto& attr : attributes_) {
-      auto buffer = attr.second->GetBufferView()->GetBuffer();
-      if (buffer->HasMapping()) {
-        vertex_buffers.push_back(std::move(buffer));
-      }
-    }
-
-    auto index_buffer = indices_->GetBufferView()->GetBuffer();
-    if (index_buffer->HasMapping()) {
-      index_buffers.push_back(std::move(index_buffer));
-    }
-  }
-
-  bool Render(RenderingContext& context,
-              const ModelRendererState& state,
-              const ModelRendererStack& stack,
-              vk::CommandBuffer buffer) const {
-    auto position = GetPositionAttribute();
-    if (!position || !indices_) {
-      return false;
-    }
-
-    // Bind Pipeline.
-    {
-      // TODO: There needs to be a pipeline per topology.
-      buffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                          state.pipeline.get());
-    }
-
-    // Bind Vertex buffer.
-    {
-      if (!position->BindAsVertexBuffer(buffer)) {
-        return false;
-      }
-    }
-
-    // Bind Index buffer.
-    {
-
-    }
-
-    // Bind Descriptor Sets.
-    {
-
-    }
-
-    // Update uniform buffer data.
-    {
-
-    }
-
-    // Draw.
-    {}
-    return true;
-  }
-
  private:
   friend class Model;
 
@@ -321,25 +255,6 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
   const std::vector<std::shared_ptr<Primitive>>& GetPrimitives() const;
 
   const std::vector<double>& GetWeights() const;
-
-  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
-    for (const auto& primitive : primitives_) {
-      primitive->CollectBuffers(vertex_buffers, index_buffers);
-    }
-  }
-
-  bool Render(RenderingContext& context,
-              const ModelRendererState& state,
-              const ModelRendererStack& stack,
-              vk::CommandBuffer buffer) const {
-    for (const auto& primitive : primitives_) {
-      if (!primitive->Render(context, state, stack, buffer)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
 
  private:
   friend class Model;
@@ -381,41 +296,6 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
   const glm::mat4& GetMatrix() const;
 
   const std::vector<double>& GetWeights() const;
-
-  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
-    if (mesh_) {
-      mesh_->CollectBuffers(vertex_buffers, index_buffers);
-    }
-    for (const auto& child : children_) {
-      child->CollectBuffers(vertex_buffers, index_buffers);
-    }
-  }
-
-  bool Render(RenderingContext& context,
-              const ModelRendererState& state,
-              ModelRendererStack stack,
-              vk::CommandBuffer buffer) const {
-    const auto scale = glm::scale(glm::mat4(), scale_);
-    const auto rotate = glm::mat4(rotation_);
-    const auto translate = glm::translate(glm::mat4(), translation_);
-
-    stack.transformation =
-        stack.transformation * translate * rotate * scale * matrix_;
-
-    if (mesh_) {
-      if (!mesh_->Render(context, state, stack, buffer)) {
-        return false;
-      }
-    }
-
-    for (const auto& node : children_) {
-      if (!node->Render(context, state, stack, buffer)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
 
  private:
   friend class Model;
@@ -576,24 +456,6 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Scene& scene) override;
 
-  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
-    for (const auto& node : nodes_) {
-      node->CollectBuffers(vertex_buffers, index_buffers);
-    }
-  }
-
-  bool Render(RenderingContext& context,
-              const ModelRendererState& state,
-              vk::CommandBuffer buffer) const {
-    for (const auto& node : nodes_) {
-      ModelRendererStack stack;
-      if (!node->Render(context, state, stack, buffer)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
  private:
   friend class Model;
 
@@ -655,208 +517,6 @@ class Model final {
 
   const Lights& GetLights() const;
 
-  void CollectBuffers(Buffers& vertex_buffers, Buffers& index_buffers) const {
-    for (const auto& scene : scenes_) {
-      scene->CollectBuffers(vertex_buffers, index_buffers);
-    }
-  }
-
-  struct ModelVertex {
-    glm::vec3 position;
-  };
-
-  bool PrepareToRender(RenderingContext& context) {
-    ModelRendererState state;
-    // Transfer a single vertex buffer.
-    Buffers vertex_buffers, index_buffers;
-    CollectBuffers(vertex_buffers, index_buffers);
-
-    size_t vertex_buffers_size = 0;
-    for (const auto& vertex_buffer : vertex_buffers) {
-      vertex_buffers_size += vertex_buffer->GetMapping()->GetSize();
-    }
-
-    size_t index_buffers_size = 0;
-    for (const auto& index_buffer : index_buffers) {
-      index_buffers_size += index_buffer->GetMapping()->GetSize();
-    }
-
-    auto host_vertex_buffer =
-        context.GetMemoryAllocator().CreateHostVisibleBuffer(
-            vk::BufferUsageFlagBits::eVertexBuffer |
-                vk::BufferUsageFlagBits::eTransferSrc,
-            vertex_buffers_size);
-    auto host_index_buffer =
-        context.GetMemoryAllocator().CreateHostVisibleBuffer(
-            vk::BufferUsageFlagBits::eIndexBuffer |
-                vk::BufferUsageFlagBits::eTransferSrc,
-            index_buffers_size);
-
-    if (!host_vertex_buffer || !host_index_buffer) {
-      return false;
-    }
-
-    {
-      BufferMapping mapping(*host_vertex_buffer);
-      if (!mapping) {
-        return false;
-      }
-      size_t offset = 0;
-      auto host_mapping = reinterpret_cast<uint8_t*>(mapping.GetMapping());
-      for (const auto& vertex_buffer : vertex_buffers) {
-        ::memcpy(host_mapping + offset, vertex_buffer->GetMapping()->GetData(),
-                 vertex_buffer->GetMapping()->GetSize());
-        state.vertex_buffer_offsets[vertex_buffer.get()] = offset;
-        offset += vertex_buffer->GetMapping()->GetSize();
-      }
-    }
-
-    {
-      BufferMapping mapping(*host_index_buffer);
-      if (!mapping) {
-        return false;
-      }
-      size_t offset = 0;
-      auto host_mapping = reinterpret_cast<uint8_t*>(mapping.GetMapping());
-      for (const auto& index_buffer : index_buffers) {
-        ::memcpy(host_mapping + offset, index_buffer->GetMapping()->GetData(),
-                 index_buffer->GetMapping()->GetSize());
-        state.index_buffer_offsets[index_buffer.get()] = offset;
-        offset += index_buffer->GetMapping()->GetSize();
-      }
-    }
-
-    auto device_vertex_buffer =
-        context.GetMemoryAllocator().CreateDeviceLocalBuffer(
-            vk::BufferUsageFlagBits::eVertexBuffer |
-                vk::BufferUsageFlagBits::eTransferDst,
-            vertex_buffers_size);
-    auto device_index_buffer =
-        context.GetMemoryAllocator().CreateDeviceLocalBuffer(
-            vk::BufferUsageFlagBits::eIndexBuffer |
-                vk::BufferUsageFlagBits::eTransferDst,
-            index_buffers_size);
-
-    if (!device_vertex_buffer || !device_index_buffer) {
-      return false;
-    }
-
-    auto transfer_command_buffer =
-        context.GetTransferCommandPool().CreateCommandBuffer();
-    if (!transfer_command_buffer) {
-      return false;
-    }
-
-    vk::CommandBuffer buffer = transfer_command_buffer->GetCommandBuffer();
-
-    buffer.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    buffer.copyBuffer(
-        host_vertex_buffer->buffer, device_vertex_buffer->buffer,
-        std::vector<vk::BufferCopy>{{{}, {}, vertex_buffers_size}});
-    buffer.copyBuffer(
-        host_index_buffer->buffer, device_index_buffer->buffer,
-        std::vector<vk::BufferCopy>{{{}, {}, index_buffers_size}});
-    buffer.end();
-
-    auto fence = UnwrapResult(context.GetDevice().createFenceUnique({}));
-    if (!fence) {
-      return false;
-    }
-    transfer_command_buffer->Submit(nullptr, nullptr, nullptr, fence.get());
-    context.GetDevice().waitForFences(std::vector<vk::Fence>{fence.get()}, true,
-                                      CommandBuffer::kMaxFenceWaitTime);
-    state.vertex_buffer = std::move(device_vertex_buffer);
-    state.index_buffer = std::move(device_index_buffer);
-
-    auto vertex_shader_module =
-        LoadShaderModule(context.GetDevice(), "model_renderer.vert");
-    auto fragment_shader_module =
-        LoadShaderModule(context.GetDevice(), "model_renderer.frag");
-
-    if (!vertex_shader_module || !fragment_shader_module) {
-      return false;
-    }
-
-    std::vector<vk::PipelineShaderStageCreateInfo> shader_stages = {
-        // Vertex shader.
-        {{},
-         vk::ShaderStageFlagBits::eVertex,
-         vertex_shader_module.get(),
-         "main"},
-        // Fragment shader.
-        {{},
-         vk::ShaderStageFlagBits::eFragment,
-         fragment_shader_module.get(),
-         "main"},
-    };
-
-    std::vector<vk::DescriptorSetLayout> descriptor_set_layouts;
-    std::vector<vk::PushConstantRange> push_constant_ranges;
-
-    vk::PipelineLayoutCreateInfo layout_info = {
-        {},                                                    // flags
-        static_cast<uint32_t>(descriptor_set_layouts.size()),  //
-        descriptor_set_layouts.data(),                         //
-        static_cast<uint32_t>(push_constant_ranges.size()),    //
-        push_constant_ranges.data()                            //
-    };
-
-    std::vector<vk::VertexInputBindingDescription> vertex_input_bindings = {
-        {0u, sizeof(ModelVertex), vk::VertexInputRate::eVertex}  //
-    };
-    std::vector<vk::VertexInputAttributeDescription> vertex_input_attributes = {
-        {
-            // Position
-            0u,                                             // location
-            0u,                                             // binding
-            ToVKFormat<decltype(ModelVertex::position)>(),  // format
-            offsetof(ModelVertex, position)                 // offset
-        },
-    };
-
-    auto pipeline_layout = UnwrapResult(
-        context.GetDevice().createPipelineLayoutUnique(layout_info));
-
-    if (!pipeline_layout) {
-      return false;
-    }
-
-    PipelineBuilder builder;
-    builder.AddDynamicState(vk::DynamicState::eViewport);
-    builder.AddDynamicState(vk::DynamicState::eScissor);
-    builder.SetVertexInputDescription(vertex_input_bindings,
-                                      vertex_input_attributes);
-
-    auto pipeline = builder.CreatePipeline(context.GetDevice(),              //
-                                           context.GetPipelineCache(),       //
-                                           pipeline_layout.get(),            //
-                                           context.GetOnScreenRenderPass(),  //
-                                           shader_stages                     //
-    );
-
-    if (!pipeline) {
-      return false;
-    }
-
-    state.pipeline_layout = std::move(pipeline_layout);
-    state.pipeline = std::move(pipeline);
-
-    renderable_state_ = std::move(state);
-    return true;
-  }
-
-  bool Render(RenderingContext& context, vk::CommandBuffer buffer) {
-    buffer.setScissor(0u, {context.GetScissorRect()});
-    buffer.setViewport(0u, {context.GetViewport()});
-
-    for (const auto& scene : scenes_) {
-      if (!scene->Render(context, renderable_state_, buffer)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
  private:
   friend class Accessor;
   friend class Animation;
@@ -888,8 +548,6 @@ class Model final {
   Cameras cameras_;
   Scenes scenes_;
   Lights lights_;
-
-  ModelRendererState renderable_state_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Model);
 };

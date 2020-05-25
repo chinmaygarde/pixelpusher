@@ -21,6 +21,13 @@ DescriptorSets& DescriptorSets::operator=(DescriptorSets&& other) {
   return *this;
 }
 
+vk::DescriptorSet DescriptorSets::operator[](size_t index) const {
+  if (index >= descriptor_sets_.size()) {
+    return nullptr;
+  }
+  return descriptor_sets_[index].get();
+}
+
 bool DescriptorSets::IsValid() const {
   return is_valid_;
 }

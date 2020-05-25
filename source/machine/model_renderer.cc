@@ -123,7 +123,32 @@ bool ModelRenderer::Setup() {
 }
 
 // |Renderer|
-bool ModelRenderer::Render(vk::CommandBuffer render_command_buffer) {
+bool ModelRenderer::Render(vk::CommandBuffer buffer) {
+  if (index_count_ == 0) {
+    return true;
+  }
+
+  if (!uniform_buffer_.UpdateUniformData()) {
+    return false;
+  }
+
+  const auto uniform_index = uniform_buffer_.GetCurrentIndex();
+
+  buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_.get());
+  buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
+  buffer.bindIndexBuffer(index_buffer_->buffer, 0u, vk::IndexType::eUint32);
+  buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,  // bind point
+                            pipeline_layout_.get(),            // layout
+                            0u,                                // first set
+                            descriptor_sets_[uniform_index],   // descriptor set
+                            nullptr  // dynamic_offsets
+  );
+  buffer.drawIndexed(index_count_,  // index count
+                     1u,            // instance count
+                     0u,            // first index
+                     0u,            // vertex offset
+                     0u             // first instance
+  );
   return true;
 }
 
