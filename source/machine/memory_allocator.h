@@ -163,11 +163,6 @@ struct UniformBuffer {
 
   T* operator->() { return &prototype; };
 
-  // TODO: Deprecate
-  vk::DescriptorBufferInfo GetBufferInfo() const {
-    return GetBufferInfo(current_index);
-  }
-
   std::vector<vk::DescriptorBufferInfo> GetBufferInfos() const {
     std::vector<vk::DescriptorBufferInfo> infos;
     infos.reserve(copies);

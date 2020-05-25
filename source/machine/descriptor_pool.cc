@@ -29,6 +29,10 @@ DescriptorSets::operator bool() const {
   return IsValid();
 }
 
+size_t DescriptorSets::GetSize() const {
+  return descriptor_sets_.size();
+}
+
 void DescriptorSets::Reset() {
   device_ = nullptr;
   descriptor_sets_.clear();
@@ -43,18 +47,23 @@ DescriptorSets::DescriptorSets(
       is_valid_(true) {}
 
 bool DescriptorSets::UpdateDescriptorSets(
-    std::vector<vk::WriteDescriptorSet> write_descriptor_sets) const {
-  if (!is_valid_) {
+    std::function<std::vector<vk::WriteDescriptorSet>(size_t index)>
+        write_set_callback) const {
+  if (!is_valid_ || !write_set_callback) {
     return false;
   }
 
-  for (auto& write_set : write_descriptor_sets) {
-    for (const auto& desc_set : descriptor_sets_) {
-      write_set.setDstSet(desc_set.get());
+  std::vector<vk::WriteDescriptorSet> write_sets;
+
+  for (size_t i = 0, count = descriptor_sets_.size(); i < count; i++) {
+    auto write_sets = write_set_callback(i);
+    for (auto& set : write_sets) {
+      set.setDstSet(descriptor_sets_[i].get());
+      write_sets.push_back(set);
     }
   }
 
-  device_.updateDescriptorSets(write_descriptor_sets, nullptr);
+  device_.updateDescriptorSets(write_sets, nullptr);
   return true;
 }
 

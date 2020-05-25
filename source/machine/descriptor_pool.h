@@ -20,6 +20,8 @@ class DescriptorSets {
 
   DescriptorSets& operator=(DescriptorSets&&);
 
+  size_t GetSize() const;
+
   void Reset();
 
   bool IsValid() const;
@@ -27,7 +29,7 @@ class DescriptorSets {
   operator bool() const;
 
   bool UpdateDescriptorSets(
-      std::vector<vk::WriteDescriptorSet> write_descriptor_sets) const;
+      std::function<std::vector<vk::WriteDescriptorSet>(size_t index)>) const;
 
  private:
   friend class DescriptorPool;

@@ -96,19 +96,26 @@ bool ModelRenderer::Setup() {
       GetContext().GetSwapchainImageCount()  // image count
   };
 
-  auto buffer_info = uniform_buffer_.GetBufferInfo();
-  if (!descriptor_sets_.UpdateDescriptorSets(
-          // TODO: This must be moved to the shaders namespace.
-          std::vector<vk::WriteDescriptorSet>{{
-              nullptr,  // dst set (will be filled out later)
-              0u,       // binding
-              0u,       // array element
-              1u,       // descriptor count
-              vk::DescriptorType::eUniformBuffer,  // type
-              nullptr,                             // image
-              &buffer_info,                        // buffer
-              nullptr,                             // buffer view
-          }})) {
+  auto buffer_infos = uniform_buffer_.GetBufferInfos();
+
+  if (buffer_infos.size() != descriptor_sets_.GetSize()) {
+    return false;
+  }
+
+  auto write_descriptor_set_generator = [&](size_t index) {
+    return std::vector<vk::WriteDescriptorSet>{{
+        nullptr,  // dst set (will be filled out later)
+        0u,       // binding
+        0u,       // array element
+        1u,       // descriptor count
+        vk::DescriptorType::eUniformBuffer,  // type
+        nullptr,                             // image
+        &buffer_infos[index],                // buffer
+        nullptr,                             // buffer view
+    }};
+  };
+
+  if (!descriptor_sets_.UpdateDescriptorSets(write_descriptor_set_generator)) {
     return false;
   }
 
