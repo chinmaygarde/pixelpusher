@@ -2,6 +2,7 @@
 
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
+#include <algorithm>
 
 #include "command_buffer.h"
 #include "command_pool.h"
@@ -148,9 +149,18 @@ bool ImguiRenderer::BeginFrame() {
 
 bool ImguiRenderer::RenderPerformanceMetrics() const {
   ::ImGui::Begin("Timing");
-  ::ImGui::LabelText(
-      "Last Frame Time", "%.2f ms",
-      frame_times_millis_[frames_rendered_ % kFrameSamplesCount]);
+#ifndef NDEBUG
+  ::ImGui::Text("WARNING: Debug/Unoptimized Renderer");
+#endif  //  NDEBUG
+  const auto last = frame_times_millis_[frames_rendered_ % kFrameSamplesCount];
+  const auto max =
+      *std::max_element(frame_times_millis_.begin(), frame_times_millis_.end());
+  const auto min =
+      *std::min_element(frame_times_millis_.begin(), frame_times_millis_.end());
+  ::ImGui::LabelText("(Last, Max, Min) Frame Time", "(%.2f, %.2f, %.2f) ms",
+                     last, max, min);
+  ::ImGui::LabelText("(Last, Max, Min) FPS", "(%.0f, %.0f, %.0f) ms",
+                     1000.f / last, 1000.f / min, 1000.f / max);
   ::ImGui::PlotLines("Frame History (ms)", frame_times_millis_.data(),
                      frame_times_millis_.size());
   ::ImGui::End();
