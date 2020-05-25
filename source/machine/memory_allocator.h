@@ -3,6 +3,7 @@
 #include <vk_mem_alloc.h>
 
 #include <memory>
+#include <vector>
 
 #include "macros.h"
 #include "vulkan.h"
@@ -160,8 +161,18 @@ struct UniformBuffer {
 
   T* operator->() { return &prototype; };
 
+  // TODO: Deprecate
   vk::DescriptorBufferInfo GetBufferInfo() const {
     return GetBufferInfo(current_index);
+  }
+
+  std::vector<vk::DescriptorBufferInfo> GetBufferInfos() const {
+    std::vector<vk::DescriptorBufferInfo> infos;
+    infos.reserve(copies);
+    for (size_t i = 0; i < copies; i++) {
+      infos.push_back(GetBufferInfo(i));
+    }
+    return infos;
   }
 
   vk::DescriptorBufferInfo GetBufferInfo(size_t index) const {

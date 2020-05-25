@@ -1,5 +1,7 @@
 #include "tutorial_renderer.h"
 
+#include <imgui.h>
+
 #include "assets_location.h"
 #include "command_buffer.h"
 #include "file.h"
@@ -187,7 +189,7 @@ bool TutorialRenderer::Setup() {
   }
 
   std::vector<vk::WriteDescriptorSet> write_descriptor_sets;
-  auto triangl_ubo_buffer_info = triangle_ubo_.GetBufferInfo();
+  auto triangle_ubo_buffer_infos = triangle_ubo_.GetBufferInfos();
   vk::DescriptorImageInfo triangle_sampler_info;
   triangle_sampler_info.setSampler(sampler_.get());
   triangle_sampler_info.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -203,7 +205,7 @@ bool TutorialRenderer::Setup() {
       write_descriptor_set.setDescriptorType(
           vk::DescriptorType::eUniformBuffer);
 
-      write_descriptor_set.setPBufferInfo(&triangl_ubo_buffer_info);
+      write_descriptor_set.setPBufferInfo(&triangle_ubo_buffer_infos[i]);
 
       write_descriptor_sets.push_back(write_descriptor_set);
     }
@@ -273,11 +275,10 @@ bool TutorialRenderer::Render(vk::CommandBuffer command_buffer) {
 
   auto rate =
       std::chrono::duration<float>(Clock::now().time_since_epoch()).count();
-  triangle_ubo_->model =
-      glm::rotate(glm::mat4(1.0f),                     // model
-                  glm::radians<float>(rate * 180.0f),  // radians
-                  glm::vec3(0.0f, 0.0f, 1.0f)          // center
-      );
+  triangle_ubo_->model = glm::rotate(glm::mat4(1.0f),             // model
+                                     glm::radians<float>(rate),   // radians
+                                     glm::vec3(0.0f, 0.0f, 1.0f)  // center
+  );
   triangle_ubo_->view =
       glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                   glm::vec3(0.0f, 0.0f, 1.0f));
