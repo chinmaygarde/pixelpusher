@@ -171,47 +171,98 @@ auto BoundsCheckGet(const T& collection, int index) {
   return collection[index];
 }
 
-static DataType DataTypeFromComponentType(uint32_t component_type) {
-  switch (component_type) {
-    case TINYGLTF_COMPONENT_TYPE_BYTE:
-      return DataType::kDataTypeByte;
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-      return DataType::kDataTypeUnsignedByte;
-    case TINYGLTF_COMPONENT_TYPE_SHORT:
-      return DataType::kDataTypeShort;
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-      return DataType::kDataTypeUnsignedShort;
-    case TINYGLTF_COMPONENT_TYPE_INT:
-      return DataType::kDataTypeInt;
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-      return DataType::kDataTypeUnsignedInt;
-    case TINYGLTF_COMPONENT_TYPE_FLOAT:
-      return DataType::kDataTypeFloat;
-    case TINYGLTF_COMPONENT_TYPE_DOUBLE:
-      return DataType::kDataTypeDouble;
+static DataType DataTypeFromDataType(uint32_t data_type) {
+  switch (data_type) {
+    case TINYGLTF_TYPE_VEC2:
+      return DataType::kDataTypeVec2;
+    case TINYGLTF_TYPE_VEC3:
+      return DataType::kDataTypeVec3;
+    case TINYGLTF_TYPE_VEC4:
+      return DataType::kDataTypeVec4;
+    case TINYGLTF_TYPE_MAT2:
+      return DataType::kDataTypeMat2;
+    case TINYGLTF_TYPE_MAT3:
+      return DataType::kDataTypeMat3;
+    case TINYGLTF_TYPE_MAT4:
+      return DataType::kDataTypeMat4;
+    case TINYGLTF_TYPE_SCALAR:
+      return DataType::kDataTypeScalar;
+    case TINYGLTF_TYPE_VECTOR:
+      return DataType::kDataTypeVector;
+    case TINYGLTF_TYPE_MATRIX:
+      return DataType::kDataTypeMatrix;
   }
   return DataType::kDataTypeUnknown;
 }
 
-static size_t SizeOfDataType(DataType type) {
+static size_t NumberOfComponentsInDataType(DataType type) {
   switch (type) {
     case DataType::kDataTypeUnknown:
       return 0;
-    case DataType::kDataTypeByte:
-      return 1;
-    case DataType::kDataTypeUnsignedByte:
-      return 1;
-    case DataType::kDataTypeShort:
+    case DataType::kDataTypeVec2:
       return 2;
-    case DataType::kDataTypeUnsignedShort:
+    case DataType::kDataTypeVec3:
+      return 3;
+    case DataType::kDataTypeVec4:
+      return 4;
+    case DataType::kDataTypeMat2:
+      return 4;
+    case DataType::kDataTypeMat3:
+      return 9;
+    case DataType::kDataTypeMat4:
+      return 16;
+    case DataType::kDataTypeScalar:
+      return 1;
+    case DataType::kDataTypeVector:
+      // TODO: What is this?
+      return 0;
+    case DataType::kDataTypeMatrix:
+      return 16;
+  }
+  return 0;
+}
+
+static ComponentType ComponentTypeFromComponentType(uint32_t component_type) {
+  switch (component_type) {
+    case TINYGLTF_COMPONENT_TYPE_BYTE:
+      return ComponentType::kComponentTypeByte;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+      return ComponentType::kComponentTypeUnsignedByte;
+    case TINYGLTF_COMPONENT_TYPE_SHORT:
+      return ComponentType::kComponentTypeShort;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+      return ComponentType::kComponentTypeUnsignedShort;
+    case TINYGLTF_COMPONENT_TYPE_INT:
+      return ComponentType::kComponentTypeInt;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+      return ComponentType::kComponentTypeUnsignedInt;
+    case TINYGLTF_COMPONENT_TYPE_FLOAT:
+      return ComponentType::kComponentTypeFloat;
+    case TINYGLTF_COMPONENT_TYPE_DOUBLE:
+      return ComponentType::kComponentTypeDouble;
+  }
+  return ComponentType::kComponentTypeUnknown;
+}
+
+static size_t SizeOfComponentType(ComponentType type) {
+  switch (type) {
+    case ComponentType::kComponentTypeUnknown:
+      return 0;
+    case ComponentType::kComponentTypeByte:
+      return 1;
+    case ComponentType::kComponentTypeUnsignedByte:
+      return 1;
+    case ComponentType::kComponentTypeShort:
       return 2;
-    case DataType::kDataTypeInt:
+    case ComponentType::kComponentTypeUnsignedShort:
+      return 2;
+    case ComponentType::kComponentTypeInt:
       return 4;
-    case DataType::kDataTypeUnsignedInt:
+    case ComponentType::kComponentTypeUnsignedInt:
       return 4;
-    case DataType::kDataTypeFloat:
+    case ComponentType::kComponentTypeFloat:
       return 4;
-    case DataType::kDataTypeDouble:
+    case ComponentType::kComponentTypeDouble:
       return 8;
   }
   return 0;
@@ -229,7 +280,8 @@ void Accessor::ReadFromArchive(const tinygltf::Accessor& accessor) {
   name_ = accessor.name;
   byte_offset_ = accessor.byteOffset;
   normalized_ = accessor.normalized;
-  data_type_ = DataTypeFromComponentType(accessor.componentType);
+  component_type_ = ComponentTypeFromComponentType(accessor.componentType);
+  data_type_ = DataTypeFromDataType(accessor.type);
   count_ = accessor.count;
   min_values_ = accessor.minValues;
   max_values_ = accessor.maxValues;
@@ -256,19 +308,36 @@ std::vector<FinalType> CopyAndConvertVector(const void* ptr, size_t size) {
   }
 }
 
-std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
-  if (!buffer_view_) {
+template <class T>
+std::optional<std::vector<T>> ReadTypedList(const BufferView* buffer_view,
+                                            DataType data_type,
+                                            ComponentType component_type,
+                                            size_t byte_offset,
+                                            size_t items_count) {
+  if (!buffer_view) {
     P_ERROR << "Buffer view was nullptr.";
     return std::nullopt;
   }
 
-  const auto stride = SizeOfDataType(data_type_);
+  const auto stride = SizeOfComponentType(component_type);
   if (stride == 0) {
     P_ERROR << "Unknown data stride.";
     return std::nullopt;
   }
 
-  auto buffer = buffer_view_->GetByteMapping(byte_offset_, stride * count_);
+  const auto components_count = NumberOfComponentsInDataType(data_type);
+
+  if (components_count == 0) {
+    P_ERROR << "Unknown number of components in data type.";
+    return std::nullopt;
+  }
+
+  const auto elements_count = items_count * components_count;
+
+  auto buffer =
+      buffer_view->GetByteMapping(byte_offset, stride * elements_count);
+
+  // TODO: If there is a stride in the buffer, it must be handled here.
 
   if (!buffer.has_value()) {
     P_ERROR << "Accessor mapping was unavailable or out of bounds.";
@@ -277,37 +346,84 @@ std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
 
   const auto buffer_ptr = buffer.value();
 
-  switch (data_type_) {
-    case DataType::kDataTypeUnknown: {
+  switch (component_type) {
+    case ComponentType::kComponentTypeUnknown: {
       P_ERROR << "Unknown buffer view data type.";
       return std::nullopt;
     }
-    case DataType::kDataTypeByte: {
-      return CopyAndConvertVector<uint32_t, int8_t>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeByte: {
+      return CopyAndConvertVector<T, int8_t>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeUnsignedByte: {
-      return CopyAndConvertVector<uint32_t, uint8_t>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeUnsignedByte: {
+      return CopyAndConvertVector<T, uint8_t>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeShort: {
-      return CopyAndConvertVector<uint32_t, int16_t>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeShort: {
+      return CopyAndConvertVector<T, int16_t>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeUnsignedShort: {
-      return CopyAndConvertVector<uint32_t, uint16_t>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeUnsignedShort: {
+      return CopyAndConvertVector<T, uint16_t>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeInt: {
-      return CopyAndConvertVector<uint32_t, int32_t>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeInt: {
+      return CopyAndConvertVector<T, int32_t>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeUnsignedInt: {
-      return CopyAndConvertVector<uint32_t, uint32_t>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeUnsignedInt: {
+      return CopyAndConvertVector<T, uint32_t>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeFloat: {
-      return CopyAndConvertVector<uint32_t, float>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeFloat: {
+      return CopyAndConvertVector<T, float>(buffer_ptr, elements_count);
     }
-    case DataType::kDataTypeDouble: {
-      return CopyAndConvertVector<uint32_t, double>(buffer_ptr, count_);
+    case ComponentType::kComponentTypeDouble: {
+      return CopyAndConvertVector<T, double>(buffer_ptr, elements_count);
     }
   }
   return std::nullopt;
+}
+
+std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
+  const auto component_count = NumberOfComponentsInDataType(data_type_);
+  if (component_count != 1) {
+    P_ERROR << "Incorrect number of components.";
+    return std::nullopt;
+  }
+
+  return ReadTypedList<uint32_t>(buffer_view_.get(),  //
+                                 data_type_,          //
+                                 component_type_,     //
+                                 byte_offset_,        //
+                                 count_               //
+  );
+}
+
+std::optional<std::vector<glm::vec3>> Accessor::ReadPositionList() const {
+  const auto component_count = NumberOfComponentsInDataType(data_type_);
+  // TODO: Can there be 2 component entries? Those need to be converted.
+  if (component_count != 3) {
+    P_ERROR << "Incorrect number of components.";
+    return std::nullopt;
+  }
+
+  auto list = ReadTypedList<float>(buffer_view_.get(),  //
+                                   data_type_,          //
+                                   component_type_,     //
+                                   byte_offset_,        //
+                                   count_               //
+  );
+
+  if (!list.has_value()) {
+    P_ERROR << "Could not read data list.";
+    return std::nullopt;
+  }
+
+  const auto& float_list = list.value();
+
+  std::vector<glm::vec3> vec_list;
+  vec_list.reserve(float_list.size() / 3);
+
+  for (size_t i = 0; i < float_list.size() / 3; i++) {
+    vec_list.emplace_back(glm::make_vec3(float_list.data() + (i * 3)));
+  }
+
+  return vec_list;
 }
 
 // *****************************************************************************
@@ -472,6 +588,48 @@ std::shared_ptr<Accessor> Primitive::GetPositionAttribute() const {
   return found->second;
 }
 
+bool Primitive::CollectDrawData(DrawData& draw_data,
+                                const TransformationStack& stack) const {
+  std::vector<uint32_t> indices;
+  std::vector<glm::vec3> positions;
+
+  if (indices_) {
+    auto index_data = indices_->ReadIndexList();
+    if (index_data.has_value()) {
+      indices = std::move(index_data.value());
+    }
+  }
+
+  if (auto position = GetPositionAttribute()) {
+    auto position_data = position->ReadPositionList();
+    if (position_data.has_value()) {
+      positions = std::move(position_data.value());
+    }
+  }
+
+  if (indices.size() == 0) {
+    return true;
+  }
+
+  for (const auto& index : indices) {
+    if (index >= positions.size()) {
+      P_ERROR << "Index specified vertex position that was out of bounds.";
+      return false;
+    }
+  }
+
+  std::vector<shaders::model_renderer::Vertex> vertices;
+  vertices.reserve(positions.size());
+
+  for (const auto& position : positions) {
+    vertices.push_back({position});
+  }
+
+  draw_data.AddDrawOp(mode_, std::move(vertices), std::move(indices));
+
+  return true;
+}
+
 // *****************************************************************************
 // *** Mesh
 // *****************************************************************************
@@ -490,16 +648,14 @@ void Mesh::ResolveReferences(const Model& model, const tinygltf::Mesh& mesh) {
   ResolveCollectionReferences(model, primitives_, mesh.primitives);
 }
 
-const std::string& Mesh::GetName() const {
-  return name_;
-}
-
-const std::vector<std::shared_ptr<Primitive>>& Mesh::GetPrimitives() const {
-  return primitives_;
-}
-
-const std::vector<double>& Mesh::GetWeights() const {
-  return weights_;
+bool Mesh::CollectDrawData(DrawData& data,
+                           const TransformationStack& stack) const {
+  for (const auto& primitive : primitives_) {
+    if (!primitive->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // *****************************************************************************
@@ -530,44 +686,26 @@ void Node::ResolveReferences(const Model& model, const tinygltf::Node& node) {
   }
 }
 
-const std::string& Node::GetName() const {
-  return name_;
-}
+bool Node::CollectDrawData(DrawData& data, TransformationStack stack) const {
+  auto scale = glm::scale(glm::identity<glm::mat4>(), scale_);
+  auto rotate = glm::mat4(rotation_);
+  auto translate = glm::translate(glm::identity<glm::mat4>(), translation_);
 
-const std::shared_ptr<Camera>& Node::GetCamera() const {
-  return camera_;
-}
+  stack.transformation *= translate * rotate * scale * matrix_;
 
-const std::shared_ptr<Skin>& Node::GetSkin() const {
-  return skin_;
-}
+  if (mesh_) {
+    if (!mesh_->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
 
-const std::shared_ptr<Mesh>& Node::GetMesh() const {
-  return mesh_;
-}
+  for (const auto& child : children_) {
+    if (!child->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
 
-const std::vector<std::shared_ptr<Node>>& Node::GetChildren() const {
-  return children_;
-}
-
-const glm::quat& Node::GetRotation() const {
-  return rotation_;
-}
-
-const glm::vec3& Node::GetScale() const {
-  return scale_;
-}
-
-const glm::vec3& Node::GetTranslation() const {
-  return translation_;
-}
-
-const glm::mat4& Node::GetMatrix() const {
-  return matrix_;
-}
-
-const std::vector<double>& Node::GetWeights() const {
-  return weights_;
+  return true;
 }
 
 // *****************************************************************************

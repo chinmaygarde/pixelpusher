@@ -1,5 +1,6 @@
 #include "model_renderer.h"
 
+#include <algorithm>
 #include <future>
 
 #include <imgui.h>
@@ -39,6 +40,14 @@ bool ModelRenderer::IsValid() const {
 bool ModelRenderer::Setup() {
   if (!is_valid_) {
     return false;
+  }
+
+  auto draw_data = model_->GetDrawData();
+
+  auto required_topologies = draw_data.RequiredTopologies();
+
+  if (required_topologies.empty()) {
+    return true;
   }
 
   ShaderLibrary library(GetContext().GetDevice());
@@ -84,13 +93,22 @@ bool ModelRenderer::Setup() {
   pipeline_builder.SetVertexInputDescription(vertex_input_bindings,
                                              vertex_input_attributes);
 
-  pipeline_ = pipeline_builder.CreatePipeline(
-      GetContext().GetDevice(),                    //
-      GetContext().GetPipelineCache(),             //
-      pipeline_layout_.get(),                      //
-      GetContext().GetOnScreenRenderPass(),        //
-      library.GetPipelineShaderStageCreateInfos()  //
-  );
+  for (const auto& topology : required_topologies) {
+    pipeline_builder.SetPrimitiveTopology(topology);
+    auto pipeline = pipeline_builder.CreatePipeline(
+        GetContext().GetDevice(),                    //
+        GetContext().GetPipelineCache(),             //
+        pipeline_layout_.get(),                      //
+        GetContext().GetOnScreenRenderPass(),        //
+        library.GetPipelineShaderStageCreateInfos()  //
+    );
+
+    if (!pipeline) {
+      return false;
+    }
+
+    pipelines_[topology] = std::move(pipeline);
+  }
 
   uniform_buffer_ = {
       GetContext().GetMemoryAllocator(),     // allocator
@@ -121,21 +139,39 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
-  std::vector<shaders::model_renderer::Vertex> vertices = {
-      {{-0.5, 0.5, 0.0}},
-      {{0.5, -0.5, 0.0}},
-      {{-0.5, -0.5, 0.0}},
-  };
+  std::vector<shaders::model_renderer::Vertex> vertex_buffer;
+  std::vector<uint32_t> index_buffer;
 
-  std::vector<uint32_t> indices = {0, 1, 2};
+  vk::DeviceSize current_vertex_buffer_offset = 0;
+  vk::DeviceSize current_index_buffer_offset = 0;
+  std::vector<DrawData> pending_draw_data;
+
+  for (const auto& op : draw_data.ops) {
+    for (const auto& call : op.second) {
+      DrawData data;
+      data.pipeline = pipelines_[op.first].get();
+      data.vertex_buffer_offset = current_vertex_buffer_offset;
+      data.index_buffer_offset = current_index_buffer_offset;
+      data.index_count = call.indices.size();
+      std::copy(call.vertices.begin(), call.vertices.end(),
+                std::back_inserter(vertex_buffer));
+      std::copy(call.indices.begin(), call.indices.end(),
+                std::back_inserter(index_buffer));
+      current_vertex_buffer_offset +=
+          call.vertices.size() * sizeof(decltype(call.vertices)::value_type);
+      current_index_buffer_offset +=
+          call.indices.size() * sizeof(decltype(call.indices)::value_type);
+      pending_draw_data.push_back(data);
+    }
+  }
 
   vertex_buffer_ =
       GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-          vk::BufferUsageFlagBits::eVertexBuffer, vertices,
+          vk::BufferUsageFlagBits::eVertexBuffer, vertex_buffer,
           GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
           nullptr);
   index_buffer_ = GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-      vk::BufferUsageFlagBits::eIndexBuffer, indices,
+      vk::BufferUsageFlagBits::eIndexBuffer, index_buffer,
       GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
       nullptr);
 
@@ -145,16 +181,14 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
-  index_count_ = indices.size();
-
-  auto draw_data = model_->GetDrawData();
+  draw_data_ = std::move(pending_draw_data);
 
   return true;
 }
 
 // |Renderer|
 bool ModelRenderer::Render(vk::CommandBuffer buffer) {
-  if (index_count_ == 0) {
+  if (draw_data_.empty()) {
     return true;
   }
 
@@ -180,21 +214,28 @@ bool ModelRenderer::Render(vk::CommandBuffer buffer) {
 
   buffer.setScissor(0u, {GetContext().GetScissorRect()});
   buffer.setViewport(0u, {GetContext().GetViewport()});
-  buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_.get());
-  buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});
-  buffer.bindIndexBuffer(index_buffer_->buffer, 0u, vk::IndexType::eUint32);
-  buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,  // bind point
-                            pipeline_layout_.get(),            // layout
-                            0u,                                // first set
-                            descriptor_sets_[uniform_index],   // descriptor set
-                            nullptr  // dynamic_offsets
-  );
-  buffer.drawIndexed(index_count_,  // index count
-                     1u,            // instance count
-                     0u,            // first index
-                     0u,            // vertex offset
-                     0u             // first instance
-  );
+
+  for (const auto& draw : draw_data_) {
+    buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, draw.pipeline);
+    buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer},
+                             {draw.vertex_buffer_offset});
+    buffer.bindIndexBuffer(index_buffer_->buffer, draw.index_buffer_offset,
+                           vk::IndexType::eUint32);
+    buffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics,  // bind point
+        pipeline_layout_.get(),            // layout
+        0u,                                // first set
+        descriptor_sets_[uniform_index],   // descriptor set
+        nullptr                            // dynamic_offsets
+    );
+    buffer.drawIndexed(draw.index_count,  // index count
+                       1u,                // instance count
+                       0u,                // first index
+                       0u,                // vertex offset
+                       0u                 // first instance
+    );
+  }
+
   return true;
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include "glm.h"
@@ -33,9 +34,27 @@ struct Vertex {
   }
 };
 
-struct DrawData {
+struct DrawOp {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
+};
+
+struct DrawData {
+  std::map<vk::PrimitiveTopology, std::vector<DrawOp>> ops;
+
+  void AddDrawOp(vk::PrimitiveTopology topology,
+                 std::vector<Vertex> vertices,
+                 std::vector<uint32_t> indices) {
+    ops[topology].emplace_back(DrawOp{std::move(vertices), std::move(indices)});
+  }
+
+  std::vector<vk::PrimitiveTopology> RequiredTopologies() const {
+    std::vector<vk::PrimitiveTopology> topologies;
+    for (const auto& op : ops) {
+      topologies.push_back(op.first);
+    }
+    return topologies;
+  }
 };
 
 struct UniformBuffer {

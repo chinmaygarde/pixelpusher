@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "asset_loader.h"
 #include "macros.h"
 #include "model.h"
@@ -20,6 +22,13 @@ class ModelRenderer : public Renderer {
   ~ModelRenderer() override;
 
  private:
+  struct DrawData {
+    vk::Pipeline pipeline;
+    vk::DeviceSize vertex_buffer_offset = 0;
+    vk::DeviceSize index_buffer_offset = 0;
+    size_t index_count = 0;
+  };
+
   std::unique_ptr<const model::Model> model_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   vk::UniquePipelineLayout pipeline_layout_;
@@ -27,8 +36,8 @@ class ModelRenderer : public Renderer {
   std::unique_ptr<Buffer> index_buffer_;
   UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
   DescriptorSets descriptor_sets_;
-  vk::UniquePipeline pipeline_;
-  size_t index_count_ = 0;
+  std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
+  std::vector<DrawData> draw_data_;
   bool is_valid_ = false;
 
   // |Renderer|

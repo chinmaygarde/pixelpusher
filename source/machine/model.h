@@ -70,16 +70,29 @@ struct TransformationStack {
   glm::mat4 transformation = glm::identity<glm::mat4>();
 };
 
+enum class ComponentType {
+  kComponentTypeUnknown,
+  kComponentTypeByte,
+  kComponentTypeUnsignedByte,
+  kComponentTypeShort,
+  kComponentTypeUnsignedShort,
+  kComponentTypeInt,
+  kComponentTypeUnsignedInt,
+  kComponentTypeFloat,
+  kComponentTypeDouble,
+};
+
 enum class DataType {
   kDataTypeUnknown,
-  kDataTypeByte,
-  kDataTypeUnsignedByte,
-  kDataTypeShort,
-  kDataTypeUnsignedShort,
-  kDataTypeInt,
-  kDataTypeUnsignedInt,
-  kDataTypeFloat,
-  kDataTypeDouble,
+  kDataTypeVec2,
+  kDataTypeVec3,
+  kDataTypeVec4,
+  kDataTypeMat2,
+  kDataTypeMat3,
+  kDataTypeMat4,
+  kDataTypeScalar,
+  kDataTypeVector,
+  kDataTypeMatrix,
 };
 
 class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
@@ -95,11 +108,14 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
   std::optional<std::vector<uint32_t>> ReadIndexList() const;
 
+  std::optional<std::vector<glm::vec3>> ReadPositionList() const;
+
  private:
   std::string name_;
   std::shared_ptr<BufferView> buffer_view_;
   size_t byte_offset_ = 0;
   bool normalized_ = false;
+  ComponentType component_type_ = ComponentType::kComponentTypeUnknown;
   DataType data_type_ = DataType::kDataTypeUnknown;
   size_t count_ = 0;
   std::vector<double> min_values_;
@@ -202,20 +218,7 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
   std::shared_ptr<Accessor> GetPositionAttribute() const;
 
-  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
-    if (indices_) {
-      auto index_data = indices_->ReadIndexList();
-      if (!index_data.has_value()) {
-        P_ERROR << "Could not read index data.";
-        return false;
-      }
-    }
-
-    auto position = GetPositionAttribute();
-    if (position) {
-    }
-    return true;
-  }
+  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
 
  private:
   std::map<std::string, std::shared_ptr<Accessor>> attributes_;
@@ -238,20 +241,7 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Mesh& mesh) override;
 
-  const std::string& GetName() const;
-
-  const std::vector<std::shared_ptr<Primitive>>& GetPrimitives() const;
-
-  const std::vector<double>& GetWeights() const;
-
-  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
-    for (const auto& primitive : primitives_) {
-      if (!primitive->CollectDrawData(data, stack)) {
-        return false;
-      }
-    }
-    return true;
-  }
+  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
 
  private:
   std::string name_;
@@ -272,47 +262,7 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Node& node) override;
 
-  const std::string& GetName() const;
-
-  const std::shared_ptr<Camera>& GetCamera() const;
-
-  const std::shared_ptr<Skin>& GetSkin() const;
-
-  const std::shared_ptr<Mesh>& GetMesh() const;
-
-  const std::vector<std::shared_ptr<Node>>& GetChildren() const;
-
-  const glm::quat& GetRotation() const;
-
-  const glm::vec3& GetScale() const;
-
-  const glm::vec3& GetTranslation() const;
-
-  const glm::mat4& GetMatrix() const;
-
-  const std::vector<double>& GetWeights() const;
-
-  bool CollectDrawData(DrawData& data, TransformationStack stack) const {
-    auto scale = glm::scale(glm::identity<glm::mat4>(), scale_);
-    auto rotate = glm::mat4(rotation_);
-    auto translate = glm::translate(glm::identity<glm::mat4>(), translation_);
-
-    stack.transformation *= translate * rotate * scale * matrix_;
-
-    if (mesh_) {
-      if (!mesh_->CollectDrawData(data, stack)) {
-        return false;
-      }
-    }
-
-    for (const auto& child : children_) {
-      if (!child->CollectDrawData(data, stack)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
+  bool CollectDrawData(DrawData& data, TransformationStack stack) const;
 
  private:
   std::string name_;

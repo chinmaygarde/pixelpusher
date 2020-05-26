@@ -82,6 +82,12 @@ PipelineBuilder& PipelineBuilder::SetVertexInputDescription(
   return *this;
 }
 
+PipelineBuilder& PipelineBuilder::SetPrimitiveTopology(
+    vk::PrimitiveTopology topology) {
+  input_assembly_.setTopology(topology);
+  return *this;
+}
+
 vk::UniquePipeline PipelineBuilder::CreatePipeline(
     vk::Device device,
     vk::PipelineCache cache,

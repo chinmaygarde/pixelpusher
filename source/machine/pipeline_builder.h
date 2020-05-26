@@ -33,6 +33,8 @@ class PipelineBuilder {
       std::vector<vk::VertexInputBindingDescription> input_bindings,
       std::vector<vk::VertexInputAttributeDescription> input_attributes);
 
+  PipelineBuilder& SetPrimitiveTopology(vk::PrimitiveTopology topology);
+
  private:
   std::vector<vk::VertexInputBindingDescription>
       vertex_input_binding_descriptions_;
