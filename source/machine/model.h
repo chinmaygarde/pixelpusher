@@ -108,7 +108,9 @@ class Accessor final : public GLTFArchivable<tinygltf::Accessor> {
 
   std::optional<std::vector<uint32_t>> ReadIndexList() const;
 
-  std::optional<std::vector<glm::vec3>> ReadPositionList() const;
+  std::optional<std::vector<glm::vec3>> ReadVec3List() const;
+
+  std::optional<std::vector<glm::vec2>> ReadVec2List() const;
 
  private:
   std::string name_;
@@ -217,6 +219,10 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
                          const tinygltf::Primitive& primitive) override;
 
   std::shared_ptr<Accessor> GetPositionAttribute() const;
+
+  std::shared_ptr<Accessor> GetTextureCoordAttribute() const;
+
+  std::shared_ptr<Accessor> GetNormalAttribute() const;
 
   bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
 

@@ -12,6 +12,8 @@ namespace model_renderer {
 
 struct Vertex {
   glm::vec3 position;
+  glm::vec3 normal;
+  glm::vec2 texture_coords;
 
   static std::vector<vk::VertexInputBindingDescription>
   GetVertexInputBindings() {
@@ -24,13 +26,32 @@ struct Vertex {
 
   static std::vector<vk::VertexInputAttributeDescription>
   GetVertexInputAttributes() {
-    return {{
+    return {
         // Position
-        0u,                                        // location
-        0u,                                        // binding
-        ToVKFormat<decltype(Vertex::position)>(),  // format
-        offsetof(Vertex, position)                 // offset
-    }};
+        {
+
+            0u,                                        // location
+            0u,                                        // binding
+            ToVKFormat<decltype(Vertex::position)>(),  // format
+            offsetof(Vertex, position)                 // offset
+        },
+        // Normal
+        {
+
+            1u,                                      // location
+            0u,                                      // binding
+            ToVKFormat<decltype(Vertex::normal)>(),  // format
+            offsetof(Vertex, normal)                 // offset
+        },
+        // Texture Coords
+        {
+
+            2u,                                              // location
+            0u,                                              // binding
+            ToVKFormat<decltype(Vertex::texture_coords)>(),  // format
+            offsetof(Vertex, texture_coords)                 // offset
+        },
+    };
   }
 };
 

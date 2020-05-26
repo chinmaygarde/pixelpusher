@@ -394,9 +394,8 @@ std::optional<std::vector<uint32_t>> Accessor::ReadIndexList() const {
   );
 }
 
-std::optional<std::vector<glm::vec3>> Accessor::ReadPositionList() const {
+std::optional<std::vector<glm::vec3>> Accessor::ReadVec3List() const {
   const auto component_count = NumberOfComponentsInDataType(data_type_);
-  // TODO: Can there be 2 component entries? Those need to be converted.
   if (component_count != 3) {
     P_ERROR << "Incorrect number of components.";
     return std::nullopt;
@@ -421,6 +420,38 @@ std::optional<std::vector<glm::vec3>> Accessor::ReadPositionList() const {
 
   for (size_t i = 0; i < float_list.size() / 3; i++) {
     vec_list.emplace_back(glm::make_vec3(float_list.data() + (i * 3)));
+  }
+
+  return vec_list;
+}
+
+// TODO: Dry this up. This is a straight up copy of ReadVec3List.
+std::optional<std::vector<glm::vec2>> Accessor::ReadVec2List() const {
+  const auto component_count = NumberOfComponentsInDataType(data_type_);
+  if (component_count != 2) {
+    P_ERROR << "Incorrect number of components.";
+    return std::nullopt;
+  }
+
+  auto list = ReadTypedList<float>(buffer_view_.get(),  //
+                                   data_type_,          //
+                                   component_type_,     //
+                                   byte_offset_,        //
+                                   count_               //
+  );
+
+  if (!list.has_value()) {
+    P_ERROR << "Could not read data list.";
+    return std::nullopt;
+  }
+
+  const auto& float_list = list.value();
+
+  std::vector<glm::vec2> vec_list;
+  vec_list.reserve(float_list.size() / 2);
+
+  for (size_t i = 0; i < float_list.size() / 2; i++) {
+    vec_list.emplace_back(glm::make_vec2(float_list.data() + (i * 2)));
   }
 
   return vec_list;
@@ -588,10 +619,28 @@ std::shared_ptr<Accessor> Primitive::GetPositionAttribute() const {
   return found->second;
 }
 
+std::shared_ptr<Accessor> Primitive::GetTextureCoordAttribute() const {
+  auto found = attributes_.find("TEXCOORD_0");
+  if (found == attributes_.end()) {
+    return nullptr;
+  }
+  return found->second;
+}
+
+std::shared_ptr<Accessor> Primitive::GetNormalAttribute() const {
+  auto found = attributes_.find("NORMAL");
+  if (found == attributes_.end()) {
+    return nullptr;
+  }
+  return found->second;
+}
+
 bool Primitive::CollectDrawData(DrawData& draw_data,
                                 const TransformationStack& stack) const {
   std::vector<uint32_t> indices;
   std::vector<glm::vec3> positions;
+  std::vector<glm::vec2> texture_coords;
+  std::vector<glm::vec3> normals;
 
   if (indices_) {
     auto index_data = indices_->ReadIndexList();
@@ -601,9 +650,23 @@ bool Primitive::CollectDrawData(DrawData& draw_data,
   }
 
   if (auto position = GetPositionAttribute()) {
-    auto position_data = position->ReadPositionList();
+    auto position_data = position->ReadVec3List();
     if (position_data.has_value()) {
       positions = std::move(position_data.value());
+    }
+  }
+
+  if (auto normal = GetNormalAttribute()) {
+    auto normal_data = normal->ReadVec3List();
+    if (normal_data.has_value()) {
+      normals = std::move(normal_data.value());
+    }
+  }
+
+  if (auto texture_coord = GetTextureCoordAttribute()) {
+    auto texture_coord_data = texture_coord->ReadVec2List();
+    if (texture_coord_data.has_value()) {
+      texture_coords = std::move(texture_coord_data.value());
     }
   }
 
@@ -618,11 +681,19 @@ bool Primitive::CollectDrawData(DrawData& draw_data,
     }
   }
 
+  const bool has_normals = normals.size() == positions.size();
+  const bool has_texture_coords = texture_coords.size() == positions.size();
+
   std::vector<shaders::model_renderer::Vertex> vertices;
   vertices.reserve(positions.size());
 
-  for (const auto& position : positions) {
-    vertices.push_back({position});
+  for (size_t i = 0, count = positions.size(); i < count; i++) {
+    vertices.push_back(shaders::model_renderer::Vertex{
+        positions[i],                                // position
+        has_normals ? normals[i] : glm::vec3{0.0f},  // normal
+        has_texture_coords ? texture_coords[i]
+                           : glm::vec2{0.0f},  // texture coords
+    });
   }
 
   draw_data.AddDrawOp(mode_, std::move(vertices), std::move(indices));
