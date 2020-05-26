@@ -35,6 +35,8 @@ class PipelineBuilder {
 
   PipelineBuilder& SetPrimitiveTopology(vk::PrimitiveTopology topology);
 
+  PipelineBuilder& SetFrontFace(vk::FrontFace front_face);
+
  private:
   std::vector<vk::VertexInputBindingDescription>
       vertex_input_binding_descriptions_;

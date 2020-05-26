@@ -92,6 +92,7 @@ bool ModelRenderer::Setup() {
   pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
   pipeline_builder.SetVertexInputDescription(vertex_input_bindings,
                                              vertex_input_attributes);
+  pipeline_builder.SetFrontFace(vk::FrontFace::eCounterClockwise);
 
   for (const auto& topology : required_topologies) {
     pipeline_builder.SetPrimitiveTopology(topology);

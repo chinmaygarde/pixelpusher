@@ -74,6 +74,11 @@ PipelineBuilder& PipelineBuilder::SetViewport(vk::Viewport viewport) {
   return *this;
 }
 
+PipelineBuilder& PipelineBuilder::SetFrontFace(vk::FrontFace front_face) {
+  rasterizer_state_.setFrontFace(front_face);
+  return *this;
+}
+
 PipelineBuilder& PipelineBuilder::SetVertexInputDescription(
     std::vector<vk::VertexInputBindingDescription> input_bindings,
     std::vector<vk::VertexInputAttributeDescription> input_attributes) {
