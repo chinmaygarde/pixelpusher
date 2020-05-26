@@ -13,10 +13,10 @@ MainRenderer::MainRenderer(VulkanConnection& connection,
                            GLFWwindow* window)
     : Renderer(context), connection_(connection) {
   is_valid_ = PushRenderer(std::make_unique<TutorialRenderer>(context)) &&
-              PushRenderer(std::make_unique<ImguiRenderer>(context, window)) &&
               PushRenderer(std::make_unique<ModelRenderer>(
                   context, PIXEL_GLTF_MODELS_LOCATION "/DamagedHelmet/glTF",
-                  "DamagedHelmet.gltf"));
+                  "DamagedHelmet.gltf")) &&
+              PushRenderer(std::make_unique<ImguiRenderer>(context, window));
 }
 
 MainRenderer::~MainRenderer() = default;
