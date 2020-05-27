@@ -4,11 +4,6 @@
 #define VULKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
 
-// TODO: Remove this from this include and move it into its top level include.
-#define GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include "logging.h"
 #include "macros.h"
 

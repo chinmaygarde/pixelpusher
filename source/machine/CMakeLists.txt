@@ -9,6 +9,7 @@ add_library(machine_lib
   descriptor_pool.h
   fence_waiter.cc
   fence_waiter.h
+  glfw.h
   image_decoder.cc
   image_decoder.h
   imgui_renderer.cc
@@ -33,6 +34,8 @@ add_library(machine_lib
   renderer.h
   rendering_context.cc
   rendering_context.h
+  shader_library.cc
+  shader_library.h
   shader_loader.cc
   shader_loader.h
   shaders/triangle.h
@@ -45,8 +48,6 @@ add_library(machine_lib
   vulkan_connection.h
   vulkan_swapchain.cc
   vulkan_swapchain.h
-  shader_library.h
-  shader_library.cc
 )
 
 target_include_directories(machine_lib

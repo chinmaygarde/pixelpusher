@@ -150,17 +150,15 @@ struct PhysicalDeviceSelection {
   }
 };
 
-static vk::SurfaceKHR CreateSurface(const vk::Instance& instance,
-                                    GLFWwindow* window) {
-  VkSurfaceKHR vk_surface = {};
-
-  if (glfwCreateWindowSurface(static_cast<VkInstance>(instance), window,
-                              nullptr, &vk_surface) != VK_SUCCESS) {
-    P_ERROR << "Could not create Vulkan Surface";
+static vk::SurfaceKHR CreateSurface(
+    vk::Instance instance,
+    VulkanConnection::SurfaceCallback surface_callback) {
+  if (!surface_callback) {
+    P_ERROR << "Surface callback was nullptr";
     return {};
   }
 
-  vk::SurfaceKHR surface(vk_surface);
+  auto surface = surface_callback(instance);
 
   if (!surface) {
     P_ERROR << "Could not create Window surface.";
@@ -316,17 +314,8 @@ static std::optional<std::set<std::string>> GetRequiredInstanceLayers() {
   return layers;
 }
 
-static std::optional<std::set<std::string>> GetRequiredInstanceExtensions() {
-  uint32_t glfw_extensions_count = 0;
-  const char** glfw_extensions =
-      glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
-
-  std::set<std::string> required_extensions;
-
-  for (size_t i = 0; i < glfw_extensions_count; i++) {
-    required_extensions.insert(std::string{glfw_extensions[i]});
-  }
-
+static std::optional<std::set<std::string>> GetRequiredInstanceExtensions(
+    std::set<std::string> required_extensions) {
   if (AreValidationLayersEnabled()) {
     required_extensions.insert(std::string{VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
   }
@@ -371,19 +360,20 @@ static vk::PhysicalDeviceFeatures GetEnabledFeatures(
   return enabled_features;
 }
 
-VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
-  if (glfw_window == nullptr) {
-    P_ERROR << "GLFW window invalid.";
+VulkanConnection::VulkanConnection(
+    PFN_vkGetInstanceProcAddr get_instance_proc_address,
+    SurfaceCallback get_surface_proc_addr,
+    std::set<std::string> required_instance_extensions) {
+  if (!get_instance_proc_address) {
+    P_ERROR << "Instance proc address accessor was not available.";
     return;
   }
 
-  if (glfwVulkanSupported() != GLFW_TRUE) {
-    P_ERROR << "GLFW could not setup Vulkan.";
+  if (!get_surface_proc_addr) {
+    P_ERROR << "Surface proc address accessor was not available.";
     return;
   }
 
-  auto get_instance_proc_address = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-      glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
   VULKAN_HPP_DEFAULT_DISPATCHER.init(get_instance_proc_address);
 
   vk::ApplicationInfo application_info;
@@ -394,7 +384,8 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
   application_info.setApiVersion(VK_MAKE_VERSION(1, 0, 0));
 
   const auto required_layers = GetRequiredInstanceLayers();
-  const auto required_extensions = GetRequiredInstanceExtensions();
+  const auto required_extensions =
+      GetRequiredInstanceExtensions(required_instance_extensions);
 
   if (!required_layers.has_value() || !required_extensions.has_value()) {
     P_ERROR
@@ -470,7 +461,7 @@ VulkanConnection::VulkanConnection(GLFWwindow* glfw_window) {
     debug_utils_messenger = std::move(debug_messenger_result.value);
   }
 
-  auto surface = CreateSurface(instance.get(), glfw_window);
+  auto surface = CreateSurface(instance.get(), get_surface_proc_addr);
 
   if (!surface) {
     P_ERROR << "Could not create surface.";

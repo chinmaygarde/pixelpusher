@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 
+// TODO: This must be removed to make the main renderer GLFW agnostic.
+#include "glfw.h"
 #include "macros.h"
 #include "renderer.h"
 #include "rendering_context.h"

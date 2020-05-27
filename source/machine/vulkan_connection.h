@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "macros.h"
@@ -15,7 +16,11 @@ struct PhysicalDeviceSelection;
 
 class VulkanConnection {
  public:
-  VulkanConnection(GLFWwindow* window);
+  using SurfaceCallback = std::function<vk::SurfaceKHR(vk::Instance instance)>;
+
+  VulkanConnection(PFN_vkGetInstanceProcAddr get_instance_proc_addr,
+                   SurfaceCallback get_surface_proc_addr,
+                   std::set<std::string> required_instance_extensions);
 
   ~VulkanConnection();
 

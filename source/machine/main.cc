@@ -5,6 +5,7 @@
 
 #include "closure.h"
 #include "event_loop.h"
+#include "glfw.h"
 #include "logging.h"
 #include "main_renderer.h"
 #include "renderer.h"
@@ -13,13 +14,28 @@
 
 namespace pixel {
 
-void OnGLFWError(int error_code, const char* description) {
+static void OnGLFWError(int error_code, const char* description) {
   P_ERROR << "GLFW Error: " << description << "(" << error_code << ")";
+}
+
+static std::set<std::string> GetGLFWRequiredInstanceExtensions() {
+  uint32_t count = 0;
+  const char** c_extensions = ::glfwGetRequiredInstanceExtensions(&count);
+  std::set<std::string> extensions;
+  for (size_t i = 0; i < count; i++) {
+    extensions.insert(std::string{c_extensions[i]});
+  }
+  return extensions;
 }
 
 int Main(int argc, char const* argv[]) {
   if (!glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";
+    return EXIT_FAILURE;
+  }
+
+  if (glfwVulkanSupported() != GLFW_TRUE) {
+    P_ERROR << "Vulkan support unavailable.";
     return EXIT_FAILURE;
   }
 
@@ -39,7 +55,28 @@ int Main(int argc, char const* argv[]) {
 
   AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
 
-  VulkanConnection connection(window);
+  auto get_instance_proc_address = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+      glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
+  auto surface_callback = [window](vk::Instance instance) -> vk::SurfaceKHR {
+    VkSurfaceKHR vk_surface = {};
+
+    if (glfwCreateWindowSurface(static_cast<VkInstance>(instance),  // instance
+                                window,                             // window
+                                nullptr,     // allocation callbacks
+                                &vk_surface  // surface (out)
+                                ) != VK_SUCCESS) {
+      P_ERROR << "Could not create window surface.";
+      return {};
+    }
+
+    return {vk_surface};
+  };
+
+  VulkanConnection connection(
+      get_instance_proc_address,           // instance proc addr
+      surface_callback,                    // surface proc addr
+      GetGLFWRequiredInstanceExtensions()  // instance extensions
+  );
 
   if (!connection.IsValid()) {
     return EXIT_FAILURE;

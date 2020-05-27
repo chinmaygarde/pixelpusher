@@ -3,6 +3,8 @@
 #include <chrono>
 
 #include "command_pool.h"
+// TODO: This must be removed to make the main renderer GLFW agnostic.
+#include "glfw.h"
 #include "imgui.h"
 #include "macros.h"
 #include "renderer.h"
