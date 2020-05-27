@@ -308,7 +308,8 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
 
   auto present_result = graphics_queue_.presentKHR(&present_info);
   if (present_result != vk::Result::eSuccess) {
-    P_ERROR << "Could not present the swapchain image.";
+    P_ERROR << "Could not present the swapchain image: "
+            << to_string(present_result);
     return false;
   }
 

@@ -21,7 +21,7 @@ ImguiRenderer::ImguiRenderer(std::shared_ptr<RenderingContext> context,
     return;
   }
 
-  frame_times_millis_.resize(kFrameSamplesCount);
+  frame_times_millis_.resize(kFrameSamplesCount, 0.0f);
 
   imgui_context_ = ImGui::CreateContext();
 
