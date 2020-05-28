@@ -61,9 +61,9 @@ bool MainRenderer::Setup() {
 }
 
 // |Renderer|
-bool MainRenderer::Render(vk::CommandBuffer render_command_buffer) {
+bool MainRenderer::RenderFrame(vk::CommandBuffer render_command_buffer) {
   for (const auto& renderer : renderers_) {
-    if (!renderer->Render(render_command_buffer)) {
+    if (!renderer->RenderFrame(render_command_buffer)) {
       return false;
     }
   }
@@ -80,6 +80,17 @@ bool MainRenderer::Teardown() {
   return true;
 }
 
+// |Renderer|
+bool MainRenderer::BeginFrame() {
+  for (auto renderer = renderers_.rbegin(); renderer != renderers_.rend();
+       ++renderer) {
+    if (!(*renderer)->BeginFrame()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool MainRenderer::Render() {
   while (true) {
     auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
@@ -88,12 +99,15 @@ bool MainRenderer::Render() {
       return false;
     }
 
+    if (!BeginFrame()) {
+      P_ERROR << "Could not begin a new frame.";
+      return false;
+    }
+
     GetContext().GetMemoryAllocator().TraceUsageStatistics();
 
-    for (const auto& renderer : renderers_) {
-      if (!renderer->Render(buffer.value())) {
-        return false;
-      }
+    if (!RenderFrame(buffer.value())) {
+      P_ERROR << "Could not render frame.";
     }
 
     auto result =

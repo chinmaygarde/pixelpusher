@@ -37,14 +37,13 @@ class ImguiRenderer final : public Renderer {
   bool Setup() override;
 
   // |Renderer|
-  bool Render(vk::CommandBuffer render_command_buffer) override;
+  bool BeginFrame() override;
+
+  // |Renderer|
+  bool RenderFrame(vk::CommandBuffer render_command_buffer) override;
 
   // |Renderer|
   bool Teardown() override;
-
-  bool RenderFrame(vk::CommandBuffer buffer);
-
-  bool BeginFrame();
 
   bool GatherPerformanceMetrics() const;
 

@@ -115,26 +115,11 @@ bool ImguiRenderer::IsValid() const {
 
 // |Renderer|
 bool ImguiRenderer::Setup() {
-  if (!IsValid()) {
-    return false;
-  }
-
-  // Nothing to do here except to begin a new frame. Setup already done in
-  // constructor.
-  return BeginFrame();
+  // Nothing to do here.
+  return IsValid();
 }
 
 // |Renderer|
-bool ImguiRenderer::Render(vk::CommandBuffer render_command_buffer) {
-  return RenderFrame(render_command_buffer) && BeginFrame();
-}
-
-// |Renderer|
-bool ImguiRenderer::Teardown() {
-  // Nothing to do here. Destructor performs all cleanup.
-  return true;
-}
-
 bool ImguiRenderer::BeginFrame() {
   if (!IsValid()) {
     return false;
@@ -164,9 +149,18 @@ bool ImguiRenderer::RenderPerformanceMetrics() const {
   ::ImGui::PlotLines("Frame History (ms)", frame_times_millis_.data(),
                      frame_times_millis_.size());
   ::ImGui::End();
+
+  ::ImGui::ShowDemoWindow();
   return true;
 }
 
+// |Renderer|
+bool ImguiRenderer::Teardown() {
+  // Nothing to do here. Destructor performs all cleanup.
+  return true;
+}
+
+// |Renderer|
 bool ImguiRenderer::RenderFrame(vk::CommandBuffer buffer) {
   if (!IsValid()) {
     return false;

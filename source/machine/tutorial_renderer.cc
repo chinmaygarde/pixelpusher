@@ -267,7 +267,14 @@ bool TutorialRenderer::Setup() {
   return true;
 }
 
-bool TutorialRenderer::Render(vk::CommandBuffer command_buffer) {
+// |Renderer|
+bool TutorialRenderer::BeginFrame() {
+  // Nothing to do here.
+  return true;
+}
+
+// |Renderer|s
+bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
   if (!is_valid_) {
     P_ERROR << "Render was not valid.";
     return false;

@@ -188,7 +188,13 @@ bool ModelRenderer::Setup() {
 }
 
 // |Renderer|
-bool ModelRenderer::Render(vk::CommandBuffer buffer) {
+bool ModelRenderer::BeginFrame() {
+  // Nothing to do here.
+  return true;
+}
+
+// |Renderer|
+bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
   if (draw_data_.empty()) {
     return true;
   }

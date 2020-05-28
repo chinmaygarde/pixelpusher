@@ -13,7 +13,9 @@ class Renderer {
 
   virtual bool Setup() = 0;
 
-  virtual bool Render(vk::CommandBuffer render_command_buffer) = 0;
+  virtual bool BeginFrame() = 0;
+
+  virtual bool RenderFrame(vk::CommandBuffer render_command_buffer) = 0;
 
   virtual bool Teardown() = 0;
 

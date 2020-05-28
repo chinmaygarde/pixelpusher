@@ -31,6 +31,12 @@ class MainRenderer final : public Renderer {
   // |Renderer|
   bool Teardown() override;
 
+  // |Renderer|
+  bool BeginFrame() override;
+
+  // |Renderer|
+  bool RenderFrame(vk::CommandBuffer render_command_buffer) override;
+
  private:
   VulkanConnection& connection_;
   std::vector<std::unique_ptr<Renderer>> renderers_;
@@ -39,9 +45,6 @@ class MainRenderer final : public Renderer {
   bool PushRenderer(std::unique_ptr<Renderer> renderer);
 
   std::unique_ptr<Renderer> PopRenderer();
-
-  // |Renderer|
-  bool Render(vk::CommandBuffer render_command_buffer) override;
 
   P_DISALLOW_COPY_AND_ASSIGN(MainRenderer);
 };

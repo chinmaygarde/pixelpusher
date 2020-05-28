@@ -47,7 +47,10 @@ class ModelRenderer : public Renderer {
   bool Setup() override;
 
   // |Renderer|
-  bool Render(vk::CommandBuffer render_command_buffer) override;
+  bool BeginFrame() override;
+
+  // |Renderer|
+  bool RenderFrame(vk::CommandBuffer render_command_buffer) override;
 
   // |Renderer|
   bool Teardown() override;
