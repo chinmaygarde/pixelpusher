@@ -72,6 +72,7 @@ target_link_libraries(machine_lib
     stb
     imgui
     tiny_gltf
+    shaderc
 )
 
 get_filename_component(PIXEL_SHADERS_LOCATION ${CMAKE_BINARY_DIR}/shaders ABSOLUTE)

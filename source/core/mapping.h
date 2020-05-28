@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "closure.h"
 #include "macros.h"
 
 namespace pixel {
@@ -21,5 +22,9 @@ class Mapping {
 };
 
 std::unique_ptr<Mapping> CopyMapping(const uint8_t* data, size_t size);
+
+std::unique_ptr<Mapping> UnownedMapping(const uint8_t* data,
+                                        size_t size,
+                                        Closure closure = nullptr);
 
 }  // namespace pixel
