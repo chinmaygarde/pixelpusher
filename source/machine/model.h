@@ -11,11 +11,7 @@
 #include "asset_loader.h"
 #include "glm.h"
 #include "macros.h"
-#include "pipeline_builder.h"
-#include "rendering_context.h"
-#include "shader_loader.h"
 #include "shaders/model_renderer.h"
-#include "vulkan.h"
 
 namespace pixel {
 namespace model {

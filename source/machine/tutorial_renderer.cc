@@ -9,7 +9,7 @@
 #include "logging.h"
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
-#include "shader_loader.h"
+#include "shader_module.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -32,8 +32,8 @@ bool TutorialRenderer::Setup() {
   }
 
   // Load shader stages.
-  auto vertex_shader_module = LoadShaderModule(device_, "triangle.vert");
-  auto fragment_shader_module = LoadShaderModule(device_, "triangle.frag");
+  auto vertex_shader_module = ShaderModule::Load(device_, "triangle.vert");
+  auto fragment_shader_module = ShaderModule::Load(device_, "triangle.frag");
 
   if (!vertex_shader_module || !fragment_shader_module) {
     P_ERROR << "Could not load shader modules.";
@@ -41,12 +41,12 @@ bool TutorialRenderer::Setup() {
   }
 
   vk::PipelineShaderStageCreateInfo vertex_shader;
-  vertex_shader.setModule(vertex_shader_module.get());
+  vertex_shader.setModule(vertex_shader_module->GetShaderModule());
   vertex_shader.setStage(vk::ShaderStageFlagBits::eVertex);
   vertex_shader.setPName("main");
 
   vk::PipelineShaderStageCreateInfo fragment_shader;
-  fragment_shader.setModule(fragment_shader_module.get());
+  fragment_shader.setModule(fragment_shader_module->GetShaderModule());
   fragment_shader.setStage(vk::ShaderStageFlagBits::eFragment);
   fragment_shader.setPName("main");
 

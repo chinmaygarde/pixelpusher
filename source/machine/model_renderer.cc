@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 
+#include "pipeline_builder.h"
 #include "pipeline_layout.h"
 
 namespace pixel {

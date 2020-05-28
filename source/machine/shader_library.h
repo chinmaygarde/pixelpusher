@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "macros.h"
+#include "shader_module.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -25,7 +26,7 @@ class ShaderLibrary {
 
  private:
   const vk::Device device_;
-  std::vector<vk::UniqueShaderModule> shader_modules_;
+  std::vector<std::unique_ptr<ShaderModule>> shader_modules_;
   std::vector<vk::PipelineShaderStageCreateInfo> pipeline_create_infos_;
 
   P_DISALLOW_COPY_AND_ASSIGN(ShaderLibrary);

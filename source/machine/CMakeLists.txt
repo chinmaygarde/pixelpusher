@@ -36,8 +36,8 @@ add_library(machine_lib
   rendering_context.h
   shader_library.cc
   shader_library.h
-  shader_loader.cc
-  shader_loader.h
+  shader_module.cc
+  shader_module.h
   shaders/triangle.h
   tiny_gltf.cc
   tiny_gltf.h
