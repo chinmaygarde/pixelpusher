@@ -5,6 +5,7 @@
 
 #include "closure.h"
 #include "event_loop.h"
+#include "geometry.h"
 #include "glfw.h"
 #include "logging.h"
 #include "main_renderer.h"
@@ -28,15 +29,28 @@ static std::set<std::string> GetGLFWRequiredInstanceExtensions() {
   return extensions;
 }
 
-int Main(int argc, char const* argv[]) {
+static Size GetCurrentWindowSize(GLFWwindow* window) {
+  int width = 0;
+  int height = 0;
+  ::glfwGetFramebufferSize(window, &width, &height);
+  if (width < 0) {
+    width = 0;
+  }
+  if (height < 0) {
+    height = 0;
+  }
+  return {static_cast<size_t>(width), static_cast<size_t>(height)};
+}
+
+static bool Main(int argc, char const* argv[]) {
   if (!glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";
-    return EXIT_FAILURE;
+    return false;
   }
 
   if (glfwVulkanSupported() != GLFW_TRUE) {
     P_ERROR << "Vulkan support unavailable.";
-    return EXIT_FAILURE;
+    return false;
   }
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -49,7 +63,7 @@ int Main(int argc, char const* argv[]) {
 
   if (!window) {
     P_ERROR << "Could not create GLFW window.";
-    return EXIT_FAILURE;
+    return false;
   }
 
   AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
@@ -78,25 +92,25 @@ int Main(int argc, char const* argv[]) {
   );
 
   if (!connection.IsValid()) {
-    return EXIT_FAILURE;
+    return false;
   }
 
   auto rendering_context = connection.CreateRenderingContext();
 
   if (!rendering_context || !rendering_context->IsValid()) {
-    return EXIT_FAILURE;
+    return false;
   }
 
   MainRenderer renderer(connection, rendering_context, window);
 
   if (!renderer.IsValid()) {
     P_ERROR << "Could not create a valid renderer.";
-    return EXIT_FAILURE;
+    return false;
   }
 
   if (!renderer.Setup()) {
     P_ERROR << "Could not setup renderer.";
-    return EXIT_FAILURE;
+    return false;
   }
 
   AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
@@ -106,7 +120,7 @@ int Main(int argc, char const* argv[]) {
   while (true) {
     if (!loop.FlushTasksNow()) {
       P_ERROR << "Could not flush event loop tasks.";
-      return EXIT_FAILURE;
+      return false;
     }
 
     glfwPollEvents();
@@ -115,17 +129,23 @@ int Main(int argc, char const* argv[]) {
       break;
     }
 
+    const auto window_size = GetCurrentWindowSize(window);
+    if (window_size.width == 0 || window_size.height == 0) {
+      ::glfwWaitEvents();
+      continue;
+    }
+
     if (!renderer.Render()) {
       P_ERROR << "Error while attempting to render.";
-      return EXIT_FAILURE;
+      return false;
     }
   }
 
-  return EXIT_SUCCESS;
+  return true;
 }
 
 }  // namespace pixel
 
 int main(int argc, char const* argv[]) {
-  return pixel::Main(argc, argv);
+  return pixel::Main(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
