@@ -43,33 +43,33 @@ static Size GetCurrentWindowSize(GLFWwindow* window) {
 }
 
 static bool Main(int argc, char const* argv[]) {
-  if (!glfwInit()) {
+  if (!::glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";
     return false;
   }
 
-  if (glfwVulkanSupported() != GLFW_TRUE) {
+  if (::glfwVulkanSupported() != GLFW_TRUE) {
     P_ERROR << "Vulkan support unavailable.";
     return false;
   }
 
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  ::glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-  AutoClosure glfw_terminate([]() { glfwTerminate(); });
+  AutoClosure glfw_terminate([]() { ::glfwTerminate(); });
 
-  glfwSetErrorCallback(&OnGLFWError);
+  ::glfwSetErrorCallback(&OnGLFWError);
 
-  auto window = glfwCreateWindow(800, 600, "Machine", NULL, NULL);
+  auto window = ::glfwCreateWindow(800, 600, "Machine", NULL, NULL);
 
   if (!window) {
     P_ERROR << "Could not create GLFW window.";
     return false;
   }
 
-  AutoClosure destroy_window([window]() { glfwDestroyWindow(window); });
+  AutoClosure destroy_window([window]() { ::glfwDestroyWindow(window); });
 
   auto get_instance_proc_address = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-      glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
+      ::glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
   auto surface_callback = [window](vk::Instance instance) -> vk::SurfaceKHR {
     VkSurfaceKHR vk_surface = {};
 
@@ -123,9 +123,9 @@ static bool Main(int argc, char const* argv[]) {
       return false;
     }
 
-    glfwPollEvents();
+    ::glfwPollEvents();
 
-    if (glfwWindowShouldClose(window)) {
+    if (::glfwWindowShouldClose(window)) {
       break;
     }
 
