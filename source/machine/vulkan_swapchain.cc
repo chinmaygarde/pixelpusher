@@ -8,6 +8,21 @@
 
 namespace pixel {
 
+vk::Extent2D VulkanSwapchain::ChooseSwapExtents(
+    const vk::SurfaceCapabilitiesKHR& capabilities) {
+  if (capabilities.currentExtent.width !=
+      std::numeric_limits<uint32_t>::max()) {
+    return capabilities.currentExtent;
+  }
+
+  vk::Extent2D extent;
+  extent.setWidth(std::clamp(800u, capabilities.minImageExtent.width,
+                             capabilities.maxImageExtent.width));
+  extent.setHeight(std::clamp(600u, capabilities.minImageExtent.width,
+                              capabilities.maxImageExtent.width));
+  return extent;
+}
+
 static std::optional<std::vector<vk::UniqueImageView>>
 CreateSwapchainImageViews(const vk::Device& device,
                           const vk::SwapchainKHR& swapchain,
@@ -103,36 +118,44 @@ CreateSwapchainCommandBuffers(const vk::Device& device,
   return std::move(result.value);
 }
 
-VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
-                                 vk::UniqueSwapchainKHR swapchain,
-                                 vk::Format swapchain_image_format,
-                                 uint32_t graphics_queue_family_index,
-                                 vk::Extent2D extents)
-    : extents_(extents) {
-  if (!swapchain) {
+VulkanSwapchain::VulkanSwapchain(
+    Delegate& p_delegate,
+    vk::Device p_device,
+    vk::SwapchainCreateInfoKHR p_swapchain_create_info,
+    vk::Format p_swapchain_image_format,
+    uint32_t p_graphics_queue_family_index,
+    vk::Queue p_graphics_queue)
+    : delegate_(p_delegate),
+      device_(p_device),
+      swapchain_create_info_(p_swapchain_create_info),
+      image_format_(p_swapchain_image_format),
+      graphics_queue_family_index_(p_graphics_queue_family_index),
+      graphics_queue_(p_graphics_queue),
+      extents_(swapchain_create_info_.imageExtent) {
+  swapchain_ =
+      UnwrapResult(device_.createSwapchainKHRUnique(swapchain_create_info_));
+  if (!swapchain_) {
     P_ERROR << "Swapchain was invalid.";
     return;
   }
 
-  auto image_views = CreateSwapchainImageViews(device, swapchain.get(),
-                                               swapchain_image_format);
-
+  auto image_views =
+      CreateSwapchainImageViews(device_, swapchain_.get(), image_format_);
   if (!image_views.has_value()) {
     P_ERROR << "Could not create swapchain image views.";
     return;
   }
 
-  auto render_pass = CreateRenderPass(device, swapchain_image_format);
-
-  if (!render_pass) {
+  render_pass_ = CreateRenderPass(device_, image_format_);
+  if (!render_pass_) {
     P_ERROR << "Could not create swapchain render pass.";
     return;
   }
 
-  auto frame_buffers = CreateSwapchainFramebuffers(device,               //
+  auto frame_buffers = CreateSwapchainFramebuffers(device_,              //
                                                    image_views.value(),  //
-                                                   render_pass.get(),    //
-                                                   extents               //
+                                                   render_pass_.get(),   //
+                                                   extents_              //
   );
 
   if (!frame_buffers.has_value()) {
@@ -142,52 +165,58 @@ VulkanSwapchain::VulkanSwapchain(const vk::Device& device,
 
   vk::CommandPoolCreateInfo pool_info;
   pool_info.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-  pool_info.setQueueFamilyIndex(graphics_queue_family_index);
-  auto pool_result = device.createCommandPoolUnique(pool_info);
-  if (pool_result.result != vk::Result::eSuccess) {
+  pool_info.setQueueFamilyIndex(graphics_queue_family_index_);
+  command_pool_ = UnwrapResult(device_.createCommandPoolUnique(pool_info));
+  if (!command_pool_) {
     P_ERROR << "Could not create command buffer pool.";
     return;
   }
 
   auto command_buffers = CreateSwapchainCommandBuffers(
-      device, pool_result.value.get(), frame_buffers.value().size());
+      device_, command_pool_.get(), frame_buffers.value().size());
   if (!command_buffers.has_value()) {
     P_ERROR << "Could not create swapchain command buffers.";
     return;
   }
 
-  auto render_semaphore_result =
-      device.createSemaphoreUnique(vk::SemaphoreCreateInfo{});
-  if (render_semaphore_result.result != vk::Result::eSuccess) {
-    P_ERROR << "Could not create semaphore";
+  ready_to_render_semaphore_ =
+      UnwrapResult(device_.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+  ready_to_present_semaphore_ =
+      UnwrapResult(device_.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+
+  if (!ready_to_render_semaphore_ || !ready_to_present_semaphore_) {
+    P_ERROR << "Could not create swapchain semaphores.";
     return;
   }
 
-  auto present_semaphore_result =
-      device.createSemaphoreUnique(vk::SemaphoreCreateInfo{});
-  if (present_semaphore_result.result != vk::Result::eSuccess) {
-    P_ERROR << "Could not create semaphore";
-    return;
-  }
-
-  auto graphics_queue =
-      device.getQueue(graphics_queue_family_index,  // queue family index
-                      0u                            // queue index
-      );
-
-  device_ = device;
-  graphics_queue_ = graphics_queue;
-  swapchain_ = std::move(swapchain);
   image_views_ = std::move(image_views.value());
-  render_pass_ = std::move(render_pass);
   frame_buffers_ = std::move(frame_buffers.value());
-  command_pool_ = std::move(pool_result.value);
   command_buffers_ = std::move(command_buffers.value());
-  ready_to_render_semaphore_ = std::move(render_semaphore_result.value);
-  ready_to_present_semaphore_ = std::move(present_semaphore_result.value);
 
   is_valid_ = true;
 }
+
+static vk::SwapchainCreateInfoKHR VkSwapchainCreateInfoWithUpdatedExtents(
+    const vk::SwapchainCreateInfoKHR& original_create_info,
+    const vk::Extent2D& extents) {
+  auto create_info = original_create_info;
+  create_info.imageExtent = extents;
+  return create_info;
+}
+
+VulkanSwapchain::VulkanSwapchain(const VulkanSwapchain& swapchain,
+                                 vk::Extent2D new_extents)
+    : VulkanSwapchain(
+          swapchain.delegate_,  // delegate
+          swapchain.device_,    // device
+          VkSwapchainCreateInfoWithUpdatedExtents(
+              swapchain.swapchain_create_info_,
+              new_extents),         // swapchain_create_info
+          swapchain.image_format_,  // swapchain_image_format
+          swapchain
+              .graphics_queue_family_index_,  // graphics_queue_family_index
+          swapchain.graphics_queue_           // graphics_queue
+      ) {}
 
 VulkanSwapchain::~VulkanSwapchain() = default;
 
@@ -200,12 +229,15 @@ const vk::Extent2D& VulkanSwapchain::GetExtents() const {
 }
 
 const vk::RenderPass& VulkanSwapchain::GetRenderPass() const {
-  P_ASSERT(is_valid_);
   return render_pass_.get();
 }
 
 std::optional<vk::CommandBuffer> VulkanSwapchain::AcquireNextCommandBuffer() {
-  P_ASSERT(is_valid_);
+  if (!is_valid_) {
+    P_ERROR << "Swapchain is no longer valid.";
+    return std::nullopt;
+  }
+
   if (pending_command_buffer_.has_value()) {
     P_ERROR << "A command buffer was already pending for submission.";
     return std::nullopt;
@@ -238,20 +270,26 @@ std::optional<vk::CommandBuffer> VulkanSwapchain::AcquireNextCommandBuffer() {
   return pending_command_buffer_.value();
 }
 
-bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
+VulkanSwapchain::SubmitResult VulkanSwapchain::SubmitCommandBuffer(
+    vk::CommandBuffer buffer) {
+  if (!is_valid_) {
+    P_ERROR << "Swapchain is no longer valid.";
+    return SubmitResult::kFailure;
+  }
+
   if (!pending_command_buffer_.has_value()) {
     P_ERROR << "There was no pending command buffer to submit.";
-    return false;
+    return SubmitResult::kFailure;
   }
 
   if (pending_command_buffer_.value() != buffer) {
     P_ERROR << "Command buffer to submit was not the pending command buffer.";
-    return false;
+    return SubmitResult::kFailure;
   }
 
   if (!FinalizeCommandBuffer(buffer)) {
     P_ERROR << "Could not finalize command buffer.";
-    return false;
+    return SubmitResult::kFailure;
   }
 
   // ---------------------------------------------------------------------------
@@ -278,7 +316,7 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
       graphics_queue_.submit(submit_info, nullptr /* fences */);
   if (command_buffer_submit_result != vk::Result::eSuccess) {
     P_ERROR << "Could not submit the pending command buffer.";
-    return false;
+    return SubmitResult::kFailure;
   }
 
   pending_command_buffer_.reset();
@@ -290,7 +328,7 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
   if (!pending_swapchain_image_index_.has_value()) {
     P_ERROR
         << "Swapchain image index not associated with pending command buffer.";
-    return false;
+    return SubmitResult::kFailure;
   }
 
   vk::PresentInfoKHR present_info;
@@ -307,10 +345,17 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
   present_info.setPImageIndices(&pending_swapchain_image_index_.value());
 
   auto present_result = graphics_queue_.presentKHR(&present_info);
-  if (present_result != vk::Result::eSuccess) {
-    P_ERROR << "Could not present the swapchain image: "
-            << to_string(present_result);
-    return false;
+  switch (present_result) {
+    case vk::Result::eSuccess:
+      break;
+    case vk::Result::eSuboptimalKHR:
+    case vk::Result::eErrorOutOfDateKHR:
+      delegate_.OnSwapchainNeedsRecreation(*this);
+      return SubmitResult::kTryAgain;
+    default:
+      P_ERROR << "Could not present the swapchain image: "
+              << to_string(present_result);
+      return SubmitResult::kFailure;
   }
 
   pending_swapchain_image_index_.reset();
@@ -319,10 +364,10 @@ bool VulkanSwapchain::SubmitCommandBuffer(vk::CommandBuffer buffer) {
   // implemented.
   if (graphics_queue_.waitIdle() != vk::Result::eSuccess) {
     P_ERROR << "Could not wait the graphics queue to go idle.";
-    return false;
+    return SubmitResult::kFailure;
   }
 
-  return true;
+  return SubmitResult::kSuccess;
 }
 
 bool VulkanSwapchain::PrepareCommandBuffer(vk::CommandBuffer buffer,
@@ -370,6 +415,21 @@ bool VulkanSwapchain::FinalizeCommandBuffer(vk::CommandBuffer buffer) {
 
 size_t VulkanSwapchain::GetImageCount() const {
   return image_views_.size();
+}
+
+void VulkanSwapchain::Retire() {
+  device_.waitIdle();
+
+  is_valid_ = false;
+
+  ready_to_present_semaphore_.reset();
+  ready_to_render_semaphore_.reset();
+  command_buffers_.clear();
+  command_pool_.reset();
+  render_pass_.reset();
+  frame_buffers_.clear();
+  image_views_.clear();
+  swapchain_.reset();
 }
 
 }  // namespace pixel

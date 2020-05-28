@@ -5,17 +5,28 @@
 
 #include "macros.h"
 #include "vulkan.h"
-#include "vulkan_connection.h"
 
 namespace pixel {
 
 class VulkanSwapchain {
  public:
-  VulkanSwapchain(const vk::Device& device,
-                  vk::UniqueSwapchainKHR swapchain,
+  class Delegate {
+   public:
+    virtual void OnSwapchainNeedsRecreation(
+        const VulkanSwapchain& swapchain) = 0;
+  };
+
+  static vk::Extent2D ChooseSwapExtents(
+      const vk::SurfaceCapabilitiesKHR& capabilities);
+
+  VulkanSwapchain(Delegate& delegate,
+                  vk::Device device,
+                  vk::SwapchainCreateInfoKHR swapchain_create_info,
                   vk::Format swapchain_image_format,
                   uint32_t graphics_queue_family_index,
-                  vk::Extent2D extents);
+                  vk::Queue graphics_queue);
+
+  VulkanSwapchain(const VulkanSwapchain& swapchain, vk::Extent2D new_extents);
 
   ~VulkanSwapchain();
 
@@ -27,14 +38,25 @@ class VulkanSwapchain {
 
   std::optional<vk::CommandBuffer> AcquireNextCommandBuffer();
 
-  bool SubmitCommandBuffer(vk::CommandBuffer buffer);
+  enum class SubmitResult {
+    kFailure,
+    kSuccess,
+    kTryAgain,
+  };
+  [[nodiscard]] SubmitResult SubmitCommandBuffer(vk::CommandBuffer buffer);
 
   size_t GetImageCount() const;
 
+  void Retire();
+
  private:
-  vk::Device device_;
-  vk::Queue graphics_queue_;
-  vk::Extent2D extents_;
+  Delegate& delegate_;
+  const vk::Device device_;
+  const vk::SwapchainCreateInfoKHR swapchain_create_info_;
+  const vk::Format image_format_;
+  const uint32_t graphics_queue_family_index_;
+  const vk::Queue graphics_queue_;
+  const vk::Extent2D extents_;
   vk::UniqueSwapchainKHR swapchain_;
   std::vector<vk::UniqueImageView> image_views_;
   std::vector<vk::UniqueFramebuffer> frame_buffers_;

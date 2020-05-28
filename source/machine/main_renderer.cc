@@ -81,21 +81,33 @@ bool MainRenderer::Teardown() {
 }
 
 bool MainRenderer::Render() {
-  auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
+  while (true) {
+    auto buffer = connection_.GetSwapchain().AcquireNextCommandBuffer();
 
-  if (!buffer.has_value()) {
-    return false;
-  }
-
-  GetContext().GetMemoryAllocator().TraceUsageStatistics();
-
-  for (const auto& renderer : renderers_) {
-    if (!renderer->Render(buffer.value())) {
+    if (!buffer.has_value()) {
       return false;
     }
-  }
 
-  if (!connection_.GetSwapchain().SubmitCommandBuffer(buffer.value())) {
+    GetContext().GetMemoryAllocator().TraceUsageStatistics();
+
+    for (const auto& renderer : renderers_) {
+      if (!renderer->Render(buffer.value())) {
+        return false;
+      }
+    }
+
+    auto result =
+        connection_.GetSwapchain().SubmitCommandBuffer(buffer.value());
+
+    switch (result) {
+      case VulkanSwapchain::SubmitResult::kSuccess:
+        return true;
+      case VulkanSwapchain::SubmitResult::kFailure:
+        return false;
+      case VulkanSwapchain::SubmitResult::kTryAgain:
+        continue;
+    }
+
     return false;
   }
 

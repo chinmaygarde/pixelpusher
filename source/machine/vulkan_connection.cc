@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 
+#include "event_loop.h"
 #include "logging.h"
 #include "macros.h"
 #include "vulkan_swapchain.h"
@@ -41,35 +42,22 @@ struct SwapchainDetails {
     return vk::PresentModeKHR::eFifo;
   }
 
-  std::optional<vk::Extent2D> ChooseSwapExtent() const {
-    if (capabilities.currentExtent.width !=
-        std::numeric_limits<uint32_t>::max()) {
-      return capabilities.currentExtent;
-    }
-
-    vk::Extent2D extent;
-    extent.setWidth(std::clamp(800u, capabilities.minImageExtent.width,
-                               capabilities.maxImageExtent.width));
-    extent.setHeight(std::clamp(600u, capabilities.minImageExtent.width,
-                                capabilities.maxImageExtent.width));
-    return extent;
-  }
-
   uint32_t ChooseSwapchainImageCount() const {
     return std::clamp<uint32_t>(3, capabilities.minImageCount,
                                 capabilities.maxImageCount);
   };
 
   std::unique_ptr<VulkanSwapchain> CreateSwapchain(
-      const vk::Device& device,
-      const vk::SurfaceKHR& surface,
+      VulkanSwapchain::Delegate& delegate,
+      vk::Device device,
+      vk::SurfaceKHR surface,
       uint32_t graphics_family_index,
       uint32_t present_family_index) const {
     auto surface_format = ChooseSurfaceFormat();
     auto present_mode = ChoosePresentMode();
-    auto swap_extent = ChooseSwapExtent();
+    auto swap_extent = VulkanSwapchain::ChooseSwapExtents(capabilities);
 
-    if (!surface_format || !present_mode || !swap_extent) {
+    if (!surface_format || !present_mode) {
       return nullptr;
     }
 
@@ -79,7 +67,7 @@ struct SwapchainDetails {
     swapchain_create_info.setImageFormat(surface_format.value().format);
     swapchain_create_info.setImageColorSpace(surface_format.value().colorSpace);
     swapchain_create_info.setPresentMode(present_mode.value());
-    swapchain_create_info.setImageExtent(swap_extent.value());
+    swapchain_create_info.setImageExtent(swap_extent);
     swapchain_create_info.setImageArrayLayers(1u);
     swapchain_create_info.setImageUsage(
         vk::ImageUsageFlagBits::eColorAttachment);
@@ -101,18 +89,14 @@ struct SwapchainDetails {
         vk::CompositeAlphaFlagBitsKHR::eOpaque;
     swapchain_create_info.setClipped(true);
 
-    auto swapchain = device.createSwapchainKHRUnique(swapchain_create_info);
-    if (swapchain.result != vk::Result::eSuccess) {
-      return nullptr;
-    }
-
-    auto vulkan_swapchain =
-        std::make_unique<VulkanSwapchain>(device,                         //
-                                          std::move(swapchain.value),     //
-                                          surface_format.value().format,  //
-                                          graphics_family_index,          //
-                                          swap_extent.value()             //
-        );
+    auto vulkan_swapchain = std::make_unique<VulkanSwapchain>(
+        delegate,
+        device,                                     //
+        swapchain_create_info,                      //
+        surface_format.value().format,              //
+        graphics_family_index,                      //
+        device.getQueue(graphics_family_index, 0u)  //
+    );
 
     if (!vulkan_swapchain->IsValid()) {
       return nullptr;
@@ -138,15 +122,20 @@ struct PhysicalDeviceSelection {
   operator bool() const { return IsValid(); }
 
   std::unique_ptr<VulkanSwapchain> CreateSwapchain(
-      const vk::Device& device,
-      const vk::SurfaceKHR& surface) {
+      VulkanSwapchain::Delegate& delegate,
+      vk::Device device,
+      vk::SurfaceKHR surface) {
     if (!IsValid()) {
       return nullptr;
     }
 
     return swapchain_details.value().CreateSwapchain(
-        device, surface, graphics_family_index.value(),
-        present_family_index.value());
+        delegate,                       //
+        device,                         //
+        surface,                        //
+        graphics_family_index.value(),  //
+        present_family_index.value()    //
+    );
   }
 };
 
@@ -519,7 +508,7 @@ VulkanConnection::VulkanConnection(
 
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
-  auto swapchain = selection.CreateSwapchain(device.get(), surface);
+  auto swapchain = selection.CreateSwapchain(*this, device.get(), surface);
   if (!swapchain) {
     P_ERROR << "Could not create swapchain.";
     return;
@@ -618,6 +607,48 @@ std::shared_ptr<RenderingContext> VulkanConnection::CreateRenderingContext()
   }
 
   return context;
+}
+
+// |VulkanSwapchain::Delegate|
+void VulkanConnection::OnSwapchainNeedsRecreation(
+    const VulkanSwapchain& caller) {
+  if (!swapchain_) {
+    return;
+  }
+
+  if (swapchain_.get() != &caller) {
+    return;
+  }
+
+  auto new_capabilities = physical_device_.getSurfaceCapabilitiesKHR(surface_);
+
+  if (new_capabilities.result != vk::Result::eSuccess) {
+    P_ERROR << "Could not query new surface capabilities while attempting to "
+               "recreate sub-optimal swapchain.";
+    return;
+  }
+
+  const auto new_extents =
+      VulkanSwapchain::ChooseSwapExtents(new_capabilities.value);
+
+  auto old_swapchain = std::move(swapchain_);
+
+  old_swapchain->Retire();
+
+  auto new_swapchain =
+      std::make_unique<VulkanSwapchain>(*old_swapchain, new_extents);
+
+  EventLoop::ForCurrentThread().GetDispatcher()->PostTask(
+      MakeCopyable([swapchain = std::move(old_swapchain)]() mutable {
+        P_ERROR << "Destroying old swapchain.";
+        swapchain.reset();
+      }));
+
+  if (!new_swapchain->IsValid()) {
+    return;
+  }
+
+  swapchain_ = std::move(new_swapchain);
 }
 
 }  // namespace pixel

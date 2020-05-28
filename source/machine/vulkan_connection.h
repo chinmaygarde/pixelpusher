@@ -8,13 +8,13 @@
 #include "render_pass.h"
 #include "rendering_context.h"
 #include "vulkan.h"
+#include "vulkan_swapchain.h"
 
 namespace pixel {
 
-class VulkanSwapchain;
 struct PhysicalDeviceSelection;
 
-class VulkanConnection {
+class VulkanConnection : public VulkanSwapchain::Delegate {
  public:
   using SurfaceCallback = std::function<vk::SurfaceKHR(vk::Instance instance)>;
 
@@ -56,6 +56,9 @@ class VulkanConnection {
       vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
       vk::DebugUtilsMessageTypeFlagsEXT types,
       const vk::DebugUtilsMessengerCallbackDataEXT& callback_data);
+
+  // |VulkanSwapchain::Delegate|
+  void OnSwapchainNeedsRecreation(const VulkanSwapchain& swapchain);
 
   P_DISALLOW_COPY_AND_ASSIGN(VulkanConnection);
 };
