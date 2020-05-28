@@ -4,59 +4,51 @@
 
 namespace pixel {
 
-RenderingContext::RenderingContext(vk::Instance instance,
+RenderingContext::RenderingContext(const Delegate& delegate,
+                                   vk::Instance instance,
                                    vk::PhysicalDevice physical_device,
-                                   vk::Device device,
+                                   vk::Device logical_device,
                                    QueueSelection graphics_queue,
                                    QueueSelection transfer_queue,
-                                   vk::RenderPass onscreen_render_pass,
-                                   size_t swapchain_image_count,
-                                   const vk::PhysicalDeviceFeatures& features,
-                                   vk::Extent2D extents)
-    : instance_(instance),
+                                   const vk::PhysicalDeviceFeatures& features)
+    : delegate_(delegate),
+      instance_(instance),
       physical_device_(physical_device),
-      device_(device),
+      device_(logical_device),
       graphics_queue_(graphics_queue),
       transfer_queue_(transfer_queue),
-      swapchain_image_count_(swapchain_image_count),
-      features_(features),
-      extents_(extents) {
+      features_(features) {
   if (!device_) {
     return;
   }
 
   memory_allocator_ =
-      std::make_unique<MemoryAllocator>(physical_device, device);
+      std::make_unique<MemoryAllocator>(physical_device, device_);
   if (!memory_allocator_->IsValid()) {
     return;
   }
 
-  pipeline_cache_ = UnwrapResult(device.createPipelineCacheUnique({}));
+  pipeline_cache_ = UnwrapResult(device_.createPipelineCacheUnique({}));
   if (!pipeline_cache_) {
     return;
   }
 
   graphics_command_pool_ = CommandPool::Create(
-      device, vk::CommandPoolCreateFlagBits::eTransient,
+      device_, vk::CommandPoolCreateFlagBits::eTransient,
       graphics_queue.queue_family_index, graphics_queue.queue);
   if (!graphics_command_pool_) {
     return;
   }
 
   transfer_command_pool_ = CommandPool::Create(
-      device, vk::CommandPoolCreateFlagBits::eTransient,
+      device_, vk::CommandPoolCreateFlagBits::eTransient,
       transfer_queue.queue_family_index, transfer_queue.queue);
   if (!transfer_command_pool_) {
     return;
   }
 
-  descriptor_pool_ = std::make_unique<DescriptorPool>(device);
+  descriptor_pool_ = std::make_unique<DescriptorPool>(device_);
   if (!descriptor_pool_) {
-    return;
-  }
-
-  onscreen_render_pass_ = onscreen_render_pass;
-  if (!onscreen_render_pass_) {
     return;
   }
 
@@ -106,7 +98,7 @@ const CommandPool& RenderingContext::GetTransferCommandPool() const {
 }
 
 vk::RenderPass RenderingContext::GetOnScreenRenderPass() const {
-  return onscreen_render_pass_;
+  return delegate_.GetOnScreenRenderPass();
 }
 
 DescriptorPool& RenderingContext::GetDescriptorPool() const {
@@ -114,28 +106,30 @@ DescriptorPool& RenderingContext::GetDescriptorPool() const {
 }
 
 size_t RenderingContext::GetSwapchainImageCount() const {
-  return swapchain_image_count_;
+  return delegate_.GetSwapchainImageCount();
 }
 
 const vk::PhysicalDeviceFeatures& RenderingContext::GetFeatures() const {
   return features_;
 }
 
-const vk::Extent2D& RenderingContext::GetExtents() const {
-  return extents_;
+vk::Extent2D RenderingContext::GetExtents() const {
+  return delegate_.GetScreenExtents();
 }
 
 vk::Viewport RenderingContext::GetViewport() const {
+  const auto extents = GetExtents();
   return {0,
           0,
-          static_cast<float>(extents_.width),
-          static_cast<float>(extents_.height),
+          static_cast<float>(extents.width),
+          static_cast<float>(extents.height),
           0.0,
           1.0};
 }
 
 vk::Rect2D RenderingContext::GetScissorRect() const {
-  return {{0, 0}, {extents_.width, extents_.height}};
+  const auto extents = GetExtents();
+  return {{0, 0}, {extents.width, extents.height}};
 }
 
 }  // namespace pixel

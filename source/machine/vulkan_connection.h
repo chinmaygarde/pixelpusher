@@ -14,7 +14,8 @@ namespace pixel {
 
 struct PhysicalDeviceSelection;
 
-class VulkanConnection : public VulkanSwapchain::Delegate {
+class VulkanConnection : public VulkanSwapchain::Delegate,
+                         public RenderingContext::Delegate {
  public:
   using SurfaceCallback = std::function<vk::SurfaceKHR(vk::Instance instance)>;
 
@@ -58,7 +59,16 @@ class VulkanConnection : public VulkanSwapchain::Delegate {
       const vk::DebugUtilsMessengerCallbackDataEXT& callback_data);
 
   // |VulkanSwapchain::Delegate|
-  void OnSwapchainNeedsRecreation(const VulkanSwapchain& swapchain);
+  void OnSwapchainNeedsRecreation(const VulkanSwapchain& swapchain) override;
+
+  // |RenderingContext::Delegate|
+  vk::RenderPass GetOnScreenRenderPass() const override;
+
+  // |RenderingContext::Delegate|
+  size_t GetSwapchainImageCount() const override;
+
+  // |RenderingContext::Delegate|
+  vk::Extent2D GetScreenExtents() const override;
 
   P_DISALLOW_COPY_AND_ASSIGN(VulkanConnection);
 };

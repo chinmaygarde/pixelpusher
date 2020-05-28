@@ -244,6 +244,8 @@ bool TutorialRenderer::Setup() {
   pipeline_builder.SetVertexInputDescription(
       {TriangleVertices::GetVertexInputBindingDescription()},
       TriangleVertices::GetVertexInputAttributeDescription());
+  pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
+  pipeline_builder.AddDynamicState(vk::DynamicState::eViewport);
 
   auto pipeline = pipeline_builder.CreatePipeline(
       device_,                               // device
@@ -293,6 +295,8 @@ bool TutorialRenderer::Render(vk::CommandBuffer command_buffer) {
 
   auto marker = DebugMarkerBegin(command_buffer, "Draw Triangle");
   // Perform per frame rendering operations here.
+  command_buffer.setScissor(0u, GetContext().GetScissorRect());
+  command_buffer.setViewport(0u, GetContext().GetViewport());
   command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                               pipeline_.get());
   command_buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer}, {0u});

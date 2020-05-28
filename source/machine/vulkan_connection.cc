@@ -590,17 +590,15 @@ std::shared_ptr<RenderingContext> VulkanConnection::CreateRenderingContext()
   QueueSelection graphics_queue = {family_index, queue};
   QueueSelection transfer_queue = {family_index, queue};
 
-  auto context = std::make_shared<RenderingContext>(
-      instance_.get(),              // instance
-      physical_device_,             // physical device
-      device_.get(),                // logical device
-      graphics_queue,               // graphics queue
-      transfer_queue,               // transfer queue
-      swapchain_->GetRenderPass(),  // onscreen render_pass
-      swapchain_->GetImageCount(),  // swapchain image count
-      available_features_,          // features
-      swapchain_->GetExtents()      // extents
-  );
+  auto context =
+      std::make_shared<RenderingContext>(*this,               // delegate
+                                         instance_.get(),     // instance
+                                         physical_device_,    // physical device
+                                         device_.get(),       // logical device
+                                         graphics_queue,      // graphics queue
+                                         transfer_queue,      // transfer queue
+                                         available_features_  // features
+      );
 
   if (!context->IsValid()) {
     return nullptr;
@@ -638,17 +636,29 @@ void VulkanConnection::OnSwapchainNeedsRecreation(
   auto new_swapchain =
       std::make_unique<VulkanSwapchain>(*old_swapchain, new_extents);
 
-  EventLoop::ForCurrentThread().GetDispatcher()->PostTask(
-      MakeCopyable([swapchain = std::move(old_swapchain)]() mutable {
-        P_ERROR << "Destroying old swapchain.";
-        swapchain.reset();
-      }));
+  EventLoop::ForCurrentThread().GetDispatcher()->PostTask(MakeCopyable(
+      [swapchain = std::move(old_swapchain)]() mutable { swapchain.reset(); }));
 
   if (!new_swapchain->IsValid()) {
     return;
   }
 
   swapchain_ = std::move(new_swapchain);
+}
+
+// |RenderingContext::Delegate|
+vk::RenderPass VulkanConnection::GetOnScreenRenderPass() const {
+  return swapchain_ ? swapchain_->GetRenderPass() : vk::RenderPass{};
+}
+
+// |RenderingContext::Delegate|
+size_t VulkanConnection::GetSwapchainImageCount() const {
+  return swapchain_ ? swapchain_->GetImageCount() : 0u;
+}
+
+// |RenderingContext::Delegate|
+vk::Extent2D VulkanConnection::GetScreenExtents() const {
+  return swapchain_ ? swapchain_->GetExtents() : vk::Extent2D{};
 }
 
 }  // namespace pixel
