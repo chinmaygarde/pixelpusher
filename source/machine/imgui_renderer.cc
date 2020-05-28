@@ -150,7 +150,6 @@ bool ImguiRenderer::RenderPerformanceMetrics() const {
                      frame_times_millis_.size());
   ::ImGui::End();
 
-  ::ImGui::ShowDemoWindow();
   return true;
 }
 
