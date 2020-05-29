@@ -9,6 +9,8 @@
 #include <sstream>
 #include <string>
 
+#include "win_utils.h"
+
 #else  // P_OS_WINDOWS
 
 #include <fcntl.h>
@@ -60,49 +62,6 @@ class FileMapping : public Mapping {
 
   P_DISALLOW_COPY_AND_ASSIGN(FileMapping);
 };
-
-#if P_OS_WINDOWS
-
-using WideStringConvertor =
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>;
-
-static std::string WideStringToString(const std::wstring& wstr) {
-  WideStringConvertor converter;
-  return converter.to_bytes(wstr);
-}
-
-static std::string GetLastErrorMessage() {
-  DWORD last_error = ::GetLastError();
-  if (last_error == 0) {
-    return {};
-  }
-
-  const DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                      FORMAT_MESSAGE_FROM_SYSTEM |
-                      FORMAT_MESSAGE_IGNORE_INSERTS;
-
-  wchar_t* buffer = nullptr;
-  size_t size = ::FormatMessage(
-      flags,                                      // dwFlags
-      NULL,                                       // lpSource
-      last_error,                                 // dwMessageId
-      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  // dwLanguageId
-      reinterpret_cast<LPSTR>(&buffer),           // lpBuffer
-      0,                                          // nSize
-      NULL                                        // Arguments
-  );
-
-  std::wstring message(buffer, size);
-
-  ::LocalFree(buffer);
-
-  std::wstringstream stream;
-  stream << message << " (" << last_error << ").";
-
-  return WideStringToString(stream.str());
-}
-
-#endif  // P_OS_WINDOWS
 
 bool FDTraits::IsValid(Handle fd) {
 #if P_OS_WINDOWS

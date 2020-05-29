@@ -7,6 +7,10 @@ add_library(core
   event_loop.h
   file.cc
   file.h
+  filesystem_watcher.cc
+  filesystem_watcher.h
+  filesystem_watcher_win.cc
+  filesystem_watcher_win.h
   geometry.h
   hash.cc
   hash.h
@@ -22,6 +26,8 @@ add_library(core
   unique_object.h
   unshared_weak.cc
   unshared_weak.h
+  win_utils.h
+  win_utils.cc
 )
 
 target_include_directories(core

@@ -3,8 +3,23 @@
 #include <algorithm>
 #include <utility>
 
+#include "macros.h"
+
 namespace pixel {
 
+//------------------------------------------------------------------------------
+///
+/// Example Object Traits:
+/// ```
+///    struct ObjectTraits {
+///      static bool IsValid(ObjectType fd);
+///
+///      static ObjectType DefaultValue();
+///
+///      static void Collect(ObjectType fd);
+///    };
+/// ```
+///
 template <class ObjectType, class ObjectTraits>
 class UniqueObject {
  public:
@@ -38,6 +53,22 @@ class UniqueObject {
     auto old = object_;
     object_ = ObjectTraits::DefaultValue();
     return old;
+  }
+
+  constexpr bool operator<(const UniqueObject& other) const {
+    return object_ < other.object_;
+  }
+
+  constexpr bool operator>(const UniqueObject& other) const {
+    return object_ > other.object_;
+  }
+
+  constexpr bool operator==(const UniqueObject& other) const {
+    return object_ == other.object_;
+  }
+
+  constexpr bool operator!=(const UniqueObject& other) const {
+    return object_ != other.object_;
   }
 
  private:

@@ -7,6 +7,7 @@
 #include <shaderc/shaderc.hpp>
 
 #include "file.h"
+#include "filesystem_watcher.h"
 #include "mapping.h"
 #include "shader_location.h"
 #include "vulkan.h"
@@ -156,7 +157,12 @@ std::unique_ptr<ShaderModule> ShaderModule::Load(const vk::Device& device,
 ShaderModule::ShaderModule(vk::UniqueShaderModule module,
                            std::string original_file_name)
     : module_(std::move(module)),
-      original_file_name_(std::move(original_file_name)) {}
+      original_file_name_(std::move(original_file_name)) {
+  if (!original_file_name_.empty()) {
+    FileSystemWatcher::ForProcess().WatchPathForUpdates(
+        original_file_name_.c_str(), []() { P_ERROR << "File changed."; });
+  }
+}
 
 ShaderModule::~ShaderModule() = default;
 
