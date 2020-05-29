@@ -1,5 +1,7 @@
 #include "win_utils.h"
 
+#include <codecvt>
+#include <locale>
 #include <sstream>
 
 #include <Windows.h>
@@ -35,6 +37,11 @@ std::string GetLastErrorMessage() {
   stream << "Error: (" << last_error << "): " << message;
 
   return stream.str();
+}
+
+std::string WideStringToString(const std::wstring& string) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
+  return converter.to_bytes(string);
 }
 
 }  // namespace pixel

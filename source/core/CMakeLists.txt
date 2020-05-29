@@ -26,8 +26,8 @@ add_library(core
   unique_object.h
   unshared_weak.cc
   unshared_weak.h
-  win_utils.h
   win_utils.cc
+  win_utils.h
 )
 
 target_include_directories(core

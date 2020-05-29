@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -18,7 +19,7 @@ class FileSystemWatcher {
   virtual ~FileSystemWatcher();
 
   virtual std::optional<size_t> WatchPathForUpdates(
-      std::string path,
+      std::filesystem::path path,
       Closure change_callback) = 0;
 
   virtual bool StopWatchingForUpdates(size_t handle) = 0;

@@ -9,6 +9,7 @@
 #include <set>
 
 #include "closure.h"
+#include "file.h"
 #include "filesystem_watcher.h"
 #include "logging.h"
 #include "macros.h"
@@ -17,19 +18,7 @@
 
 namespace pixel {
 
-struct FirstChangeObjectTraits {
-  static bool IsValid(HANDLE fd) { return INVALID_HANDLE_VALUE == fd; }
-
-  static HANDLE DefaultValue() { return INVALID_HANDLE_VALUE; }
-
-  static void Collect(HANDLE fd) {
-    if (!::FindCloseChangeNotification(fd)) {
-      P_ERROR << "Could not close first change handle.";
-    }
-  }
-};
-
-using UniqueFirstChange = UniqueObject<HANDLE, FirstChangeObjectTraits>;
+class PendingFileSystemWatch;
 
 class FileSystemWatcherWin final : public FileSystemWatcher {
  public:
@@ -39,7 +28,7 @@ class FileSystemWatcherWin final : public FileSystemWatcher {
   ~FileSystemWatcherWin() override;
 
   // |FileSystemWatcher|
-  std::optional<size_t> WatchPathForUpdates(std::string path,
+  std::optional<size_t> WatchPathForUpdates(std::filesystem::path path,
                                             Closure change_callback) override;
 
   // |FileSystemWatcher|
@@ -49,12 +38,11 @@ class FileSystemWatcherWin final : public FileSystemWatcher {
   void Terminate() override;
 
  private:
-  std::mutex mutex_;
-  size_t last_handle_ = 1;
-  std::map<size_t, Closure> callbacks_;
-  std::set<UniqueFirstChange> changes_;
+  UniqueFD completion_port_;
   std::thread thread_;
-  std::condition_variable callbacks_cv_;
+  std::mutex mutex_;
+  size_t last_handle_ = 0;
+  std::map<size_t, std::unique_ptr<PendingFileSystemWatch>> watches_;
   std::atomic_bool terminated_ = false;
 
   void WatcherMain();
