@@ -119,7 +119,7 @@ vk::UniqueShaderModule LoadShaderModuleSource(
   shaderc::Compiler compiler;
   auto compilation_result = compiler.CompileGlslToSpv(
       reinterpret_cast<const char*>(file_mapping->GetData()),  // shader source
-      file_mapping->GetSize(),                                 //  source size
+      file_mapping->GetSize(),                                 // source size
       shader_kind.value(),                                     // shader kind
       reinterpret_cast<const char*>(
           shader_path.filename().u8string().c_str()),  // debug name

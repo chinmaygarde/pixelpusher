@@ -152,6 +152,7 @@ FileSystemWatcherWin::FileSystemWatcherWin()
 
 FileSystemWatcherWin::~FileSystemWatcherWin() {
   Terminate();
+  thread_.join();
 }
 
 std::optional<size_t> FileSystemWatcherWin::WatchPathForUpdates(
