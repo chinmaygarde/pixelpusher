@@ -8,6 +8,7 @@
 #include "renderer.h"
 #include "shader_library.h"
 #include "shaders/model_renderer.h"
+#include "unshared_weak.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -39,7 +40,7 @@ class ModelRenderer : public Renderer {
   DescriptorSets descriptor_sets_;
   std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
   std::vector<DrawData> draw_data_;
-
+  std::vector<vk::PrimitiveTopology> required_topologies_;
   bool is_valid_ = false;
 
   // |Renderer|
@@ -56,6 +57,10 @@ class ModelRenderer : public Renderer {
 
   // |Renderer|
   bool Teardown() override;
+
+  void OnShaderLibraryDidUpdate();
+
+  bool RebuildPipelines();
 
   P_DISALLOW_COPY_AND_ASSIGN(ModelRenderer);
 };

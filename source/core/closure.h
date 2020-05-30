@@ -46,4 +46,27 @@ auto MakeCopyable(T closure) {
   return CopyableClosure<T>(std::move(closure));
 }
 
+struct IdentifiableCallback {
+ public:
+  static size_t GetNextCallbackID();
+
+  IdentifiableCallback() = default;
+
+  IdentifiableCallback(Closure closure)
+      : identifier_(GetNextCallbackID()), closure_(closure) {}
+
+  ~IdentifiableCallback() = default;
+
+  constexpr size_t GetIdentifier() const { return identifier_; }
+
+  template <class... ArgTypes>
+  auto operator()(ArgTypes&&... args) const {
+    return closure_(std::forward<ArgTypes>(args)...);
+  };
+
+ private:
+  size_t identifier_ = 0;
+  Closure closure_;
+};
+
 }  // namespace pixel

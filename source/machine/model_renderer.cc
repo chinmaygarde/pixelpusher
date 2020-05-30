@@ -44,14 +44,15 @@ bool ModelRenderer::Setup() {
   }
 
   auto draw_data = model_->GetDrawData();
-
-  auto required_topologies = draw_data.RequiredTopologies();
-
-  if (required_topologies.empty()) {
-    return true;
-  }
+  required_topologies_ = draw_data.RequiredTopologies();
 
   shader_library_ = std::make_unique<ShaderLibrary>(GetContext().GetDevice());
+
+  shader_library_->AddLiveUpdateCallback([this]() {
+    // No need for weak because we own the shader library and it cannot outlast
+    // us.
+    this->OnShaderLibraryDidUpdate();
+  });
 
   if (!shader_library_->AddDefaultVertexShader("model_renderer.vert") ||
       !shader_library_->AddDefaultFragmentShader("model_renderer.frag")) {
@@ -83,33 +84,9 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
-  auto vertex_input_bindings =
-      shaders::model_renderer::Vertex::GetVertexInputBindings();
-  auto vertex_input_attributes =
-      shaders::model_renderer::Vertex::GetVertexInputAttributes();
-
-  PipelineBuilder pipeline_builder;
-  pipeline_builder.AddDynamicState(vk::DynamicState::eViewport);
-  pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
-  pipeline_builder.SetVertexInputDescription(vertex_input_bindings,
-                                             vertex_input_attributes);
-  pipeline_builder.SetFrontFace(vk::FrontFace::eCounterClockwise);
-
-  for (const auto& topology : required_topologies) {
-    pipeline_builder.SetPrimitiveTopology(topology);
-    auto pipeline = pipeline_builder.CreatePipeline(
-        GetContext().GetDevice(),                             //
-        GetContext().GetPipelineCache(),                      //
-        pipeline_layout_.get(),                               //
-        GetContext().GetOnScreenRenderPass(),                 //
-        shader_library_->GetPipelineShaderStageCreateInfos()  //
-    );
-
-    if (!pipeline) {
-      return false;
-    }
-
-    pipelines_[topology] = std::move(pipeline);
+  if (!RebuildPipelines()) {
+    P_ERROR << "Could not rebuild pipelines.";
+    return false;
   }
 
   uniform_buffer_ = {
@@ -249,6 +226,50 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
 
 // |Renderer|
 bool ModelRenderer::Teardown() {
+  return true;
+}
+
+void ModelRenderer::OnShaderLibraryDidUpdate() {
+  P_LOG << "Model renderer shader library did update.";
+
+  if (!RebuildPipelines()) {
+    P_ERROR << "Error while rebuilding pipelines. Renderer is no longer "
+               "valid.";
+    is_valid_ = false;
+  }
+}
+
+bool ModelRenderer::RebuildPipelines() {
+  if (required_topologies_.empty()) {
+    return true;
+  }
+  auto vertex_input_bindings =
+      shaders::model_renderer::Vertex::GetVertexInputBindings();
+  auto vertex_input_attributes =
+      shaders::model_renderer::Vertex::GetVertexInputAttributes();
+  PipelineBuilder pipeline_builder;
+  pipeline_builder.AddDynamicState(vk::DynamicState::eViewport);
+  pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
+  pipeline_builder.SetVertexInputDescription(vertex_input_bindings,
+                                             vertex_input_attributes);
+  pipeline_builder.SetFrontFace(vk::FrontFace::eCounterClockwise);
+
+  for (const auto& topology : required_topologies_) {
+    pipeline_builder.SetPrimitiveTopology(topology);
+    auto pipeline = pipeline_builder.CreatePipeline(
+        GetContext().GetDevice(),                             //
+        GetContext().GetPipelineCache(),                      //
+        pipeline_layout_.get(),                               //
+        GetContext().GetOnScreenRenderPass(),                 //
+        shader_library_->GetPipelineShaderStageCreateInfos()  //
+    );
+
+    if (!pipeline) {
+      return false;
+    }
+
+    pipelines_[topology] = std::move(pipeline);
+  }
   return true;
 }
 

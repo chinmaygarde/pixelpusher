@@ -195,7 +195,20 @@ void ShaderModule::OnShaderFileDidUpdate() {
 }
 
 void ShaderModule::OnShaderModuleDidUpdate(vk::UniqueShaderModule module) {
-  P_LOG << "Shader module was updated.";
+  module_ = std::move(module);
+  for (const auto& callback : live_update_callbacks_) {
+    callback.second();
+  }
+}
+
+size_t ShaderModule::AddLiveUpdateCallback(Closure closure) {
+  IdentifiableCallback callback(closure);
+  live_update_callbacks_[callback.GetIdentifier()] = callback;
+  return callback.GetIdentifier();
+}
+
+bool ShaderModule::RemoveLiveUpdateCallback(size_t handle) {
+  return live_update_callbacks_.erase(handle) == 1u;
 }
 
 }  // namespace pixel
