@@ -1,5 +1,7 @@
 #include "shader_library.h"
 
+#include <algorithm>
+
 namespace pixel {
 
 ShaderLibrary::ShaderLibrary(vk::Device device) : device_(device) {}
@@ -12,10 +14,10 @@ bool ShaderLibrary::AddShader(const char* shader_name,
   if (!module) {
     return false;
   }
-  module->AddLiveUpdateCallback([this]() {
+  module->AddLiveUpdateCallback([this](const auto* module) {
     // Weaks are not necessary because we have unique ownership of all shader
     // modules and they cannot outlast us.
-    this->OnShaderModuleDidUpdate();
+    this->OnShaderModuleDidUpdate(module);
   });
   shader_stage.setModule(module->GetShaderModule());
   shader_modules_.emplace_back(std::move(module));
@@ -49,20 +51,26 @@ ShaderLibrary::GetPipelineShaderStageCreateInfos() const {
   return pipeline_create_infos_;
 }
 
-size_t ShaderLibrary::AddLiveUpdateCallback(Closure closure) {
-  IdentifiableCallback callback(closure);
-  live_update_callbacks_[callback.GetIdentifier()] = callback;
-  return callback.GetIdentifier();
+size_t ShaderLibrary::AddLiveUpdateCallback(Closure p_callback) {
+  return IdentifiableCallbacksAdd(live_update_callbacks_, p_callback);
 }
 
 bool ShaderLibrary::RemoveLiveUpdateCallback(size_t handle) {
-  return live_update_callbacks_.erase(handle) == 1u;
+  return IdentifiableCallbacksRemove(live_update_callbacks_, handle);
 }
 
-void ShaderLibrary::OnShaderModuleDidUpdate() {
-  for (const auto& callback : live_update_callbacks_) {
-    callback.second();
+void ShaderLibrary::OnShaderModuleDidUpdate(const ShaderModule* module) {
+  auto found = std::find_if(
+      shader_modules_.begin(), shader_modules_.end(),
+      [module](const auto& p_module) { return module == p_module.get(); });
+  if (found == shader_modules_.end()) {
+    return;
   }
+
+  pipeline_create_infos_[found - shader_modules_.begin()].module =
+      (*found)->GetShaderModule();
+
+  IdentifiableCallbacksInvoke(live_update_callbacks_);
 }
 
 }  // namespace pixel

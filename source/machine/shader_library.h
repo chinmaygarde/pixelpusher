@@ -34,9 +34,9 @@ class ShaderLibrary {
   const vk::Device device_;
   std::vector<std::unique_ptr<ShaderModule>> shader_modules_;
   std::vector<vk::PipelineShaderStageCreateInfo> pipeline_create_infos_;
-  std::map<size_t, IdentifiableCallback> live_update_callbacks_;
+  IdentifiableClosures live_update_callbacks_;
 
-  void OnShaderModuleDidUpdate();
+  void OnShaderModuleDidUpdate(const ShaderModule* module);
 
   P_DISALLOW_COPY_AND_ASSIGN(ShaderLibrary);
 };

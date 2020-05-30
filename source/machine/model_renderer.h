@@ -24,7 +24,7 @@ class ModelRenderer : public Renderer {
 
  private:
   struct DrawData {
-    vk::Pipeline pipeline;
+    vk::PrimitiveTopology topology;
     vk::DeviceSize vertex_buffer_offset = 0;
     vk::DeviceSize index_buffer_offset = 0;
     size_t index_count = 0;

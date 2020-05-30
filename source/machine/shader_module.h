@@ -21,7 +21,8 @@ class ShaderModule {
 
   vk::ShaderModule GetShaderModule() const;
 
-  size_t AddLiveUpdateCallback(Closure closure);
+  size_t AddLiveUpdateCallback(
+      std::function<void(const ShaderModule*)> closure);
 
   bool RemoveLiveUpdateCallback(size_t handle);
 
@@ -31,7 +32,7 @@ class ShaderModule {
   std::filesystem::path original_file_path_;
   std::optional<size_t> fs_watcher_handler_;
   std::chrono::high_resolution_clock::time_point last_shader_update_ = {};
-  std::map<size_t, IdentifiableCallback> live_update_callbacks_;
+  IdentifiableCallbacks<void(const ShaderModule*)> live_update_callbacks_;
   UnsharedWeakFactory<ShaderModule> weak_factory_;
 
   ShaderModule(vk::Device device,

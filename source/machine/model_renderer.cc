@@ -128,7 +128,7 @@ bool ModelRenderer::Setup() {
   for (const auto& op : draw_data.ops) {
     for (const auto& call : op.second) {
       DrawData data;
-      data.pipeline = pipelines_[op.first].get();
+      data.topology = op.first;
       data.vertex_buffer_offset = current_vertex_buffer_offset;
       data.index_buffer_offset = current_index_buffer_offset;
       data.index_count = call.indices.size();
@@ -201,7 +201,12 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
   buffer.setViewport(0u, {GetContext().GetViewport()});
 
   for (const auto& draw : draw_data_) {
-    buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, draw.pipeline);
+    auto found = pipelines_.find(draw.topology);
+    if (found == pipelines_.end()) {
+      return false;
+    }
+
+    buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, found->second.get());
     buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer},
                              {draw.vertex_buffer_offset});
     buffer.bindIndexBuffer(index_buffer_->buffer, draw.index_buffer_offset,
@@ -231,6 +236,14 @@ bool ModelRenderer::Teardown() {
 
 void ModelRenderer::OnShaderLibraryDidUpdate() {
   P_LOG << "Model renderer shader library did update.";
+
+  if (!is_valid_) {
+    return;
+  }
+
+  // We are going to be tearing down existing pipelines. Frames in flight must
+  // be flushed.
+  GetContext().GetDevice().waitIdle();
 
   if (!RebuildPipelines()) {
     P_ERROR << "Error while rebuilding pipelines. Renderer is no longer "

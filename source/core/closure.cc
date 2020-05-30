@@ -4,7 +4,7 @@
 
 namespace pixel {
 
-size_t IdentifiableCallback::GetNextCallbackID() {
+size_t GetNextCallbackID() {
   static std::atomic sLastHandle = 0;
   return ++sLastHandle;
 }
