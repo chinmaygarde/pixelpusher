@@ -36,6 +36,8 @@ class EventLoop {
 
   static EventLoop& ForCurrentThread();
 
+  static std::shared_ptr<Dispatcher> GetCurrentThreadDispatcher();
+
   ~EventLoop();
 
   bool IsRunning() const;

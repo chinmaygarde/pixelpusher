@@ -90,23 +90,23 @@ void FDTraits::Collect(Handle fd) {
 #endif  // P_OS_WINDOWS
 }
 
-std::unique_ptr<Mapping> OpenFile(const char* file_name) {
-  if (file_name == nullptr) {
-    P_ERROR << "File name was nullptr.";
+std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& file_path) {
+  if (file_path.empty()) {
+    P_ERROR << "File path was empty.";
     return nullptr;
   }
 
 #if P_OS_WINDOWS
-  UniqueFD fd(::CreateFile(file_name,              // lpFileName
-                           GENERIC_READ,           // dwDesiredAccess
-                           FILE_SHARE_READ,        // dwShareMode
-                           nullptr,                // lpSecurityAttributes
-                           OPEN_EXISTING,          // dwCreationDisposition
-                           FILE_ATTRIBUTE_NORMAL,  // dwFlagsAndAttributes
-                           nullptr                 // hTemplateFile
-                           ));
+  UniqueFD fd(::CreateFileW(file_path.c_str(),  // lpFileName
+                            GENERIC_READ,       // dwDesiredAccess
+                            FILE_SHARE_READ | FILE_SHARE_WRITE,  // dwShareMode
+                            nullptr,                // lpSecurityAttributes
+                            OPEN_EXISTING,          // dwCreationDisposition
+                            FILE_ATTRIBUTE_NORMAL,  // dwFlagsAndAttributes
+                            nullptr                 // hTemplateFile
+                            ));
   if (!fd.IsValid()) {
-    P_ERROR << "Could not open FD.";
+    P_ERROR << "Could not open FD: " << GetLastErrorMessage();
     return nullptr;
   }
 
@@ -150,7 +150,8 @@ std::unique_ptr<Mapping> OpenFile(const char* file_name) {
   return std::make_unique<FileMapping>(std::move(mapping_data));
 
 #else   // P_OS_WINDOWS
-  UniqueFD fd(P_TEMP_FAILURE_RETRY(::open(file_name, O_RDONLY | O_CLOEXEC)));
+  UniqueFD fd(
+      P_TEMP_FAILURE_RETRY(::open(file_name.c_str(), O_RDONLY | O_CLOEXEC)));
 
   if (!fd.IsValid()) {
     P_ERROR << "Could not open FD.";
@@ -176,6 +177,10 @@ std::unique_ptr<Mapping> OpenFile(const char* file_name) {
   mapping_data.size = stat_buf.st_size;
   return std::make_unique<FileMapping>(std::move(mapping_data));
 #endif  // P_OS_WINDOWS
+}
+
+std::unique_ptr<Mapping> OpenFile(const char* file_name) {
+  return OpenFile(std::filesystem::path{file_name});
 }
 
 }  // namespace pixel

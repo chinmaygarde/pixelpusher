@@ -30,6 +30,7 @@ class ModelRenderer : public Renderer {
   };
 
   std::unique_ptr<const model::Model> model_;
+  std::unique_ptr<ShaderLibrary> shader_library_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   vk::UniquePipelineLayout pipeline_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;
@@ -38,6 +39,7 @@ class ModelRenderer : public Renderer {
   DescriptorSets descriptor_sets_;
   std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
   std::vector<DrawData> draw_data_;
+
   bool is_valid_ = false;
 
   // |Renderer|

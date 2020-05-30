@@ -41,6 +41,10 @@ EventLoop& EventLoop::ForCurrentThread() {
   return *tEventLoop;
 }
 
+std::shared_ptr<EventLoop::Dispatcher> EventLoop::GetCurrentThreadDispatcher() {
+  return ForCurrentThread().GetDispatcher();
+}
+
 EventLoop::EventLoop()
     : thread_id_(std::this_thread::get_id()),
       tasks_heap_(std::make_shared<TasksHeap>()),

@@ -3,6 +3,7 @@
 #include <string>
 #include <thread>
 
+#include "closure.h"
 #include "event_loop.h"
 #include "macros.h"
 
@@ -10,6 +11,8 @@ namespace pixel {
 
 class Thread {
  public:
+  static void PostBackgroundTask(Closure closure);
+
   Thread(std::string thread_name);
 
   ~Thread();

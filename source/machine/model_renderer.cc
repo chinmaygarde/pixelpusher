@@ -51,10 +51,10 @@ bool ModelRenderer::Setup() {
     return true;
   }
 
-  ShaderLibrary library(GetContext().GetDevice());
+  shader_library_ = std::make_unique<ShaderLibrary>(GetContext().GetDevice());
 
-  if (!library.AddDefaultVertexShader("model_renderer.vert") ||
-      !library.AddDefaultFragmentShader("model_renderer.frag")) {
+  if (!shader_library_->AddDefaultVertexShader("model_renderer.vert") ||
+      !shader_library_->AddDefaultFragmentShader("model_renderer.frag")) {
     return false;
   }
 
@@ -98,11 +98,11 @@ bool ModelRenderer::Setup() {
   for (const auto& topology : required_topologies) {
     pipeline_builder.SetPrimitiveTopology(topology);
     auto pipeline = pipeline_builder.CreatePipeline(
-        GetContext().GetDevice(),                    //
-        GetContext().GetPipelineCache(),             //
-        pipeline_layout_.get(),                      //
-        GetContext().GetOnScreenRenderPass(),        //
-        library.GetPipelineShaderStageCreateInfos()  //
+        GetContext().GetDevice(),                             //
+        GetContext().GetPipelineCache(),                      //
+        pipeline_layout_.get(),                               //
+        GetContext().GetOnScreenRenderPass(),                 //
+        shader_library_->GetPipelineShaderStageCreateInfos()  //
     );
 
     if (!pipeline) {

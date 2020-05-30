@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 
 #include "logging.h"
@@ -26,7 +27,8 @@ struct FDTraits {
 
 using UniqueFD = UniqueObject<FDTraits::Handle, FDTraits>;
 
-class Mapping;
 std::unique_ptr<Mapping> OpenFile(const char* file_name);
+
+std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& path);
 
 }  // namespace pixel

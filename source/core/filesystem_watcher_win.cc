@@ -21,9 +21,9 @@ class PendingFileSystemWatch {
     dir_fd_.Reset(::CreateFileW(
         path.c_str(),         // lpFileName
         FILE_LIST_DIRECTORY,  // dwDesiredAccess
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,  // dwShareMode
-        nullptr,        // lpSecurityAttributes
-        OPEN_EXISTING,  // dwCreationDisposition
+        FILE_SHARE_READ,      // dwShareMode
+        nullptr,              // lpSecurityAttributes
+        OPEN_EXISTING,        // dwCreationDisposition
         FILE_FLAG_BACKUP_SEMANTICS |
             FILE_FLAG_OVERLAPPED,  // dwFlagsAndAttributes
         nullptr                    // hTemplateFile
@@ -38,8 +38,8 @@ class PendingFileSystemWatch {
     auto result = ::CreateIoCompletionPort(
         dir_fd_.Get(),          // handle
         completion_port.Get(),  // existing completion port
-        reinterpret_cast<ULONG_PTR>(iocp_completion_key),  // completion key
-        1u                                                 // concurrent threads
+        iocp_completion_key,    // completion key
+        1u                      // concurrent threads
     );
 
     if (result != completion_port.Get()) {

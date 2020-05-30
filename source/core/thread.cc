@@ -42,6 +42,14 @@ static void SetCurrentThreadName(const std::string& thread_name) {
 #endif
 }
 
+void Thread::PostBackgroundTask(Closure closure) {
+  if (!closure) {
+    return;
+  }
+  static Thread sThread("BackgroundWorker");
+  sThread.GetDispatcher()->PostTask(closure);
+}
+
 Thread::Thread(std::string thread_name) {
   std::promise<std::shared_ptr<EventLoop::Dispatcher>> on_done;
   auto on_done_future = on_done.get_future();
