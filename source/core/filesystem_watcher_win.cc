@@ -13,6 +13,7 @@ class PendingFileSystemWatch {
   PendingFileSystemWatch(const std::filesystem::path& path,
                          std::filesystem::path file_name,
                          const UniqueFD& completion_port,
+                         size_t iocp_completion_key,
                          Closure callback)
       : file_name_(std::move(file_name)), callback_(callback) {
     notify_info_buffer_.resize(5 * sizeof(FILE_NOTIFY_INFORMATION));
@@ -35,10 +36,10 @@ class PendingFileSystemWatch {
     }
 
     auto result = ::CreateIoCompletionPort(
-        dir_fd_.Get(),                      // handle
-        completion_port.Get(),              // existing completion port
-        reinterpret_cast<ULONG_PTR>(this),  // completion key
-        1u                                  // concurrent threads
+        dir_fd_.Get(),          // handle
+        completion_port.Get(),  // existing completion port
+        reinterpret_cast<ULONG_PTR>(iocp_completion_key),  // completion key
+        1u                                                 // concurrent threads
     );
 
     if (result != completion_port.Get()) {
@@ -102,7 +103,7 @@ class PendingFileSystemWatch {
     DWORD unused_bytes_returned = 0;
 
     if (!::ResetEvent(event_.Get())) {
-      P_ERROR << "Could not reset event: " << GetLastError();
+      P_ERROR << "Could not reset event: " << GetLastErrorMessage();
       return false;
     }
 
@@ -165,9 +166,11 @@ std::optional<size_t> FileSystemWatcherWin::WatchPathForUpdates(
   auto directory = path.parent_path();
   auto file_name = path.filename();
 
+  auto new_handle = ++last_handle_;
   auto watch = std::make_unique<PendingFileSystemWatch>(directory,         //
                                                         file_name,         //
                                                         completion_port_,  //
+                                                        new_handle,        //
                                                         change_callback    //
   );
 
@@ -177,8 +180,8 @@ std::optional<size_t> FileSystemWatcherWin::WatchPathForUpdates(
   }
 
   std::scoped_lock lock(mutex_);
-  watches_[++last_handle_] = std::move(watch);
-  return last_handle_;
+  watches_[new_handle] = std::move(watch);
+  return new_handle;
 }
 
 bool FileSystemWatcherWin::StopWatchingForUpdates(size_t handle) {
@@ -215,12 +218,17 @@ void FileSystemWatcherWin::WatcherMain() {
       continue;
     }
     if (completion_key != 0) {
-      auto watch = reinterpret_cast<PendingFileSystemWatch*>(completion_key);
-      if (!watch->OnWatchDidFinish(bytes_transferred)) {
-        P_ERROR << "Could not finish watch on filesystem handle. Stopping all "
-                   "watches. Expect no more filesystem updates.";
-        Terminate();
-        return;
+      std::scoped_lock lock(mutex_);
+      auto watch = GetWatchForKeyLocked(completion_key);
+      // The watch may have ended if the watcher was removed on another thread.
+      if (watch) {
+        if (!watch->OnWatchDidFinish(bytes_transferred)) {
+          P_ERROR
+              << "Could not finish watch on filesystem handle. Stopping all "
+                 "watches. Expect no more filesystem updates.";
+          Terminate();
+          return;
+        }
       }
     }
   }
@@ -232,6 +240,15 @@ void FileSystemWatcherWin::Terminate() {
   terminated_ = true;
   // This will close handles which will also abandon the wait.
   watches_.clear();
+}
+
+PendingFileSystemWatch* FileSystemWatcherWin::GetWatchForKeyLocked(
+    size_t handle) {
+  auto found = watches_.find(handle);
+  if (found == watches_.end()) {
+    return nullptr;
+  }
+  return found->second.get();
 }
 
 }  // namespace pixel

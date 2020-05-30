@@ -22,6 +22,8 @@ class FileSystemWatcher {
       std::filesystem::path path,
       Closure change_callback) = 0;
 
+  bool StopWatchingForUpdates(std::optional<size_t> handle);
+
   virtual bool StopWatchingForUpdates(size_t handle) = 0;
 
   virtual void Terminate() = 0;

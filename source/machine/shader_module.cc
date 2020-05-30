@@ -6,6 +6,7 @@
 
 #include <shaderc/shaderc.hpp>
 
+#include "event_loop.h"
 #include "file.h"
 #include "filesystem_watcher.h"
 #include "mapping.h"
@@ -154,17 +155,22 @@ std::unique_ptr<ShaderModule> ShaderModule::Load(const vk::Device& device,
   return nullptr;
 }
 
+static Closure RethreadCallback(Closure closure) {
+  auto dispatcher = EventLoop::ForCurrentThread().GetDispatcher();
+  return [closure, dispatcher]() { dispatcher->PostTask(closure); };
+}
+
 ShaderModule::ShaderModule(vk::UniqueShaderModule module,
                            std::string original_file_name)
     : module_(std::move(module)),
-      original_file_name_(std::move(original_file_name)) {
-  if (!original_file_name_.empty()) {
-    FileSystemWatcher::ForProcess().WatchPathForUpdates(
-        original_file_name_.c_str(), []() { P_ERROR << "File changed."; });
-  }
-}
+      original_file_name_(std::move(original_file_name)),
+      fs_watcher_handler_(FileSystemWatcher::ForProcess().WatchPathForUpdates(
+          original_file_name_,
+          RethreadCallback([&]() { OnShaderFileDidUpdate(); }))) {}
 
-ShaderModule::~ShaderModule() = default;
+ShaderModule::~ShaderModule() {
+  FileSystemWatcher::ForProcess().StopWatchingForUpdates(fs_watcher_handler_);
+}
 
 vk::ShaderModule ShaderModule::GetShaderModule() const {
   return module_.get();
@@ -173,5 +179,7 @@ vk::ShaderModule ShaderModule::GetShaderModule() const {
 std::string ShaderModule::GetOriginalFileName() const {
   return original_file_name_;
 }
+
+void ShaderModule::OnShaderFileDidUpdate() {}
 
 }  // namespace pixel

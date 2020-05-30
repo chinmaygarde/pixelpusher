@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "vulkan.h"
 
@@ -20,8 +21,11 @@ class ShaderModule {
  private:
   vk::UniqueShaderModule module_;
   std::string original_file_name_;
+  std::optional<size_t> fs_watcher_handler_;
 
   ShaderModule(vk::UniqueShaderModule module, std::string original_file_name);
+
+  void OnShaderFileDidUpdate();
 
   P_DISALLOW_COPY_AND_ASSIGN(ShaderModule);
 };

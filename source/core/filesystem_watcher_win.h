@@ -41,11 +41,13 @@ class FileSystemWatcherWin final : public FileSystemWatcher {
   UniqueFD completion_port_;
   std::thread thread_;
   std::mutex mutex_;
-  size_t last_handle_ = 0;
+  std::atomic_size_t last_handle_ = 0;
   std::map<size_t, std::unique_ptr<PendingFileSystemWatch>> watches_;
   std::atomic_bool terminated_ = false;
 
   void WatcherMain();
+
+  PendingFileSystemWatch* GetWatchForKeyLocked(size_t handle);
 
   P_DISALLOW_COPY_AND_ASSIGN(FileSystemWatcherWin);
 };
