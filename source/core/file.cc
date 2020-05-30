@@ -106,7 +106,8 @@ std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& file_path) {
                             nullptr                 // hTemplateFile
                             ));
   if (!fd.IsValid()) {
-    P_ERROR << "Could not open FD: " << GetLastErrorMessage();
+    P_ERROR << "Could not open FD for file: " << file_path
+            << " error: " << GetLastErrorMessage();
     return nullptr;
   }
 

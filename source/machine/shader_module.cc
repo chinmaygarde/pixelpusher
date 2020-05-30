@@ -25,7 +25,7 @@ static std::filesystem::path GetShaderPath(const char* shader_name,
   path /= PIXEL_SHADERS_LOCATION;
   path /= shader_name;
   if (is_spv) {
-    path /= ".spv";
+    path += ".spv";
   }
   path.make_preferred();
   return path;
