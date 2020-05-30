@@ -144,7 +144,7 @@ bool ImguiRenderer::RenderPerformanceMetrics() const {
       *std::min_element(frame_times_millis_.begin(), frame_times_millis_.end());
   ::ImGui::LabelText("(Last, Max, Min) Frame Time", "(%.2f, %.2f, %.2f) ms",
                      last, max, min);
-  ::ImGui::LabelText("(Last, Max, Min) FPS", "(%.0f, %.0f, %.0f) ms",
+  ::ImGui::LabelText("(Last, Max, Min) FPS", "(%.0f, %.0f, %.0f) FPS",
                      1000.f / last, 1000.f / min, 1000.f / max);
   ::ImGui::PlotLines("Frame History (ms)", frame_times_millis_.data(),
                      frame_times_millis_.size());
