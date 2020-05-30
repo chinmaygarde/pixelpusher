@@ -10,13 +10,15 @@
 #include "filesystem_watcher.h"
 #include "mapping.h"
 #include "shader_location.h"
+#include "string_utils.h"
 #include "thread.h"
 #include "vulkan.h"
 
 namespace pixel {
 
 static std::filesystem::path GetShaderPath(const char* shader_name,
-                                           bool is_spv) {
+                                           bool is_spv,
+                                           bool is_link) {
   if (shader_name == nullptr) {
     return "";
   }
@@ -26,6 +28,9 @@ static std::filesystem::path GetShaderPath(const char* shader_name,
   path /= shader_name;
   if (is_spv) {
     path += ".spv";
+  }
+  if (is_link) {
+    path += ".link";
   }
   path.make_preferred();
   return path;
@@ -123,18 +128,48 @@ vk::UniqueShaderModule LoadShaderModuleSource(
   return {};
 }
 
+static std::filesystem::path LinkFromFile(
+    std::filesystem::path link_file_path) {
+  auto mapping = OpenFile(link_file_path);
+  if (!mapping) {
+    return {};
+  }
+
+  std::string file_contents(reinterpret_cast<const char*>(mapping->GetData()),
+                            mapping->GetSize());
+  P_LOG << file_contents;
+  file_contents = TrimString(file_contents);
+  if (file_contents.empty()) {
+    return {};
+  }
+  P_LOG << file_contents;
+
+  std::filesystem::path path(file_contents);
+  path.make_preferred();
+  return path;
+}
+
 std::unique_ptr<ShaderModule> ShaderModule::Load(vk::Device device,
                                                  const char* shader_name) {
-  // Attempt loading from source files directly.
-  auto shader_source_path = GetShaderPath(shader_name, false);
+  // Try to get the shader source path from a link file.
+  auto shader_source_path =
+      LinkFromFile(GetShaderPath(shader_name, false, true));
+
+  P_LOG << shader_source_path;
+
+  if (shader_source_path.empty()) {
+    // Attempt loading from source files directly.
+    shader_source_path = GetShaderPath(shader_name, false, false);
+  }
+
   if (auto src_module = LoadShaderModuleSource(device, shader_source_path)) {
     return std::unique_ptr<ShaderModule>(new ShaderModule(
         device, std::move(src_module), std::move(shader_source_path)));
   }
 
   // Attempt loading from a precompiled SPIRV file.
-  if (auto spv_module =
-          LoadShaderModuleSPIRV(device, GetShaderPath(shader_name, true))) {
+  if (auto spv_module = LoadShaderModuleSPIRV(
+          device, GetShaderPath(shader_name, true, false))) {
     return std::unique_ptr<ShaderModule>(
         new ShaderModule(device, std::move(spv_module), ""));
   }

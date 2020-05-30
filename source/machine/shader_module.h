@@ -44,6 +44,6 @@ class ShaderModule {
   void OnShaderModuleDidUpdate(vk::UniqueShaderModule module);
 
   P_DISALLOW_COPY_AND_ASSIGN(ShaderModule);
-};  // namespace pixel
+};
 
 }  // namespace pixel

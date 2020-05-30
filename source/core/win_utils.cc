@@ -6,6 +6,8 @@
 
 #include <Windows.h>
 
+#include "string_utils.h"
+
 namespace pixel {
 
 std::string GetLastErrorMessage() {
@@ -36,7 +38,7 @@ std::string GetLastErrorMessage() {
   std::stringstream stream;
   stream << "Error: (" << last_error << "): " << message;
 
-  return stream.str();
+  return TrimString(stream.str());
 }
 
 std::string WideStringToString(const std::wstring& string) {

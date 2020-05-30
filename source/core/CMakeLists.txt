@@ -21,6 +21,8 @@ add_library(core
   mapping.cc
   mapping.h
   platform.h
+  string_utils.cc
+  string_utils.h
   thread.cc
   thread.h
   unique_object.h
@@ -44,6 +46,7 @@ configure_file(fixture.h.in fixture.h @ONLY)
 add_executable(core_unittests
   event_loop_unittests.cc
   file_unittests.cc
+  string_utils_unittests.cc
   unshared_weak_unittests.cc
 )
 
