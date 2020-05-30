@@ -1,6 +1,7 @@
 #include "shader_module.h"
 
 #include <optional>
+#include <sstream>
 #include <vector>
 
 #include <shaderc/shaderc.hpp>
@@ -15,6 +16,19 @@
 #include "vulkan.h"
 
 namespace pixel {
+
+static std::string DebugLabelFromShaderPath(const std::filesystem::path& path,
+                                            bool is_spv) {
+  std::stringstream stream;
+  const auto filename_label = path.filename().u8string();
+  stream << reinterpret_cast<const char*>(filename_label.c_str());
+  if (is_spv) {
+    stream << "(spirv)";
+  } else {
+    stream << "(source)";
+  }
+  return stream.str();
+}
 
 static std::filesystem::path GetShaderPath(const char* shader_name,
                                            bool is_spv,
@@ -36,9 +50,10 @@ static std::filesystem::path GetShaderPath(const char* shader_name,
   return path;
 }
 
-static vk::UniqueShaderModule LoadShaderModuleMapping(vk::Device device,
-                                                      const Mapping* mapping,
-                                                      const char* debug_name) {
+static vk::UniqueShaderModule LoadShaderModuleMapping(
+    vk::Device device,
+    const Mapping* mapping,
+    const std::string& debug_name) {
   if (!mapping || mapping->GetSize() == 0 || mapping->GetData() == nullptr) {
     return {};
   }
@@ -55,7 +70,7 @@ static vk::UniqueShaderModule LoadShaderModuleMapping(vk::Device device,
     return {};
   }
 
-  SetDebugName(device, module.value.get(), debug_name);
+  SetDebugName(device, module.value.get(), debug_name.c_str());
 
   return std::move(module.value);
 }
@@ -63,10 +78,9 @@ static vk::UniqueShaderModule LoadShaderModuleMapping(vk::Device device,
 static vk::UniqueShaderModule LoadShaderModuleSPIRV(
     vk::Device device,
     const std::filesystem::path& path) {
-  const auto debug_name = path.filename().u8string() + "(spirv)";
-  return LoadShaderModuleMapping(device,                //
-                                 OpenFile(path).get(),  //
-                                 debug_name.c_str()     //
+  return LoadShaderModuleMapping(device,                               //
+                                 OpenFile(path).get(),                 //
+                                 DebugLabelFromShaderPath(path, true)  //
   );
 }
 
@@ -100,16 +114,17 @@ vk::UniqueShaderModule LoadShaderModuleSource(
   options.SetSourceLanguage(shaderc_source_language_glsl);
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
-  const auto debug_name = shader_path.filename().u8string() + "(source)";
+  const auto debug_label = DebugLabelFromShaderPath(shader_path, false);
 
   shaderc::Compiler compiler;
   auto compilation_result = compiler.CompileGlslToSpv(
       reinterpret_cast<const char*>(file_mapping->GetData()),  // shader source
       file_mapping->GetSize(),                                 //  source size
       shader_kind.value(),                                     // shader kind
-      debug_name.c_str(),                                      // debug name
-      "main",                                                  // entry-point
-      options                                                  // options
+      reinterpret_cast<const char*>(
+          shader_path.filename().u8string().c_str()),  // debug name
+      "main",                                          // entry-point
+      options                                          // options
   );
 
   if (compilation_result.GetCompilationStatus() ==
@@ -118,10 +133,10 @@ vk::UniqueShaderModule LoadShaderModuleSource(
         reinterpret_cast<const uint8_t*>(compilation_result.begin()),
         (compilation_result.end() - compilation_result.begin()) *
             sizeof(decltype(compilation_result)::element_type));
-    return LoadShaderModuleMapping(device, mapping.get(), debug_name.c_str());
+    return LoadShaderModuleMapping(device, mapping.get(), debug_label);
   }
 
-  P_ERROR << "Could not compile shader: " << debug_name << " with "
+  P_ERROR << "Could not compile shader: " << debug_label << " with "
           << compilation_result.GetNumErrors() << " error(s) and "
           << compilation_result.GetNumWarnings() << " warning(s).";
   P_ERROR << "Message: " << compilation_result.GetErrorMessage();
@@ -137,12 +152,10 @@ static std::filesystem::path LinkFromFile(
 
   std::string file_contents(reinterpret_cast<const char*>(mapping->GetData()),
                             mapping->GetSize());
-  P_LOG << file_contents;
   file_contents = TrimString(file_contents);
   if (file_contents.empty()) {
     return {};
   }
-  P_LOG << file_contents;
 
   std::filesystem::path path(file_contents);
   path.make_preferred();
@@ -154,8 +167,6 @@ std::unique_ptr<ShaderModule> ShaderModule::Load(vk::Device device,
   // Try to get the shader source path from a link file.
   auto shader_source_path =
       LinkFromFile(GetShaderPath(shader_name, false, true));
-
-  P_LOG << shader_source_path;
 
   if (shader_source_path.empty()) {
     // Attempt loading from source files directly.
