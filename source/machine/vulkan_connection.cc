@@ -591,13 +591,14 @@ std::shared_ptr<RenderingContext> VulkanConnection::CreateRenderingContext()
   QueueSelection transfer_queue = {family_index, queue};
 
   auto context =
-      std::make_shared<RenderingContext>(*this,               // delegate
-                                         instance_.get(),     // instance
-                                         physical_device_,    // physical device
-                                         device_.get(),       // logical device
-                                         graphics_queue,      // graphics queue
-                                         transfer_queue,      // transfer queue
-                                         available_features_  // features
+      std::make_shared<RenderingContext>(*this,             // delegate
+                                         instance_.get(),   // instance
+                                         physical_device_,  // physical device
+                                         device_.get(),     // logical device
+                                         graphics_queue,    // graphics queue
+                                         transfer_queue,    // transfer queue
+                                         available_features_,  // features
+                                         "Main"                // debug name
       );
 
   if (!context->IsValid()) {

@@ -27,7 +27,8 @@ class RenderingContext {
                    vk::Device logical_device,
                    QueueSelection graphics_queue,
                    QueueSelection transfer_queue,
-                   const vk::PhysicalDeviceFeatures& features);
+                   const vk::PhysicalDeviceFeatures& features,
+                   const char* debug_name);
 
   ~RenderingContext();
 

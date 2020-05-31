@@ -14,7 +14,8 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
   static std::shared_ptr<CommandPool> Create(vk::Device device,
                                              vk::CommandPoolCreateFlags flags,
                                              uint32_t queue_family_index,
-                                             vk::Queue queue);
+                                             vk::Queue queue,
+                                             const char* debug_name);
 
   ~CommandPool();
 
@@ -33,11 +34,13 @@ class CommandPool : public std::enable_shared_from_this<CommandPool> {
   vk::Device device_;
   vk::UniqueCommandPool pool_;
   vk::Queue queue_;
+  std::string debug_name_;
 
   CommandPool(vk::Device device,
               vk::UniqueCommandPool pool,
               vk::Queue queue,
-              std::shared_ptr<FenceWaiter> waiter);
+              std::shared_ptr<FenceWaiter> waiter,
+              std::string debug_name);
 
   P_DISALLOW_COPY_AND_ASSIGN(CommandPool);
 };

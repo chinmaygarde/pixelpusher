@@ -98,6 +98,19 @@ TEST(ModelTest, DrawDataTestTriangleWithoutIndices) {
   EXPECT_EQ(draw_op.indices.size(), 0u);
 }
 
+TEST(ModelTest, DrawDataTestBox) {
+  auto draw_data_optional = GetDrawDataForModelName("Box");
+  ASSERT_TRUE(draw_data_optional.has_value());
+  const auto& draw_data = draw_data_optional.value();
+  ASSERT_EQ(draw_data.ops.size(), 1u);
+  ASSERT_EQ(draw_data.ops.count(vk::PrimitiveTopology::eTriangleFan), 1u);
+  ASSERT_EQ(draw_data.ops.at(vk::PrimitiveTopology::eTriangleFan).size(), 1u);
+  const auto& ops = draw_data.ops.at(vk::PrimitiveTopology::eTriangleFan);
+  const auto& draw_op = ops[0];
+  EXPECT_EQ(draw_op.vertices.size(), 999u);
+  EXPECT_EQ(draw_op.indices.size(), 999u);
+}
+
 }  // namespace test
 }  // namespace model
 }  // namespace pixel

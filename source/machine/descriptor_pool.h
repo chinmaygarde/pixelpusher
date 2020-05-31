@@ -48,7 +48,7 @@ class DescriptorSets {
 
 class DescriptorPool {
  public:
-  DescriptorPool(vk::Device device);
+  DescriptorPool(vk::Device device, std::string debug_name);
 
   ~DescriptorPool();
 
@@ -57,10 +57,12 @@ class DescriptorPool {
   const vk::DescriptorPool* operator->() const;
 
   DescriptorSets AllocateDescriptorSets(vk::DescriptorSetLayout layout,
-                                        size_t count);
+                                        size_t count,
+                                        const char* debug_name);
 
  private:
   const vk::Device device_;
+  const std::string debug_name_;
   vk::UniqueDescriptorPool pool_;
   bool is_valid_ = false;
 

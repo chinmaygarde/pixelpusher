@@ -74,7 +74,8 @@ bool DescriptorSets::UpdateDescriptorSets(
   return true;
 }
 
-DescriptorPool::DescriptorPool(vk::Device device) : device_(device) {
+DescriptorPool::DescriptorPool(vk::Device device, std::string debug_name)
+    : device_(device), debug_name_(std::move(debug_name)) {
   constexpr size_t kPoolSize = 1024;
 
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
@@ -100,6 +101,9 @@ DescriptorPool::DescriptorPool(vk::Device device) : device_(device) {
 
   pool_ = UnwrapResult(device.createDescriptorPoolUnique(pool_info));
 
+  SetDebugNameF(device_, pool_.get(), "%s Descriptor Pool",
+                debug_name_.c_str());
+
   if (!pool_) {
     return;
   }
@@ -119,7 +123,8 @@ const vk::DescriptorPool* DescriptorPool::operator->() const {
 
 DescriptorSets DescriptorPool::AllocateDescriptorSets(
     vk::DescriptorSetLayout layout,
-    size_t count) {
+    size_t count,
+    const char* debug_name) {
   if (!layout || count == 0 || !is_valid_) {
     return {};
   }
@@ -136,6 +141,11 @@ DescriptorSets DescriptorPool::AllocateDescriptorSets(
   if (result.size() != count) {
     return {};
   }
+
+  for (const auto& set : result) {
+    SetDebugNameF(device_, set.get(), "%s Descriptor Set", debug_name);
+  }
+
   return {device_, std::move(result)};
 }
 

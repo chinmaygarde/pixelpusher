@@ -1,6 +1,7 @@
 #include "rendering_context.h"
 
 #include "logging.h"
+#include "string_utils.h"
 
 namespace pixel {
 
@@ -10,7 +11,8 @@ RenderingContext::RenderingContext(const Delegate& delegate,
                                    vk::Device logical_device,
                                    QueueSelection graphics_queue,
                                    QueueSelection transfer_queue,
-                                   const vk::PhysicalDeviceFeatures& features)
+                                   const vk::PhysicalDeviceFeatures& features,
+                                   const char* debug_name)
     : delegate_(delegate),
       instance_(instance),
       physical_device_(physical_device),
@@ -33,21 +35,32 @@ RenderingContext::RenderingContext(const Delegate& delegate,
     return;
   }
 
-  graphics_command_pool_ = CommandPool::Create(
-      device_, vk::CommandPoolCreateFlagBits::eTransient,
-      graphics_queue.queue_family_index, graphics_queue.queue);
+  SetDebugNameF(device_, pipeline_cache_.get(), "%s Pipeline Cache",
+                debug_name);
+
+  graphics_command_pool_ =
+      CommandPool::Create(device_,                                        //
+                          vk::CommandPoolCreateFlagBits::eTransient,      //
+                          graphics_queue.queue_family_index,              //
+                          graphics_queue.queue,                           //
+                          MakeStringF("%s Graphics", debug_name).c_str()  //
+      );
   if (!graphics_command_pool_) {
     return;
   }
 
-  transfer_command_pool_ = CommandPool::Create(
-      device_, vk::CommandPoolCreateFlagBits::eTransient,
-      transfer_queue.queue_family_index, transfer_queue.queue);
+  transfer_command_pool_ =
+      CommandPool::Create(device_,                                        //
+                          vk::CommandPoolCreateFlagBits::eTransient,      //
+                          transfer_queue.queue_family_index,              //
+                          transfer_queue.queue,                           //
+                          MakeStringF("%s Transfer", debug_name).c_str()  //
+      );
   if (!transfer_command_pool_) {
     return;
   }
 
-  descriptor_pool_ = std::make_unique<DescriptorPool>(device_);
+  descriptor_pool_ = std::make_unique<DescriptorPool>(device_, debug_name);
   if (!descriptor_pool_) {
     return;
   }

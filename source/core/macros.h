@@ -18,9 +18,12 @@
 
 #if CLANG_OR_GCC
 #define P_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#define P_PRINTF_FORMAT(format_number, args_number) \
+  __attribute__((format(printf, format_number, args_number)))
 #define GCC_PRAGMA(x) _Pragma(x)
 #else  // CLANG_OR_GCC
 #define P_WARN_UNUSED_RESULT
+#define P_PRINTF_FORMAT(format_number, args_number)
 #define GCC_PRAGMA(x)
 #endif  // CLANG_OR_GCC
 

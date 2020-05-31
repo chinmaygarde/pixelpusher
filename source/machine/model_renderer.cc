@@ -68,7 +68,8 @@ bool ModelRenderer::Setup() {
   }
 
   descriptor_sets_ = GetContext().GetDescriptorPool().AllocateDescriptorSets(
-      descriptor_set_layout_.get(), GetContext().GetSwapchainImageCount());
+      descriptor_set_layout_.get(), GetContext().GetSwapchainImageCount(),
+      "Model Renderer");
 
   if (!descriptor_sets_) {
     return false;
@@ -336,6 +337,9 @@ bool ModelRenderer::RebuildPipelines() {
     if (!pipeline) {
       return false;
     }
+
+    SetDebugName(GetContext().GetDevice(), pipeline.get(),
+                 "Model Renderer Pipeline");
 
     pipelines_[topology] = std::move(pipeline);
   }

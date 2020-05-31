@@ -1,5 +1,7 @@
 #include "string_utils.h"
 
+#include <cstdarg>
+
 namespace pixel {
 
 std::string TrimString(const std::string& string) {
@@ -30,6 +32,15 @@ std::string TrimString(const std::string& string) {
   }
 
   return std::string{string.begin() + start_index, string.begin() + end_index};
+}
+
+std::string MakeStringF(const char* format, ...) {
+  va_list list;
+  va_start(list, format);
+  char buffer[80] = {0};
+  vsnprintf(buffer, sizeof(buffer), format, list);
+  va_end(list);
+  return std::string{buffer};
 }
 
 }  // namespace pixel

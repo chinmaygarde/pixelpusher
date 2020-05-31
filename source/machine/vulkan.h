@@ -47,6 +47,20 @@ inline auto SetDebugName(vk::Device device, T object, const char* name) {
   return true;
 }
 
+template <class T>
+P_PRINTF_FORMAT(3, 4)
+inline auto SetDebugNameF(vk::Device device,
+                          T object,
+                          const char* format,
+                          ...) {
+  va_list list;
+  va_start(list, format);
+  char buffer[64] = {0};
+  vsnprintf(buffer, sizeof(buffer), format, list);
+  va_end(list);
+  return SetDebugName(device, object, buffer);
+}
+
 struct AutoDebugMarkerEnd {
   AutoDebugMarkerEnd() = default;
 
