@@ -7,13 +7,15 @@
 
 #include "pipeline_builder.h"
 #include "pipeline_layout.h"
+#include "string_utils.h"
 
 namespace pixel {
 
 ModelRenderer::ModelRenderer(std::shared_ptr<RenderingContext> context,
                              std::string model_assets_dir,
-                             std::string model_path)
-    : Renderer(context) {
+                             std::string model_path,
+                             std::string debug_name)
+    : Renderer(context), debug_name_(std::move(debug_name)) {
   std::promise<std::unique_ptr<model::Model>> model_promise;
   auto model_future = model_promise.get_future();
   AssetLoader::GetGlobal()->LoadAsset(
@@ -91,9 +93,10 @@ bool ModelRenderer::Setup() {
   }
 
   uniform_buffer_ = {
-      GetContext().GetMemoryAllocator(),     // allocator
-      {},                                    // prototype
-      GetContext().GetSwapchainImageCount()  // image count
+      GetContext().GetMemoryAllocator(),                       // allocator
+      {},                                                      // prototype
+      GetContext().GetSwapchainImageCount(),                   // image count
+      MakeStringF("%s Uniform", debug_name_.c_str()).c_str(),  // debug name
   };
 
   auto buffer_infos = uniform_buffer_.GetBufferInfos();
@@ -150,30 +153,34 @@ bool ModelRenderer::Setup() {
   if (!vertex_buffer.empty()) {
     vertex_buffer_ =
         GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-            vk::BufferUsageFlagBits::eVertexBuffer, vertex_buffer,
-            GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
+            vk::BufferUsageFlagBits::eVertexBuffer,                 //
+            vertex_buffer,                                          //
+            GetContext().GetTransferCommandPool(),                  //
+            MakeStringF("%s Vertex", debug_name_.c_str()).c_str(),  //
+            nullptr,                                                //
+            nullptr,                                                //
+            nullptr,                                                //
             nullptr);
     if (!vertex_buffer_) {
       return false;
     }
-
-    SetDebugName(GetContext().GetDevice(), vertex_buffer_->buffer,
-                 "Model Renderer Vertices");
   }
 
   if (!index_buffer.empty()) {
     index_buffer_ =
         GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-            vk::BufferUsageFlagBits::eIndexBuffer, index_buffer,
-            GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
+            vk::BufferUsageFlagBits::eIndexBuffer,                 //
+            index_buffer,                                          //
+            GetContext().GetTransferCommandPool(),                 //
+            MakeStringF("%s Index", debug_name_.c_str()).c_str(),  //
+            nullptr,                                               //
+            nullptr,                                               //
+            nullptr,                                               //
             nullptr);
 
     if (!index_buffer_) {
       return false;
     }
-
-    SetDebugName(GetContext().GetDevice(), index_buffer_->buffer,
-                 "Model Renderer Indices");
   }
 
   GetContext().GetTransferQueue().queue.waitIdle();
@@ -338,8 +345,9 @@ bool ModelRenderer::RebuildPipelines() {
       return false;
     }
 
-    SetDebugName(GetContext().GetDevice(), pipeline.get(),
-                 "Model Renderer Pipeline");
+    SetDebugNameF(GetContext().GetDevice(),  //
+                  pipeline.get(),            //
+                  "%s Pipeline", debug_name_.c_str());
 
     pipelines_[topology] = std::move(pipeline);
   }

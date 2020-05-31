@@ -17,7 +17,8 @@ class ModelRenderer : public Renderer {
  public:
   ModelRenderer(std::shared_ptr<RenderingContext> context,
                 std::string model_assets_dir,
-                std::string model_path);
+                std::string model_path,
+                std::string debug_name);
 
   // |Renderer|
   ~ModelRenderer() override;
@@ -36,7 +37,7 @@ class ModelRenderer : public Renderer {
     size_t vertex_count = 0;
     DrawType type = DrawType::kIndexed;
   };
-
+  const std::string debug_name_;
   std::unique_ptr<const model::Model> model_;
   std::unique_ptr<ShaderLibrary> shader_library_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;

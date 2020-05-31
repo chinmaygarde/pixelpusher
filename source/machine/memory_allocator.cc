@@ -17,6 +17,7 @@ GCC_PRAGMA("GCC diagnostic pop")
 #include "command_buffer.h"
 #include "command_pool.h"
 #include "logging.h"
+#include "string_utils.h"
 
 namespace pixel {
 
@@ -113,7 +114,8 @@ MemoryAllocator::~MemoryAllocator() {
 
 std::unique_ptr<Buffer> MemoryAllocator::CreateBuffer(
     const vk::BufferCreateInfo& buffer_info,
-    const VmaAllocationCreateInfo& allocation_info) {
+    const VmaAllocationCreateInfo& allocation_info,
+    const char* debug_name) {
   if (buffer_info.size == 0u) {
     P_ERROR << "Cannot create zero sized buffer.";
     return nullptr;
@@ -133,13 +135,16 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateBuffer(
     return nullptr;
   }
 
+  SetDebugNameF(device_, vk::Buffer{raw_buffer}, "%s Buffer", debug_name);
+
   return std::make_unique<Buffer>(raw_buffer, allocator_, allocation,
                                   base_allocation_info);
 }
 
 std::unique_ptr<Image> MemoryAllocator::CreateImage(
     const vk::ImageCreateInfo& image_info,
-    const VmaAllocationCreateInfo& allocation_info) {
+    const VmaAllocationCreateInfo& allocation_info,
+    const char* debug_name) {
   VkImage raw_image = nullptr;
   VmaAllocation allocation = nullptr;
   VkImageCreateInfo image_create_info = image_info;
@@ -153,6 +158,8 @@ std::unique_ptr<Image> MemoryAllocator::CreateImage(
     return nullptr;
   }
 
+  SetDebugNameF(device_, vk::Image{raw_image}, "%s Image", debug_name);
+
   return std::make_unique<Image>(raw_image, allocator_, allocation);
 }
 
@@ -163,8 +170,10 @@ bool MemoryAllocator::IsValid() const {
 std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBufferCopy(
     vk::BufferUsageFlags usage,
     const void* buffer,
-    size_t buffer_size) {
-  auto host_visible_buffer = CreateHostVisibleBuffer(usage, buffer_size);
+    size_t buffer_size,
+    const char* debug_name) {
+  auto host_visible_buffer = CreateHostVisibleBuffer(
+      usage, buffer_size, MakeStringF("%s Host Visible", debug_name).c_str());
 
   if (!host_visible_buffer) {
     return nullptr;
@@ -183,7 +192,8 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBufferCopy(
 
 std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBuffer(
     vk::BufferUsageFlags usage,
-    size_t buffer_size) {
+    size_t buffer_size,
+    const char* debug_name) {
   vk::BufferCreateInfo buffer_info;
   buffer_info.setSize(buffer_size);
   buffer_info.setUsage(usage);
@@ -195,7 +205,8 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBuffer(
   allocation_info.requiredFlags =
       VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-  auto host_visible_buffer = CreateBuffer(buffer_info, allocation_info);
+  auto host_visible_buffer =
+      CreateBuffer(buffer_info, allocation_info, debug_name);
 
   if (!host_visible_buffer) {
     P_ERROR << "Could not create host visible buffer.";
@@ -215,7 +226,8 @@ static VmaAllocationCreateInfo DeviceLocalAllocationInfo() {
 
 std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBuffer(
     vk::BufferUsageFlags usage,
-    size_t buffer_size) {
+    size_t buffer_size,
+    const char* debug_name) {
   vk::BufferCreateInfo device_buffer_info;
   device_buffer_info.setUsage(usage | vk::BufferUsageFlagBits::eTransferDst);
   device_buffer_info.setSize(buffer_size);
@@ -223,7 +235,9 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBuffer(
 
   auto device_allocation_info = DeviceLocalAllocationInfo();
 
-  auto device_buffer = CreateBuffer(device_buffer_info, device_allocation_info);
+  auto device_buffer =
+      CreateBuffer(device_buffer_info, device_allocation_info,
+                   MakeStringF("%s Device Local", debug_name).c_str());
 
   if (!device_buffer) {
     P_ERROR << "Could not create device buffer.";
@@ -238,6 +252,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
     const void* buffer,
     size_t buffer_size,
     const CommandPool& pool,
+    const char* debug_name,
     vk::ArrayProxy<vk::Semaphore> wait_semaphores,
     vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
     vk::ArrayProxy<vk::Semaphore> signal_semaphores,
@@ -247,8 +262,9 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   }
 
   // Create a host visible staging buffer.
-  auto staging_buffer = CreateHostVisibleBufferCopy(
-      usage | vk::BufferUsageFlagBits::eTransferSrc, buffer, buffer_size);
+  auto staging_buffer =
+      CreateHostVisibleBufferCopy(usage | vk::BufferUsageFlagBits::eTransferSrc,
+                                  buffer, buffer_size, debug_name);
 
   if (!staging_buffer) {
     P_ERROR << "Could not create staging buffer.";
@@ -256,7 +272,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
   }
 
   // Copy the staging buffer to the device.
-  auto device_buffer = CreateDeviceLocalBuffer(usage, buffer_size);
+  auto device_buffer = CreateDeviceLocalBuffer(usage, buffer_size, debug_name);
 
   if (!device_buffer) {
     P_ERROR << "Could not create device buffer.";
@@ -317,6 +333,7 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
     const void* image_data,
     size_t image_data_size,
     const CommandPool& pool,
+    const char* debug_name,
     vk::ArrayProxy<vk::Semaphore> wait_semaphores,
     vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
     vk::ArrayProxy<vk::Semaphore> signal_semaphores,
@@ -329,8 +346,9 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
     return nullptr;
   }
 
-  auto staging_buffer = CreateHostVisibleBufferCopy(
-      vk::BufferUsageFlagBits::eTransferSrc, image_data, image_data_size);
+  auto staging_buffer =
+      CreateHostVisibleBufferCopy(vk::BufferUsageFlagBits::eTransferSrc,
+                                  image_data, image_data_size, debug_name);
 
   if (!staging_buffer) {
     return nullptr;
@@ -338,7 +356,8 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
 
   auto device_allocation_info = DeviceLocalAllocationInfo();
 
-  auto device_image = CreateImage(image_info, device_allocation_info);
+  auto device_image =
+      CreateImage(image_info, device_allocation_info, debug_name);
 
   if (!device_image) {
     return nullptr;

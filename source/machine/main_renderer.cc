@@ -17,7 +17,7 @@ MainRenderer::MainRenderer(VulkanConnection& connection,
   is_valid_ = PushRenderer(std::make_unique<TutorialRenderer>(context)) &&
               PushRenderer(std::make_unique<ModelRenderer>(
                   context, PIXEL_GLTF_MODELS_LOCATION "/" MODEL_NAME "/glTF",
-                  MODEL_NAME ".gltf")) &&
+                  MODEL_NAME ".gltf", MODEL_NAME)) &&
               PushRenderer(std::make_unique<ImguiRenderer>(context, window));
 }
 

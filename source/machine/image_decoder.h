@@ -18,14 +18,6 @@ class ImageView {
 
   ~ImageView() = default;
 
-  bool SetDebugName(vk::Device device, const char* name) const {
-    if (!IsValid()) {
-      return false;
-    }
-    return ::pixel::SetDebugName(device, image_->image, name) &&
-           ::pixel::SetDebugName(device, view_.get(), name);
-  }
-
   operator bool() const { return IsValid(); }
 
   bool IsValid() const { return view_ && image_; }
@@ -56,6 +48,7 @@ class ImageDecoder {
   std::unique_ptr<ImageView> CreateDeviceLocalImageCopy(
       MemoryAllocator& allocator,
       const CommandPool& pool,
+      const char* debug_name,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
       vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
       vk::ArrayProxy<vk::Semaphore> signal_semaphores,

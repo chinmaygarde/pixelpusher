@@ -88,35 +88,48 @@ class MemoryAllocator {
 
   std::unique_ptr<Buffer> CreateBuffer(
       const vk::BufferCreateInfo& buffer_info,
-      const VmaAllocationCreateInfo& allocation_info);
+      const VmaAllocationCreateInfo& allocation_info,
+      const char* debug_name);
 
   std::unique_ptr<Image> CreateImage(
       const vk::ImageCreateInfo& image_info,
-      const VmaAllocationCreateInfo& allocation_info);
+      const VmaAllocationCreateInfo& allocation_info,
+      const char* debug_name);
 
   std::unique_ptr<Buffer> CreateHostVisibleBufferCopy(
       vk::BufferUsageFlags usage,
       const void* buffer,
-      size_t buffer_size);
+      size_t buffer_size,
+      const char* debug_name);
 
   std::unique_ptr<Buffer> CreateHostVisibleBuffer(vk::BufferUsageFlags usage,
-                                                  size_t buffer_size);
+                                                  size_t buffer_size,
+                                                  const char* debug_name);
 
   std::unique_ptr<Buffer> CreateDeviceLocalBuffer(vk::BufferUsageFlags usage,
-                                                  size_t buffer_size);
+                                                  size_t buffer_size,
+                                                  const char* debug_name);
 
   template <class U>
   std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
       vk::BufferUsageFlags usage,
       const std::vector<U>& buffer,
       const CommandPool& pool,
+      const char* debug_name,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
       vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
       vk::ArrayProxy<vk::Semaphore> signal_semaphores,
       std::function<void(void)> on_done) {
-    return CreateDeviceLocalBufferCopy(
-        usage, buffer.data(), buffer.size() * sizeof(U), pool, wait_semaphores,
-        wait_stages, signal_semaphores, on_done);
+    return CreateDeviceLocalBufferCopy(usage,                      //
+                                       buffer.data(),              //
+                                       buffer.size() * sizeof(U),  //
+                                       pool,                       //
+                                       debug_name,                 //
+                                       wait_semaphores,            //
+                                       wait_stages,                //
+                                       signal_semaphores,          //
+                                       on_done                     //
+    );
   }
 
   std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
@@ -124,6 +137,7 @@ class MemoryAllocator {
       const void* buffer,
       size_t buffer_size,
       const CommandPool& pool,
+      const char* debug_name,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
       vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
       vk::ArrayProxy<vk::Semaphore> signal_semaphores,
@@ -134,6 +148,7 @@ class MemoryAllocator {
       const void* image_data,
       size_t image_data_size,
       const CommandPool& pool,
+      const char* debug_name,
       vk::ArrayProxy<vk::Semaphore> wait_semaphores,
       vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
       vk::ArrayProxy<vk::Semaphore> signal_semaphores,
@@ -157,11 +172,15 @@ struct UniformBuffer {
 
   UniformBuffer() = default;
 
-  UniformBuffer(MemoryAllocator& allocator, T object, size_t copies)
+  UniformBuffer(MemoryAllocator& allocator,
+                T object,
+                size_t copies,
+                const char* debug_name)
       : prototype(std::move(object)),
         buffer(allocator.CreateHostVisibleBuffer(
             vk::BufferUsageFlagBits::eUniformBuffer,
-            sizeof(T) * copies)),
+            sizeof(T) * copies,
+            debug_name)),
         copies(copies),
         current_index(copies - 1u) {
     P_ASSERT(copies > 0u);

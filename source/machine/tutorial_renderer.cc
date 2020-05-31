@@ -69,10 +69,11 @@ bool TutorialRenderer::Setup() {
           vertices.data(),                                           // data
           vertices.size() * sizeof(decltype(vertices)::value_type),  // size
           GetContext().GetTransferCommandPool(),                     // pool
-          nullptr,  // wait semaphores
-          nullptr,  // wait stages
-          nullptr,  // signal semaphores
-          nullptr   // on done
+          "Tutorial Vertex",  // debug name
+          nullptr,            // wait semaphores
+          nullptr,            // wait stages
+          nullptr,            // signal semaphores
+          nullptr             // on done
       );
 
   auto index_buffer =
@@ -81,6 +82,7 @@ bool TutorialRenderer::Setup() {
           indices.data(),                                          // data
           indices.size() * sizeof(decltype(indices)::value_type),  // size
           GetContext().GetTransferCommandPool(),                   // pool
+          "Tutorial Index",                                        // debug name
           nullptr,  // wait semaphores
           nullptr,  // wait stages
           nullptr,  // signal semaphores
@@ -100,6 +102,7 @@ bool TutorialRenderer::Setup() {
   auto image = decoder.CreateDeviceLocalImageCopy(
       GetContext().GetMemoryAllocator(),      // allocator
       GetContext().GetTransferCommandPool(),  // command pool
+      "Nighthawks",                           // debug name
       nullptr,                                // wait semaphores
       nullptr,                                // wait staged
       nullptr,                                // signal semaphores
@@ -120,14 +123,9 @@ bool TutorialRenderer::Setup() {
   index_buffer_ = std::move(index_buffer);
   image_ = std::move(image);
 
-  image_->SetDebugName(device_, "Nighthawks");
-
-  SetDebugName(device_, vertex_buffer_->buffer, "Triangle Vertex Buffer");
-  SetDebugName(device_, index_buffer_->buffer, "Triangle Index Buffer");
-
-  UniformBuffer<TriangleUBO> triangle_ubo(
-      GetContext().GetMemoryAllocator(), {},
-      GetContext().GetSwapchainImageCount());
+  UniformBuffer<TriangleUBO> triangle_ubo(GetContext().GetMemoryAllocator(), {},
+                                          GetContext().GetSwapchainImageCount(),
+                                          "Tutorial Uniform");
 
   if (!triangle_ubo) {
     P_ERROR << "Could not allocate backing store for the triangle UBO.";

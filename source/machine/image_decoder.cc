@@ -71,6 +71,7 @@ static std::optional<vk::Format> FormatForSTBImageFormat(int format) {
 std::unique_ptr<ImageView> ImageDecoder::CreateDeviceLocalImageCopy(
     MemoryAllocator& allocator,
     const CommandPool& pool,
+    const char* debug_name,
     vk::ArrayProxy<vk::Semaphore> wait_semaphores,
     vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
     vk::ArrayProxy<vk::Semaphore> signal_semaphores,
@@ -112,6 +113,7 @@ std::unique_ptr<ImageView> ImageDecoder::CreateDeviceLocalImageCopy(
                                            image_.get(),                  //
                                            image_data_size_,              //
                                            pool,                          //
+                                           debug_name,                    //
                                            std::move(wait_semaphores),    //
                                            std::move(wait_stages),        //
                                            std::move(signal_semaphores),  //
@@ -139,6 +141,9 @@ std::unique_ptr<ImageView> ImageDecoder::CreateDeviceLocalImageCopy(
   if (!image_view) {
     return nullptr;
   }
+
+  SetDebugNameF(pool.GetDevice(), image_view.get(), "%s Image View",
+                debug_name);
 
   return std::make_unique<ImageView>(std::move(image), std::move(image_view));
 }
