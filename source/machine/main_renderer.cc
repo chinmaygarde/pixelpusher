@@ -8,14 +8,16 @@
 
 namespace pixel {
 
+#define MODEL_NAME "TriangleWithoutIndices"
+
 MainRenderer::MainRenderer(VulkanConnection& connection,
                            std::shared_ptr<RenderingContext> context,
                            GLFWwindow* window)
     : Renderer(context), connection_(connection) {
   is_valid_ = PushRenderer(std::make_unique<TutorialRenderer>(context)) &&
               PushRenderer(std::make_unique<ModelRenderer>(
-                  context, PIXEL_GLTF_MODELS_LOCATION "/DamagedHelmet/glTF",
-                  "DamagedHelmet.gltf")) &&
+                  context, PIXEL_GLTF_MODELS_LOCATION "/" MODEL_NAME "/glTF",
+                  MODEL_NAME ".gltf")) &&
               PushRenderer(std::make_unique<ImguiRenderer>(context, window));
 }
 

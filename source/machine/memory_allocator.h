@@ -14,10 +14,16 @@ struct Buffer {
   vk::Buffer buffer = {};
   VmaAllocator allocator = nullptr;
   VmaAllocation allocation = nullptr;
+  VmaAllocationInfo allocation_info = {};
 
-  Buffer(vk::Buffer buffer, VmaAllocator allocator, VmaAllocation allocation);
+  Buffer(vk::Buffer buffer,
+         VmaAllocator allocator,
+         VmaAllocation allocation,
+         VmaAllocationInfo allocation_info);
 
   ~Buffer();
+
+  size_t GetSize() const;
 
   P_DISALLOW_COPY_AND_ASSIGN(Buffer);
 };

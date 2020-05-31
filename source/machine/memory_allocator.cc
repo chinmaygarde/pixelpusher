@@ -56,11 +56,19 @@ static VmaVulkanFunctions CreateVulkanFunctionsProcTable() {
 
 Buffer::Buffer(vk::Buffer p_buffer,
                VmaAllocator p_allocator,
-               VmaAllocation p_allocation)
-    : buffer(p_buffer), allocator(p_allocator), allocation(p_allocation) {}
+               VmaAllocation p_allocation,
+               VmaAllocationInfo p_allocation_info)
+    : buffer(p_buffer),
+      allocator(p_allocator),
+      allocation(p_allocation),
+      allocation_info(p_allocation_info) {}
 
 Buffer::~Buffer() {
   vmaDestroyBuffer(allocator, buffer, allocation);
+}
+
+size_t Buffer::GetSize() const {
+  return allocation_info.size;
 }
 
 Image::Image(vk::Image p_image,
@@ -106,20 +114,27 @@ MemoryAllocator::~MemoryAllocator() {
 std::unique_ptr<Buffer> MemoryAllocator::CreateBuffer(
     const vk::BufferCreateInfo& buffer_info,
     const VmaAllocationCreateInfo& allocation_info) {
+  if (buffer_info.size == 0u) {
+    P_ERROR << "Cannot create zero sized buffer.";
+    return nullptr;
+  }
+
   VkBuffer raw_buffer = nullptr;
   VmaAllocation allocation = nullptr;
   VkBufferCreateInfo buffer_create_info = buffer_info;
-  if (::vmaCreateBuffer(allocator_,           //
-                        &buffer_create_info,  //
-                        &allocation_info,     //
-                        &raw_buffer,          //
-                        &allocation,          //
-                        nullptr               // allocation info
+  VmaAllocationInfo base_allocation_info = {};
+  if (::vmaCreateBuffer(allocator_,            //
+                        &buffer_create_info,   //
+                        &allocation_info,      //
+                        &raw_buffer,           //
+                        &allocation,           //
+                        &base_allocation_info  // allocation info
                         ) != VK_SUCCESS) {
     return nullptr;
   }
 
-  return std::make_unique<Buffer>(raw_buffer, allocator_, allocation);
+  return std::make_unique<Buffer>(raw_buffer, allocator_, allocation,
+                                  base_allocation_info);
 }
 
 std::unique_ptr<Image> MemoryAllocator::CreateImage(

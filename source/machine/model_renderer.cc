@@ -144,21 +144,30 @@ bool ModelRenderer::Setup() {
     }
   }
 
-  vertex_buffer_ =
-      GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-          vk::BufferUsageFlagBits::eVertexBuffer, vertex_buffer,
-          GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
-          nullptr);
-  index_buffer_ = GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-      vk::BufferUsageFlagBits::eIndexBuffer, index_buffer,
-      GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
-      nullptr);
+  if (!vertex_buffer.empty()) {
+    vertex_buffer_ =
+        GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+            vk::BufferUsageFlagBits::eVertexBuffer, vertex_buffer,
+            GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
+            nullptr);
+    if (!vertex_buffer_) {
+      return false;
+    }
+  }
+
+  if (!index_buffer.empty()) {
+    index_buffer_ =
+        GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+            vk::BufferUsageFlagBits::eIndexBuffer, index_buffer,
+            GetContext().GetTransferCommandPool(), nullptr, nullptr, nullptr,
+            nullptr);
+
+    if (!index_buffer_) {
+      return false;
+    }
+  }
 
   GetContext().GetTransferQueue().queue.waitIdle();
-
-  if (!vertex_buffer_ || !index_buffer_) {
-    return false;
-  }
 
   draw_data_ = std::move(pending_draw_data);
 
@@ -173,6 +182,26 @@ bool ModelRenderer::BeginFrame() {
 
 // |Renderer|
 bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
+  if (::ImGui::BeginTabItem("Model")) {
+    ::ImGui::Text("Draws: %zu", draw_data_.size());
+
+    if (vertex_buffer_) {
+      ::ImGui::Text("Vertex Buffer Size: %zu", vertex_buffer_->GetSize());
+    } else {
+      ::ImGui::Text("No Vertex Buffer");
+    }
+
+    if (index_buffer_) {
+      ::ImGui::Text("Index Buffer Size: %zu", index_buffer_->GetSize());
+    } else {
+      ::ImGui::Text("No Index Buffer");
+    }
+
+    ::ImGui::Text("Topologies: %zu", required_topologies_.size());
+
+    ::ImGui::EndTabItem();
+  }
+
   if (draw_data_.empty()) {
     return true;
   }
