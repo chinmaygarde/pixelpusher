@@ -9,6 +9,7 @@
 #include "glfw.h"
 #include "logging.h"
 #include "main_renderer.h"
+#include "platform.h"
 #include "renderer.h"
 #include "vulkan.h"
 #include "vulkan_connection.h"
@@ -147,5 +148,10 @@ static bool Main(int argc, char const* argv[]) {
 }  // namespace pixel
 
 int main(int argc, char const* argv[]) {
-  return pixel::Main(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
+  const auto return_code =
+      pixel::Main(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
+#if P_OS_WIN
+  ::ExitProcess(return_code);
+#endif  // P_OS_WIN
+  return return_code;
 }
