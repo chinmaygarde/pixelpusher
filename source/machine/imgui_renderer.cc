@@ -129,11 +129,32 @@ bool ImguiRenderer::BeginFrame() {
   ::ImGui_ImplGlfw_NewFrame();
   ::ImGui::NewFrame();
 
+  ::ImGui::Begin("Machine", nullptr, ImGuiWindowFlags_NoResize);
+  ::ImGui::BeginTabBar("Instrumentation");
+
+  // Set window size and position.
+  const auto extents = GetContext().GetExtents();
+  const auto padding = 10.0f;
+  const auto window_extents = ImVec2((extents.width / 4.0) - (2.0 * padding),
+                                     extents.height - (2.0 * padding));
+  ::ImGui::SetWindowSize(window_extents);
+  ::ImGui::SetWindowPos(
+      ImVec2(extents.width - window_extents.x - padding, padding));
+
   return true;
 }
 
-bool ImguiRenderer::RenderPerformanceMetrics() const {
-  ::ImGui::Begin("Timing");
+bool ImguiRenderer::GatherAndRenderPerformanceMetrics() {
+  frames_rendered_++;
+  const auto now = Clock::now();
+  std::chrono::duration<float, std::milli> duration = now - last_frame_begin_;
+  frame_times_millis_[frames_rendered_ % kFrameSamplesCount] = duration.count();
+  last_frame_begin_ = now;
+
+  if (!::ImGui::BeginTabItem("Timing")) {
+    return true;
+  }
+
 #ifndef NDEBUG
   ::ImGui::Text("WARNING: Debug/Unoptimized Renderer");
 #endif  //  NDEBUG
@@ -142,13 +163,23 @@ bool ImguiRenderer::RenderPerformanceMetrics() const {
       *std::max_element(frame_times_millis_.begin(), frame_times_millis_.end());
   const auto min =
       *std::min_element(frame_times_millis_.begin(), frame_times_millis_.end());
-  ::ImGui::LabelText("(Last, Max, Min) Frame Time", "(%.2f, %.2f, %.2f) ms",
-                     last, max, min);
-  ::ImGui::LabelText("(Last, Max, Min) FPS", "(%.0f, %.0f, %.0f) FPS",
-                     1000.f / last, 1000.f / min, 1000.f / max);
-  ::ImGui::PlotLines("Frame History (ms)", frame_times_millis_.data(),
+  ::ImGui::Separator();
+  ::ImGui::Text("Frames Rendered");
+  ::ImGui::Text("%zu frames", frames_rendered_);
+  ::ImGui::Separator();
+  ::ImGui::Text("Frame Time");
+  ::ImGui::Text("(Last, Max, Min)");
+  ::ImGui::Text("(%2.2f, %2.2f, %2.2f) ms", last, max, min);
+  ::ImGui::Separator();
+  ::ImGui::Text("FPS");
+  ::ImGui::Text("(Last, Max, Min)");
+  ::ImGui::Text("(%4.0f, %4.0f, %4.0f) FPS", 1000.f / last, 1000.f / min,
+                1000.f / max);
+  ::ImGui::Separator();
+  ::ImGui::Text("Frame History (ms)");
+  ::ImGui::PlotLines("", frame_times_millis_.data(),
                      frame_times_millis_.size());
-  ::ImGui::End();
+  ::ImGui::EndTabItem();
 
   return true;
 }
@@ -165,15 +196,12 @@ bool ImguiRenderer::RenderFrame(vk::CommandBuffer buffer) {
     return false;
   }
 
-  frames_rendered_++;
-  auto now = Clock::now();
-  std::chrono::duration<float, std::milli> duration = now - last_frame_begin_;
-  frame_times_millis_[frames_rendered_ % kFrameSamplesCount] = duration.count();
-  last_frame_begin_ = now;
-
-  if (!RenderPerformanceMetrics()) {
+  if (!GatherAndRenderPerformanceMetrics()) {
     return false;
   }
+
+  ::ImGui::EndTabBar();  // Instrumentation
+  ::ImGui::End();        // Machine
 
   ::ImGui::Render();
   ::ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), buffer);

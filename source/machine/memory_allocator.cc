@@ -431,21 +431,17 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
 }
 
 void MemoryAllocator::TraceUsageStatistics() const {
-  auto is_open = ::ImGui::Begin("Device Memory Stats");
-
-  if (is_open) {
-    VmaStats stats = {};
-    ::vmaCalculateStats(allocator_, &stats);
-
-    ::ImGui::Text("Total Usage");
-    ::ImGui::Text("Device Memory Blocks: %u", stats.total.blockCount);
-    ::ImGui::Text("Allocations: %u", stats.total.allocationCount);
-    ::ImGui::Text("Unused Ranges: %u", stats.total.unusedRangeCount);
-    ::ImGui::Text("Used MBytes: %.2f", stats.total.usedBytes / 1e6);
-    ::ImGui::Text("Unused MBytes: %.2f", stats.total.unusedBytes / 1e6);
+  if (!::ImGui::BeginTabItem("Memory")) {
+    return;
   }
-
-  ::ImGui::End();
+  VmaStats stats = {};
+  ::vmaCalculateStats(allocator_, &stats);
+  ::ImGui::Text("Device Memory Blocks: %u", stats.total.blockCount);
+  ::ImGui::Text("Allocations: %u", stats.total.allocationCount);
+  ::ImGui::Text("Used MBytes: %.2f", stats.total.usedBytes / 1e6);
+  ::ImGui::Text("Unused MBytes: %.2f", stats.total.unusedBytes / 1e6);
+  ::ImGui::Text("Unused Ranges: %u", stats.total.unusedRangeCount);
+  ::ImGui::EndTabItem();
 }
 
 }  // namespace pixel

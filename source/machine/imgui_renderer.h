@@ -45,9 +45,7 @@ class ImguiRenderer final : public Renderer {
   // |Renderer|
   bool Teardown() override;
 
-  bool GatherPerformanceMetrics() const;
-
-  bool RenderPerformanceMetrics() const;
+  bool GatherAndRenderPerformanceMetrics();
 
   P_DISALLOW_COPY_AND_ASSIGN(ImguiRenderer);
 };
