@@ -132,6 +132,8 @@ bool ModelRenderer::Setup() {
       data.vertex_buffer_offset = current_vertex_buffer_offset;
       data.index_buffer_offset = current_index_buffer_offset;
       data.index_count = call.indices.size();
+      data.vertex_count = call.vertices.size();
+      data.type = call.indices.empty() ? DrawType::kVertex : DrawType::kIndexed;
       std::copy(call.vertices.begin(), call.vertices.end(),
                 std::back_inserter(vertex_buffer));
       std::copy(call.indices.begin(), call.indices.end(),
@@ -153,6 +155,9 @@ bool ModelRenderer::Setup() {
     if (!vertex_buffer_) {
       return false;
     }
+
+    SetDebugName(GetContext().GetDevice(), vertex_buffer_->buffer,
+                 "Model Renderer Vertices");
   }
 
   if (!index_buffer.empty()) {
@@ -165,6 +170,9 @@ bool ModelRenderer::Setup() {
     if (!index_buffer_) {
       return false;
     }
+
+    SetDebugName(GetContext().GetDevice(), index_buffer_->buffer,
+                 "Model Renderer Indices");
   }
 
   GetContext().GetTransferQueue().queue.waitIdle();
@@ -206,6 +214,10 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
     return true;
   }
 
+  if (!vertex_buffer_) {
+    return true;
+  }
+
   const auto extents = GetContext().GetExtents();
 
   auto model = glm::identity<glm::mat4>();
@@ -235,11 +247,11 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
       return false;
     }
 
+    const auto is_indexed_draw = draw.type == DrawType::kIndexed;
+
     buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, found->second.get());
     buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer},
                              {draw.vertex_buffer_offset});
-    buffer.bindIndexBuffer(index_buffer_->buffer, draw.index_buffer_offset,
-                           vk::IndexType::eUint32);
     buffer.bindDescriptorSets(
         vk::PipelineBindPoint::eGraphics,  // bind point
         pipeline_layout_.get(),            // layout
@@ -247,12 +259,27 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
         descriptor_sets_[uniform_index],   // descriptor set
         nullptr                            // dynamic_offsets
     );
-    buffer.drawIndexed(draw.index_count,  // index count
-                       1u,                // instance count
-                       0u,                // first index
-                       0u,                // vertex offset
-                       0u                 // first instance
-    );
+
+    if (is_indexed_draw) {
+      if (!index_buffer_) {
+        return false;
+      }
+
+      buffer.bindIndexBuffer(index_buffer_->buffer, draw.index_buffer_offset,
+                             vk::IndexType::eUint32);
+      buffer.drawIndexed(draw.index_count,  // index count
+                         1u,                // instance count
+                         0u,                // first index
+                         0u,                // vertex offset
+                         0u                 // first instance
+      );
+    } else {
+      buffer.draw(draw.vertex_count,  // vertex count
+                  1u,                 // instance count
+                  0u,                 // first vertex
+                  0u                  // first instance
+      );
+    }
   }
 
   return true;

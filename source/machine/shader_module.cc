@@ -112,7 +112,7 @@ vk::UniqueShaderModule LoadShaderModuleSource(
 
   shaderc::CompileOptions options;
   options.SetSourceLanguage(shaderc_source_language_glsl);
-  options.SetOptimizationLevel(shaderc_optimization_level_performance);
+  options.SetOptimizationLevel(shaderc_optimization_level_zero);
 
   const auto debug_label = DebugLabelFromShaderPath(shader_path, false);
 

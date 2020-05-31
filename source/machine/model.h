@@ -413,14 +413,7 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Scene& scene) override;
 
-  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const {
-    for (const auto& node : nodes_) {
-      if (!node->CollectDrawData(data, stack)) {
-        return false;
-      }
-    }
-    return true;
-  }
+  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
 
  private:
   std::string name_;
@@ -479,16 +472,7 @@ class Model final {
 
   const Lights& GetLights() const;
 
-  DrawData GetDrawData() const {
-    DrawData data;
-    TransformationStack stack;
-    for (const auto& scene : scenes_) {
-      if (!scene->CollectDrawData(data, stack)) {
-        return {};
-      }
-    }
-    return data;
-  }
+  DrawData GetDrawData() const;
 
  private:
   friend class Accessor;

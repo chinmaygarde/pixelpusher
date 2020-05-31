@@ -14,9 +14,7 @@ std::shared_ptr<AssetLoader> AssetLoader::GetGlobal() {
 
 AssetLoader::AssetLoader() : thread_("AssetLoader") {}
 
-AssetLoader::~AssetLoader() {
-  thread_.Terminate();
-}
+AssetLoader::~AssetLoader() = default;
 
 static std::unique_ptr<Asset> LoadAssetFromMapping(
     const Mapping& mapping,

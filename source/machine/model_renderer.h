@@ -23,11 +23,18 @@ class ModelRenderer : public Renderer {
   ~ModelRenderer() override;
 
  private:
+  enum class DrawType {
+    kIndexed,
+    kVertex,
+
+  };
   struct DrawData {
     vk::PrimitiveTopology topology;
     vk::DeviceSize vertex_buffer_offset = 0;
     vk::DeviceSize index_buffer_offset = 0;
     size_t index_count = 0;
+    size_t vertex_count = 0;
+    DrawType type = DrawType::kIndexed;
   };
 
   std::unique_ptr<const model::Model> model_;

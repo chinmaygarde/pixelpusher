@@ -268,6 +268,17 @@ static size_t SizeOfComponentType(ComponentType type) {
   return 0;
 }
 
+DrawData Model::GetDrawData() const {
+  DrawData data;
+  TransformationStack stack;
+  for (const auto& scene : scenes_) {
+    if (!scene->CollectDrawData(data, stack)) {
+      return {};
+    }
+  }
+  return data;
+}
+
 // *****************************************************************************
 // *** Accessor
 // *****************************************************************************
@@ -670,10 +681,6 @@ bool Primitive::CollectDrawData(DrawData& draw_data,
     }
   }
 
-  if (indices.size() == 0) {
-    return true;
-  }
-
   for (const auto& index : indices) {
     if (index >= positions.size()) {
       P_ERROR << "Index specified vertex position that was out of bounds.";
@@ -940,6 +947,16 @@ void Scene::ResolveReferences(const Model& model,
       nodes_.emplace_back(std::move(node));
     }
   }
+}
+
+bool Scene::CollectDrawData(DrawData& data,
+                            const TransformationStack& stack) const {
+  for (const auto& node : nodes_) {
+    if (!node->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // *****************************************************************************
