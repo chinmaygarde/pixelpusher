@@ -65,6 +65,7 @@ Thread::Thread(std::string thread_name) {
 }
 
 Thread::~Thread() {
+  Terminate();
   thread_->join();
 }
 
