@@ -175,6 +175,8 @@ class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
   std::optional<const uint8_t*> GetByteMapping(size_t offset,
                                                size_t length) const;
 
+  size_t GetStride() const;
+
  private:
   std::string name_;
   std::shared_ptr<Buffer> buffer_;

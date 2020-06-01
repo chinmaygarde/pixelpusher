@@ -304,14 +304,39 @@ void Accessor::ResolveReferences(const Model& model,
 }
 
 template <class T>
-std::vector<T> CopyToVector(const void* ptr, size_t size) {
-  auto typed_ptr = static_cast<const T*>(ptr);
-  return {typed_ptr, typed_ptr + size};
+static std::vector<T> CopyToVector(const void* ptr,
+                                   size_t size,
+                                   size_t stride,
+                                   size_t component_count) {
+  if (stride == 0) {
+    // Data is tightly packed. Simple ::memcpy is sufficient.
+    auto typed_ptr = static_cast<const T*>(ptr);
+    return {typed_ptr, typed_ptr + size};
+  }
+
+  std::vector<T> return_vector;
+  return_vector.reserve(size);
+  auto byte_ptr = reinterpret_cast<const uint8_t*>(ptr);
+
+  for (size_t i = 0; i < size; i += component_count) {
+    for (size_t j = 0; j < component_count; j++) {
+      return_vector.push_back({});
+      ::memcpy(&return_vector.back(), byte_ptr + (j * sizeof(T)), sizeof(T));
+    }
+    byte_ptr += stride;
+  }
+
+  P_ASSERT(return_vector.size() == size);
+  return return_vector;
 }
 
 template <class FinalType, class NativeType>
-std::vector<FinalType> CopyAndConvertVector(const void* ptr, size_t size) {
-  auto native_copy = CopyToVector<NativeType>(ptr, size);
+static std::vector<FinalType> CopyAndConvertVector(const void* ptr,
+                                                   size_t size,
+                                                   size_t stride,
+                                                   size_t component_count) {
+  auto native_copy =
+      CopyToVector<NativeType>(ptr, size, stride, component_count);
   if constexpr (std::is_same<FinalType, NativeType>::value) {
     return native_copy;
   } else {
@@ -320,18 +345,24 @@ std::vector<FinalType> CopyAndConvertVector(const void* ptr, size_t size) {
 }
 
 template <class T>
-std::optional<std::vector<T>> ReadTypedList(const BufferView* buffer_view,
-                                            DataType data_type,
-                                            ComponentType component_type,
-                                            size_t byte_offset,
-                                            size_t items_count) {
+static std::optional<std::vector<T>> ReadTypedList(
+    const BufferView* buffer_view,
+    DataType data_type,
+    ComponentType component_type,
+    size_t byte_offset,
+    size_t items_count) {
+  if (items_count == 0) {
+    P_ERROR << "Items count was zero.";
+    return std::nullopt;
+  }
+
   if (!buffer_view) {
     P_ERROR << "Buffer view was nullptr.";
     return std::nullopt;
   }
 
-  const auto stride = SizeOfComponentType(component_type);
-  if (stride == 0) {
+  const auto component_stride = SizeOfComponentType(component_type);
+  if (component_stride == 0) {
     P_ERROR << "Unknown data stride.";
     return std::nullopt;
   }
@@ -345,10 +376,15 @@ std::optional<std::vector<T>> ReadTypedList(const BufferView* buffer_view,
 
   const auto elements_count = items_count * components_count;
 
-  auto buffer =
-      buffer_view->GetByteMapping(byte_offset, stride * elements_count);
+  const auto buffer_view_stride = buffer_view->GetStride();
 
-  // TODO: If there is a stride in the buffer, it must be handled here.
+  if (buffer_view_stride % 4 != 0) {
+    P_ERROR << "Buffer view stride was not a multiple of 4.";
+  }
+
+  // TODO: This bounds check might not be sufficient to account for the stride.
+  auto buffer = buffer_view->GetByteMapping(byte_offset,
+                                            component_stride * elements_count);
 
   if (!buffer.has_value()) {
     P_ERROR << "Accessor mapping was unavailable or out of bounds.";
@@ -363,28 +399,36 @@ std::optional<std::vector<T>> ReadTypedList(const BufferView* buffer_view,
       return std::nullopt;
     }
     case ComponentType::kComponentTypeByte: {
-      return CopyAndConvertVector<T, int8_t>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, int8_t>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeUnsignedByte: {
-      return CopyAndConvertVector<T, uint8_t>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, uint8_t>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeShort: {
-      return CopyAndConvertVector<T, int16_t>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, int16_t>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeUnsignedShort: {
-      return CopyAndConvertVector<T, uint16_t>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, uint16_t>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeInt: {
-      return CopyAndConvertVector<T, int32_t>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, int32_t>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeUnsignedInt: {
-      return CopyAndConvertVector<T, uint32_t>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, uint32_t>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeFloat: {
-      return CopyAndConvertVector<T, float>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, float>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
     case ComponentType::kComponentTypeDouble: {
-      return CopyAndConvertVector<T, double>(buffer_ptr, elements_count);
+      return CopyAndConvertVector<T, double>(
+          buffer_ptr, elements_count, buffer_view_stride, components_count);
     }
   }
   return std::nullopt;
@@ -538,13 +582,6 @@ void BufferView::ResolveReferences(const Model& model,
 std::optional<const uint8_t*> BufferView::GetByteMapping(
     size_t accessor_offset,
     size_t accessor_length) const {
-  if (byte_stride_ != 0) {
-    // TODO: This must be fixed in the Accessor.
-    P_ERROR << "This renderer cannot work with non zero byte strides. The data "
-               "must be tightly packed.";
-    return std::nullopt;
-  }
-
   if (!buffer_) {
     P_ERROR << "Buffer was not present.";
     return std::nullopt;
@@ -563,6 +600,10 @@ std::optional<const uint8_t*> BufferView::GetByteMapping(
   }
 
   return buffer_ptr.value() + accessor_offset;
+}
+
+size_t BufferView::GetStride() const {
+  return byte_stride_;
 }
 
 // *****************************************************************************

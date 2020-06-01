@@ -56,7 +56,8 @@ static std::optional<DrawData> GetDrawDataForModelName(
   asset_file.make_preferred();
 
   loader.LoadAsset(
-      base_dir.u8string(), asset_file.u8string(),
+      reinterpret_cast<const char*>(base_dir.u8string().c_str()),
+      reinterpret_cast<const char*>(asset_file.u8string().c_str()),
       MakeCopyable([promise = std::move(asset_promise)](auto asset) mutable {
         ASSERT_TRUE(asset);
         promise.set_value(std::move(asset));
@@ -107,8 +108,8 @@ TEST(ModelTest, DrawDataTestBox) {
   ASSERT_EQ(draw_data.ops.at(vk::PrimitiveTopology::eTriangleFan).size(), 1u);
   const auto& ops = draw_data.ops.at(vk::PrimitiveTopology::eTriangleFan);
   const auto& draw_op = ops[0];
-  EXPECT_EQ(draw_op.vertices.size(), 999u);
-  EXPECT_EQ(draw_op.indices.size(), 999u);
+  EXPECT_EQ(draw_op.vertices.size(), 24u);
+  EXPECT_EQ(draw_op.indices.size(), 36u);
 }
 
 }  // namespace test

@@ -8,7 +8,7 @@
 
 namespace pixel {
 
-#define MODEL_NAME "TriangleWithoutIndices"
+#define MODEL_NAME "Box"
 
 MainRenderer::MainRenderer(VulkanConnection& connection,
                            std::shared_ptr<RenderingContext> context,
