@@ -17,19 +17,6 @@
 
 namespace pixel {
 
-static std::string DebugLabelFromShaderPath(const std::filesystem::path& path,
-                                            bool is_spv) {
-  std::stringstream stream;
-  const auto filename_label = path.filename().u8string();
-  stream << reinterpret_cast<const char*>(filename_label.c_str());
-  if (is_spv) {
-    stream << "(spirv)";
-  } else {
-    stream << "(source)";
-  }
-  return stream.str();
-}
-
 static std::filesystem::path GetShaderPath(const char* shader_name,
                                            bool is_spv,
                                            bool is_link) {
@@ -50,10 +37,9 @@ static std::filesystem::path GetShaderPath(const char* shader_name,
   return path;
 }
 
-static vk::UniqueShaderModule LoadShaderModuleMapping(
-    vk::Device device,
-    const Mapping* mapping,
-    const std::string& debug_name) {
+static vk::UniqueShaderModule LoadShaderModuleMapping(vk::Device device,
+                                                      const Mapping* mapping,
+                                                      const char* debug_name) {
   if (!mapping || mapping->GetSize() == 0 || mapping->GetData() == nullptr) {
     return {};
   }
@@ -70,17 +56,21 @@ static vk::UniqueShaderModule LoadShaderModuleMapping(
     return {};
   }
 
-  SetDebugName(device, module.value.get(), debug_name.c_str());
+  SetDebugNameF(device,                         //
+                module.value.get(),             //
+                "%s Shader Module", debug_name  //
+  );
 
   return std::move(module.value);
 }
 
 static vk::UniqueShaderModule LoadShaderModuleSPIRV(
     vk::Device device,
-    const std::filesystem::path& path) {
-  return LoadShaderModuleMapping(device,                               //
-                                 OpenFile(path).get(),                 //
-                                 DebugLabelFromShaderPath(path, true)  //
+    const std::filesystem::path& path,
+    const char* debug_name) {
+  return LoadShaderModuleMapping(device,                                      //
+                                 OpenFile(path).get(),                        //
+                                 MakeStringF("%s SPIRV", debug_name).c_str()  //
   );
 }
 
@@ -97,9 +87,10 @@ std::optional<shaderc_shader_kind> ShaderKindFromFileName(
   return std::nullopt;
 }
 
-vk::UniqueShaderModule LoadShaderModuleSource(
+static vk::UniqueShaderModule LoadShaderModuleSource(
     vk::Device device,
-    const std::filesystem::path& shader_path) {
+    const std::filesystem::path& shader_path,
+    const char* debug_name) {
   const auto shader_kind = ShaderKindFromFileName(shader_path);
   if (!shader_kind.has_value()) {
     return {};
@@ -113,8 +104,6 @@ vk::UniqueShaderModule LoadShaderModuleSource(
   shaderc::CompileOptions options;
   options.SetSourceLanguage(shaderc_source_language_glsl);
   options.SetOptimizationLevel(shaderc_optimization_level_zero);
-
-  const auto debug_label = DebugLabelFromShaderPath(shader_path, false);
 
   shaderc::Compiler compiler;
   auto compilation_result = compiler.CompileGlslToSpv(
@@ -133,10 +122,11 @@ vk::UniqueShaderModule LoadShaderModuleSource(
         reinterpret_cast<const uint8_t*>(compilation_result.begin()),
         (compilation_result.end() - compilation_result.begin()) *
             sizeof(decltype(compilation_result)::element_type));
-    return LoadShaderModuleMapping(device, mapping.get(), debug_label);
+    return LoadShaderModuleMapping(
+        device, mapping.get(), MakeStringF("%s Source", debug_name).c_str());
   }
 
-  P_ERROR << "Could not compile shader: " << debug_label << " with "
+  P_ERROR << "Could not compile shader: " << shader_path << " with "
           << compilation_result.GetNumErrors() << " error(s) and "
           << compilation_result.GetNumWarnings() << " warning(s).";
   P_ERROR << "Message: " << compilation_result.GetErrorMessage();
@@ -163,7 +153,8 @@ static std::filesystem::path LinkFromFile(
 }
 
 std::unique_ptr<ShaderModule> ShaderModule::Load(vk::Device device,
-                                                 const char* shader_name) {
+                                                 const char* shader_name,
+                                                 const char* debug_name) {
   // Try to get the shader source path from a link file.
   auto shader_source_path =
       LinkFromFile(GetShaderPath(shader_name, false, true));
@@ -173,16 +164,30 @@ std::unique_ptr<ShaderModule> ShaderModule::Load(vk::Device device,
     shader_source_path = GetShaderPath(shader_name, false, false);
   }
 
-  if (auto src_module = LoadShaderModuleSource(device, shader_source_path)) {
+  if (auto src_module = LoadShaderModuleSource(device,              //
+                                               shader_source_path,  //
+                                               debug_name           //
+                                               )) {
     return std::unique_ptr<ShaderModule>(new ShaderModule(
-        device, std::move(src_module), std::move(shader_source_path)));
+        device,                         //
+        std::move(src_module),          //
+        std::move(shader_source_path),  //
+        debug_name                      //
+        ));
   }
 
   // Attempt loading from a precompiled SPIRV file.
-  if (auto spv_module = LoadShaderModuleSPIRV(
-          device, GetShaderPath(shader_name, true, false))) {
-    return std::unique_ptr<ShaderModule>(
-        new ShaderModule(device, std::move(spv_module), ""));
+  if (auto spv_module =
+          LoadShaderModuleSPIRV(device,                                   //
+                                GetShaderPath(shader_name, true, false),  //
+                                debug_name                                //
+                                )) {
+    return std::unique_ptr<ShaderModule>(new ShaderModule(
+        device,                 //
+        std::move(spv_module),  //
+        "",                     // original file path
+        debug_name              //
+        ));
   }
 
   return nullptr;
@@ -195,10 +200,12 @@ static Closure RethreadCallback(Closure closure) {
 
 ShaderModule::ShaderModule(vk::Device device,
                            vk::UniqueShaderModule module,
-                           std::filesystem::path original_file_path)
+                           std::filesystem::path original_file_path,
+                           std::string debug_name)
     : device_(device),
       module_(std::move(module)),
       original_file_path_(std::move(original_file_path)),
+      debug_name_(std::move(debug_name)),
       fs_watcher_handler_(FileSystemWatcher::ForProcess().WatchPathForUpdates(
           original_file_path_,
           RethreadCallback([&]() { OnShaderFileDidUpdate(); }))),
@@ -219,10 +226,11 @@ void ShaderModule::OnShaderFileDidUpdate() {
     Thread::PostBackgroundTask([device = device_,                      //
                                 path = original_file_path_,            //
                                 weak = weak_factory_.CreateWeakPtr(),  //
+                                debug_name = debug_name_,              //
                                 dispatcher =
                                     EventLoop::GetCurrentThreadDispatcher()  //
     ]() {
-      auto module = LoadShaderModuleSource(device, path);
+      auto module = LoadShaderModuleSource(device, path, debug_name.c_str());
       if (!module) {
         // Nothing to do. Compilation on the updated shader failed.
         P_ERROR

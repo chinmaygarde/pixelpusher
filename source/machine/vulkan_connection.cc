@@ -524,6 +524,8 @@ VulkanConnection::VulkanConnection(
   debug_utils_messenger_ = std::move(debug_utils_messenger);
   available_features_ = enabled_features;
 
+  SetDebugName(device_.get(), device_.get(), "Machine Logical Device");
+
   is_valid_ = true;
 }
 

@@ -17,11 +17,13 @@ class ShaderLibrary {
   ~ShaderLibrary();
 
   bool AddShader(const char* shader_name,
-                 vk::PipelineShaderStageCreateInfo shader_stage);
+                 vk::PipelineShaderStageCreateInfo shader_stage,
+                 const char* debug_name);
 
-  bool AddDefaultVertexShader(const char* shader_name);
+  bool AddDefaultVertexShader(const char* shader_name, const char* debug_name);
 
-  bool AddDefaultFragmentShader(const char* shader_name);
+  bool AddDefaultFragmentShader(const char* shader_name,
+                                const char* debug_name);
 
   const std::vector<vk::PipelineShaderStageCreateInfo>&
   GetPipelineShaderStageCreateInfos() const;

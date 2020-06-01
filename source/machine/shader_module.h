@@ -15,7 +15,8 @@ namespace pixel {
 class ShaderModule {
  public:
   static std::unique_ptr<ShaderModule> Load(vk::Device device,
-                                            const char* shader_name);
+                                            const char* shader_name,
+                                            const char* debug_name);
 
   ~ShaderModule();
 
@@ -29,7 +30,8 @@ class ShaderModule {
  private:
   const vk::Device device_;
   vk::UniqueShaderModule module_;
-  std::filesystem::path original_file_path_;
+  const std::filesystem::path original_file_path_;
+  const std::string debug_name_;
   std::optional<size_t> fs_watcher_handler_;
   std::chrono::high_resolution_clock::time_point last_shader_update_ = {};
   IdentifiableCallbacks<void(const ShaderModule*)> live_update_callbacks_;
@@ -37,7 +39,8 @@ class ShaderModule {
 
   ShaderModule(vk::Device device,
                vk::UniqueShaderModule module,
-               std::filesystem::path original_file_name);
+               std::filesystem::path original_file_name,
+               std::string debug_name);
 
   void OnShaderFileDidUpdate();
 

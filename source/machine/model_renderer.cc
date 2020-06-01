@@ -56,8 +56,12 @@ bool ModelRenderer::Setup() {
     this->OnShaderLibraryDidUpdate();
   });
 
-  if (!shader_library_->AddDefaultVertexShader("model_renderer.vert") ||
-      !shader_library_->AddDefaultFragmentShader("model_renderer.frag")) {
+  if (!shader_library_->AddDefaultVertexShader(
+          "model_renderer.vert",
+          MakeStringF("%s Vertex", debug_name_.c_str()).c_str()) ||
+      !shader_library_->AddDefaultFragmentShader(
+          "model_renderer.frag",
+          MakeStringF("%s Fragment", debug_name_.c_str()).c_str())) {
     return false;
   }
 

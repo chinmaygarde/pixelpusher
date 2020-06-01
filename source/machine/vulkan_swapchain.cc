@@ -53,13 +53,17 @@ CreateSwapchainImageViews(const vk::Device& device,
 
   view_create_info.setSubresourceRange(range);
 
-  for (const auto& image : swapchain_images.value) {
+  for (size_t i = 0; i < swapchain_images.value.size(); i++) {
+    const auto& image = swapchain_images.value[i];
+    SetDebugNameF(device, image, "Swapchain Image %zu", i);
     view_create_info.setImage(image);
-    auto image_view = device.createImageViewUnique(view_create_info);
-    if (image_view.result != vk::Result::eSuccess) {
+    auto image_view =
+        UnwrapResult(device.createImageViewUnique(view_create_info));
+    if (!image_view) {
       return std::nullopt;
     }
-    image_views.emplace_back(std::move(image_view.value));
+    SetDebugNameF(device, image_view.get(), "Swapchain Image View %zu", i);
+    image_views.emplace_back(std::move(image_view));
   }
 
   return {std::move(image_views)};
@@ -88,7 +92,7 @@ CreateSwapchainFramebuffers(const vk::Device& device,
       P_ERROR << "Could not create framebuffer.";
       return std::nullopt;
     }
-
+    SetDebugNameF(device, result.value.get(), "Swapchain Framebuffer %zu", i);
     framebuffers.emplace_back(std::move(result.value));
   }
 
@@ -104,18 +108,18 @@ CreateSwapchainCommandBuffers(const vk::Device& device,
   buffer_info.setLevel(vk::CommandBufferLevel::ePrimary);
   buffer_info.setCommandBufferCount(buffer_count);
 
-  auto result = device.allocateCommandBuffersUnique(buffer_info);
-  if (result.result != vk::Result::eSuccess) {
+  auto command_buffers =
+      UnwrapResult(device.allocateCommandBuffersUnique(buffer_info));
+  if (command_buffers.size() != buffer_count) {
     P_ERROR << "Could not allocate command buffers.";
     return std::nullopt;
   }
 
-  if (result.value.size() != buffer_count) {
-    P_ERROR << "Unexpected command buffers count.";
-    return std::nullopt;
+  for (const auto& command_buffer : command_buffers) {
+    SetDebugName(device, command_buffer.get(), "Swapchain Command Buffer");
   }
 
-  return std::move(result.value);
+  return command_buffers;
 }
 
 VulkanSwapchain::VulkanSwapchain(
@@ -138,6 +142,8 @@ VulkanSwapchain::VulkanSwapchain(
     P_ERROR << "Swapchain was invalid.";
     return;
   }
+
+  SetDebugName(device_, swapchain_.get(), "Main Swapchain");
 
   auto image_views =
       CreateSwapchainImageViews(device_, swapchain_.get(), image_format_);
@@ -172,6 +178,8 @@ VulkanSwapchain::VulkanSwapchain(
     return;
   }
 
+  SetDebugName(device_, command_pool_.get(), "Swapchain Command Pool");
+
   auto command_buffers = CreateSwapchainCommandBuffers(
       device_, command_pool_.get(), frame_buffers.value().size());
   if (!command_buffers.has_value()) {
@@ -188,6 +196,11 @@ VulkanSwapchain::VulkanSwapchain(
     P_ERROR << "Could not create swapchain semaphores.";
     return;
   }
+
+  SetDebugName(device_, ready_to_render_semaphore_.get(),
+               "Swapchain Ready To Render Semaphore");
+  SetDebugName(device_, ready_to_present_semaphore_.get(),
+               "Swapchain Ready To Present Semaphore");
 
   image_views_ = std::move(image_views.value());
   frame_buffers_ = std::move(frame_buffers.value());

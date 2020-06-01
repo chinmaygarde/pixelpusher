@@ -32,8 +32,10 @@ bool TutorialRenderer::Setup() {
   }
 
   // Load shader stages.
-  auto vertex_shader_module = ShaderModule::Load(device_, "triangle.vert");
-  auto fragment_shader_module = ShaderModule::Load(device_, "triangle.frag");
+  auto vertex_shader_module =
+      ShaderModule::Load(device_, "triangle.vert", "Triangle");
+  auto fragment_shader_module =
+      ShaderModule::Load(device_, "triangle.frag", "Triangle");
 
   if (!vertex_shader_module || !fragment_shader_module) {
     P_ERROR << "Could not load shader modules.";
