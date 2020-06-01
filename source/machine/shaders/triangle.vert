@@ -7,12 +7,12 @@ layout(binding = 0) uniform UniformBufferObject {
   mat4 projection;
 } ubo;
 
-layout(location = 0) in vec2 inPosition;
+layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTextureCoord;
 
 layout(location = 0) out vec2 outTextureCoord;
 
 void main() {
-  gl_Position =  ubo.projection * ubo.view * ubo.model * vec4(inPosition, 0.0, 1.0);
+  gl_Position =  ubo.projection * ubo.view * ubo.model * vec4(inPosition, 1.0);
   outTextureCoord = inTextureCoord;
 }

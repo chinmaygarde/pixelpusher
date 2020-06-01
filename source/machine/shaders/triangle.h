@@ -8,7 +8,7 @@
 namespace pixel {
 
 struct TriangleVertices {
-  glm::vec2 position;
+  glm::vec3 position;
   glm::vec2 color;
 
   static vk::VertexInputBindingDescription GetVertexInputBindingDescription() {
@@ -29,7 +29,7 @@ struct TriangleVertices {
     desc[0].setBinding(0u);
     desc[0].setOffset(offsetof(TriangleVertices, position));
     desc[0].setLocation(0u);
-    desc[0].setFormat(vk::Format::eR32G32Sfloat);
+    desc[0].setFormat(vk::Format::eR32G32B32Sfloat);
 
     // Texture Coordinate.
     desc[1].setBinding(0u);

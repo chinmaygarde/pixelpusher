@@ -49,6 +49,9 @@ class TutorialRenderer final : public Renderer {
   std::vector<vk::DescriptorSet> descriptor_sets_;
   vk::UniqueSampler sampler_;
 
+  float fov_ = 90.0f;
+  float rotation_rate_ = 10.0f;
+
   bool is_valid_ = false;
 
   P_DISALLOW_COPY_AND_ASSIGN(TutorialRenderer);

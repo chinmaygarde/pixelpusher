@@ -58,12 +58,21 @@ bool TutorialRenderer::Setup() {
   };
 
   const std::vector<TriangleVertices> vertices = {
-      {{-0.5f, -0.5f}, {0.0f, 0.0f}},
-      {{0.5f, -0.5f}, {1.0f, 0.0f}},
-      {{0.5f, 0.5f}, {1.0f, 1.0f}},
-      {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
+      {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}},  // 0
+      {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}},   // 1
+      {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}},    // 2
+      {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}},   // 3
 
-  const std::vector<uint16_t> indices = {2, 1, 0, 0, 3, 2};
+      {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}},  // 4
+      {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}},   // 5
+      {{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}},    // 6
+      {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}},   // 7
+  };
+
+  const std::vector<uint16_t> indices = {
+      4, 7, 6, 6, 5, 4,  // bottom
+      2, 1, 0, 0, 3, 2,  // top
+  };
 
   auto vertex_buffer =
       GetContext().GetMemoryAllocator().CreateDeviceLocalBufferCopy(
@@ -265,7 +274,7 @@ bool TutorialRenderer::Setup() {
   pipeline_ = std::move(pipeline);
 
   return true;
-}
+}  // namespace pixel
 
 // |Renderer|
 bool TutorialRenderer::BeginFrame() {
@@ -282,17 +291,25 @@ bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
 
   const auto extents = GetContext().GetExtents();
 
+  ::ImGui::Begin("Tutorial");
+
+  ::ImGui::InputFloat("FOV", &fov_);
+  ::ImGui::InputFloat("Rotation Rate", &rotation_rate_);
+
+  ::ImGui::End();
+
   auto rate =
       std::chrono::duration<float>(Clock::now().time_since_epoch()).count();
-  triangle_ubo_->model = glm::rotate(glm::mat4(1.0f),             // model
-                                     glm::radians<float>(rate),   // radians
-                                     glm::vec3(0.0f, 0.0f, 1.0f)  // center
-  );
+  triangle_ubo_->model =
+      glm::rotate(glm::mat4(1.0f),                             // model
+                  glm::radians<float>(rate * rotation_rate_),  // radians
+                  glm::vec3(0.0f, 0.0f, 1.0f)                  // center
+      );
   triangle_ubo_->view =
       glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                   glm::vec3(0.0f, 0.0f, 1.0f));
   triangle_ubo_->projection = glm::perspective(
-      glm::radians(90.0f), static_cast<float>(extents.width) / extents.height,
+      glm::radians(fov_), static_cast<float>(extents.width) / extents.height,
       0.0f, 10.0f);
 
   if (!triangle_ubo_.UpdateUniformData()) {
@@ -312,7 +329,7 @@ bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
   command_buffer.bindDescriptorSets(
       vk::PipelineBindPoint::eGraphics, pipeline_layout_.get(), 0u,
       descriptor_sets_[triangle_ubo_.GetCurrentIndex()], nullptr);
-  command_buffer.drawIndexed(6, 1, 0, 0, 0);
+  command_buffer.drawIndexed(12, 1, 0, 0, 0);
 
   return true;
 }
