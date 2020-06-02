@@ -244,6 +244,19 @@ bool TutorialRenderer::Setup() {
 
   PipelineBuilder pipeline_builder;
 
+  pipeline_builder.SetDepthStencilTestInfo(
+      vk::PipelineDepthStencilStateCreateInfo{
+          {},                    // flags
+          true,                  // depth test enable
+          true,                  // depth write enable
+          vk::CompareOp::eLess,  // compare op
+          false,                 // depth bounds test enable
+          false,                 // stencil test enable
+          {},                    // front stencil op state
+          {},                    // back stencil op state
+          0.0f,                  // min depth bounds
+          1.0f                   // max max bounds
+      });
   const auto extents = GetContext().GetExtents();
 
   pipeline_builder.SetScissor({{0u, 0u}, {extents.width, extents.height}});

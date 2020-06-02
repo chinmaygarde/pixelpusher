@@ -30,8 +30,6 @@ add_library(machine_lib
   pipeline_layout.h
   queue_selection.cc
   queue_selection.h
-  render_pass.cc
-  render_pass.h
   renderer.cc
   renderer.h
   rendering_context.cc

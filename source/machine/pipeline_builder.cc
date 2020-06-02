@@ -93,6 +93,12 @@ PipelineBuilder& PipelineBuilder::SetPrimitiveTopology(
   return *this;
 }
 
+PipelineBuilder& PipelineBuilder::SetDepthStencilTestInfo(
+    const vk::PipelineDepthStencilStateCreateInfo& depth_stencil_info) {
+  depth_stencil_state_ = depth_stencil_info;
+  return *this;
+}
+
 vk::UniquePipeline PipelineBuilder::CreatePipeline(
     vk::Device device,
     vk::PipelineCache cache,

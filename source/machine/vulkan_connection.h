@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "macros.h"
-#include "render_pass.h"
 #include "rendering_context.h"
 #include "vulkan.h"
 #include "vulkan_swapchain.h"

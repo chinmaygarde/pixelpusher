@@ -3,7 +3,6 @@
 #include <optional>
 
 #include "logging.h"
-#include "render_pass.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -79,7 +78,7 @@ CreateSwapchainFramebuffers(const vk::Device& device,
 
   vk::FramebufferCreateInfo framebuffer_info;
   framebuffer_info.setRenderPass(render_pass);
-  framebuffer_info.setAttachmentCount(1u);
+  framebuffer_info.setAttachmentCount(2u);  // depth + stencil
   framebuffer_info.setWidth(extents.width);
   framebuffer_info.setHeight(extents.height);
   framebuffer_info.setLayers(1u);
@@ -126,17 +125,12 @@ CreateSwapchainCommandBuffers(const vk::Device& device,
 
 static std::unique_ptr<ImageView> CreateDepthStencilImageView(
     std::shared_ptr<RenderingContext> context,
-    const vk::Extent2D& extents) {
-  auto depth_format = context->GetOptimalSupportedDepthAttachmentFormat();
-  if (!depth_format.has_value()) {
-    P_ERROR << "No supported depth/stencil attachment format found.";
-    return {};
-  }
-
+    const vk::Extent2D& extents,
+    vk::Format depth_format) {
   vk::ImageCreateInfo image_info = {
-      {},                    // flags of vk::ImageCreateFlags
-      vk::ImageType::e2D,    // image type
-      depth_format.value(),  // format
+      {},                  // flags of vk::ImageCreateFlags
+      vk::ImageType::e2D,  // image type
+      depth_format,        // format
       vk::Extent3D{extents.width, extents.height, 1},   // extents
       1,                                                // mip level
       1,                                                // array layers
@@ -165,7 +159,7 @@ static std::unique_ptr<ImageView> CreateDepthStencilImageView(
       {},                      // flags
       image->image,            // image
       vk::ImageViewType::e2D,  // type
-      depth_format.value(),    // format
+      depth_format,            // format
       {},                      // component mapping
       vk::ImageSubresourceRange{
           aspect_mask,  // aspect mask
@@ -194,6 +188,93 @@ static std::unique_ptr<ImageView> CreateDepthStencilImageView(
   }
   return image_view_wrapper;
   ;
+}
+
+static vk::UniqueRenderPass CreateSwapchainRenderPass(
+    const vk::Device& device,
+    vk::Format color_attachment_format,
+    vk::Format depth_attachment_format) {
+  vk::AttachmentDescription color_attachment{
+      {},                                // flags
+      color_attachment_format,           // format
+      vk::SampleCountFlagBits::e1,       // samples
+      vk::AttachmentLoadOp::eClear,      // load op
+      vk::AttachmentStoreOp::eStore,     // store op
+      vk::AttachmentLoadOp::eDontCare,   // stencil load op
+      vk::AttachmentStoreOp::eDontCare,  // stencil store op
+      vk::ImageLayout::eUndefined,       // initial image layout
+      vk::ImageLayout::ePresentSrcKHR    // final layout
+  };
+
+  vk::AttachmentDescription depth_attachment{
+      {},                                              // flags
+      depth_attachment_format,                         // format
+      vk::SampleCountFlagBits::e1,                     // samples
+      vk::AttachmentLoadOp::eClear,                    // load op
+      vk::AttachmentStoreOp::eDontCare,                // store op
+      vk::AttachmentLoadOp::eDontCare,                 // stencil load op
+      vk::AttachmentStoreOp::eDontCare,                // stencil store op
+      vk::ImageLayout::eUndefined,                     // initial image layout
+      vk::ImageLayout::eDepthStencilAttachmentOptimal  // final layout
+  };
+
+  vk::AttachmentReference color_attachment_reference = {
+      0u,                                       // attachment
+      vk::ImageLayout::eColorAttachmentOptimal  // layout
+  };
+
+  vk::AttachmentReference depth_attachment_reference = {
+      1u,                                              // attachment
+      vk::ImageLayout::eDepthStencilAttachmentOptimal  // layout
+  };
+
+  vk::SubpassDescription subpass = {
+      {},                                // flags
+      vk::PipelineBindPoint::eGraphics,  // bind point
+      0u,                                // input attachment count
+      {},                                // input attachment references
+      1u,                                // color attachment count
+      &color_attachment_reference,       // color attachment references
+      {},                                // resolve attachment references
+      &depth_attachment_reference,       // depth stencil attachment reference
+      0u,                                // preserve attachment count
+      {},                                // preserve attachment references
+  };
+
+  vk::SubpassDependency subpass_dependency = {
+      VK_SUBPASS_EXTERNAL,  // source subpass
+      0u,                   // destination subpass (the first and only subpass)
+      vk::PipelineStageFlagBits::eColorAttachmentOutput,  // src stage mask
+      vk::PipelineStageFlagBits::eColorAttachmentOutput,  // dst stage mask
+      {},                                                 // src access mask
+      vk::AccessFlagBits::eColorAttachmentWrite,          // dst access mask
+      {}                                                  // dependency flags
+  };
+
+  std::vector<vk::AttachmentDescription> attachments = {color_attachment,
+                                                        depth_attachment};
+
+  vk::RenderPassCreateInfo render_pass_info = {
+      {},                                         // flags
+      static_cast<uint32_t>(attachments.size()),  // attachment count
+      attachments.data(),                         // attachments
+      1u,                                         // subpass count
+      &subpass,                                   // subpass description
+      1u,                                         // dependency count
+      &subpass_dependency                         // dependencies
+  };
+
+  auto render_pass =
+      UnwrapResult(device.createRenderPassUnique(render_pass_info));
+
+  if (!render_pass) {
+    P_ERROR << "Could not create render pass";
+    return {};
+  }
+
+  SetDebugName(device, render_pass.get(), "Swapchain Render Pass");
+
+  return render_pass;
 }
 
 VulkanSwapchain::VulkanSwapchain(
@@ -228,13 +309,21 @@ VulkanSwapchain::VulkanSwapchain(
     return;
   }
 
-  render_pass_ = CreateRenderPass(device_, image_format_);
+  auto depth_format = context->GetOptimalSupportedDepthAttachmentFormat();
+  if (!depth_format.has_value()) {
+    P_ERROR << "No supported depth/stencil attachment format found.";
+    return;
+  }
+
+  render_pass_ =
+      CreateSwapchainRenderPass(device_, image_format_, depth_format.value());
   if (!render_pass_) {
     P_ERROR << "Could not create swapchain render pass.";
     return;
   }
 
-  depth_stencil_image_view_ = CreateDepthStencilImageView(context_, extents_);
+  depth_stencil_image_view_ =
+      CreateDepthStencilImageView(context_, extents_, depth_format.value());
   if (!depth_stencil_image_view_) {
     return;
   }
@@ -479,15 +568,22 @@ bool VulkanSwapchain::PrepareCommandBuffer(vk::CommandBuffer buffer,
     return false;
   }
 
-  // Begin the render pass.
-  vk::RenderPassBeginInfo render_pass_begin_info;
-  render_pass_begin_info.setRenderPass(render_pass_.get());
-  render_pass_begin_info.setFramebuffer(frame_buffers_[swapchain_index].get());
-  render_pass_begin_info.setRenderArea({{0, 0}, extents_});
-  render_pass_begin_info.setClearValueCount(1u);
+  std::vector<vk::ClearValue> clear_values = {
+      vk::ClearColorValue{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}},
+      vk::ClearDepthStencilValue{1.0, 0},
+  };
 
-  vk::ClearValue clear_color = {std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}};
-  render_pass_begin_info.setPClearValues(&clear_color);
+  // Begin the render pass.
+  vk::RenderPassBeginInfo render_pass_begin_info = {
+      render_pass_.get(),                     // render pass
+      frame_buffers_[swapchain_index].get(),  // framebuffer
+      vk::Rect2D{
+          {0, 0},                                  // offset
+          extents_                                 // extents
+      },                                           // render area
+      static_cast<uint32_t>(clear_values.size()),  // clear value count
+      clear_values.data()                          // clear values
+  };
 
   buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
 

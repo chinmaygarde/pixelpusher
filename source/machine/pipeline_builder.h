@@ -37,6 +37,9 @@ class PipelineBuilder {
 
   PipelineBuilder& SetFrontFace(vk::FrontFace front_face);
 
+  PipelineBuilder& SetDepthStencilTestInfo(
+      const vk::PipelineDepthStencilStateCreateInfo& depth_stencil_info);
+
  private:
   std::vector<vk::VertexInputBindingDescription>
       vertex_input_binding_descriptions_;
