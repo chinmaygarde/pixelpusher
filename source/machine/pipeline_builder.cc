@@ -37,18 +37,16 @@ PipelineBuilder::PipelineBuilder() {
   color_blend_attachment_state_.setColorWriteMask(
       vk::ColorComponentFlagBits::eA | vk::ColorComponentFlagBits::eR |
       vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB);
-  // Enabled.
-  color_blend_attachment_state_.setBlendEnable(false);
-  // Color.
+  color_blend_attachment_state_.setBlendEnable(false);  // Enabled.
   color_blend_attachment_state_.setSrcColorBlendFactor(
-      vk::BlendFactor::eSrcAlpha);
+      vk::BlendFactor::eSrcAlpha);  // Source Color.
   color_blend_attachment_state_.setDstColorBlendFactor(
-      vk::BlendFactor::eOneMinusSrcAlpha);
-  // Op.
-  color_blend_attachment_state_.setColorBlendOp(vk::BlendOp::eAdd);
-  // Alpha.
-  color_blend_attachment_state_.setSrcAlphaBlendFactor(vk::BlendFactor::eOne);
-  color_blend_attachment_state_.setDstAlphaBlendFactor(vk::BlendFactor::eZero);
+      vk::BlendFactor::eOneMinusSrcAlpha);  // Destination Color.
+  color_blend_attachment_state_.setColorBlendOp(vk::BlendOp::eAdd);  // Op.
+  color_blend_attachment_state_.setSrcAlphaBlendFactor(
+      vk::BlendFactor::eOne);  // Source Alpha.
+  color_blend_attachment_state_.setDstAlphaBlendFactor(
+      vk::BlendFactor::eZero);  // Destination Alpha.
 
   color_blend_state_.setLogicOpEnable(false);
   color_blend_state_.setLogicOp(vk::LogicOp::eCopy);

@@ -195,10 +195,4 @@ RenderingContext::GetOptimalSupportedDepthAttachmentFormat() const {
   return std::nullopt;
 }
 
-bool RenderingContext::KnownDepthFormatHasStencilComponent(vk::Format format) {
-  return format == vk::Format::eD24UnormS8Uint ||
-         format == vk::Format::eD16UnormS8Uint ||
-         format == vk::Format::eD32SfloatS8Uint;
-}
-
 }  // namespace pixel

@@ -74,8 +74,6 @@ class RenderingContext {
 
   std::optional<vk::Format> GetOptimalSupportedDepthAttachmentFormat() const;
 
-  static bool KnownDepthFormatHasStencilComponent(vk::Format format);
-
  private:
   const Delegate& delegate_;
   const vk::Instance instance_;
