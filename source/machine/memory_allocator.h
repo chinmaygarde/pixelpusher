@@ -76,6 +76,8 @@ class BufferMapping {
   P_DISALLOW_COPY_AND_ASSIGN(BufferMapping);
 };
 
+VmaAllocationCreateInfo DefaultDeviceLocalAllocationCreateInfo();
+
 class CommandPool;
 class MemoryAllocator {
  public:

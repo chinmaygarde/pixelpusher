@@ -3,7 +3,9 @@
 #include <optional>
 #include <vector>
 
+#include "image.h"
 #include "macros.h"
+#include "rendering_context.h"
 #include "vulkan.h"
 
 namespace pixel {
@@ -20,11 +22,9 @@ class VulkanSwapchain {
       const vk::SurfaceCapabilitiesKHR& capabilities);
 
   VulkanSwapchain(Delegate& delegate,
-                  vk::Device device,
+                  std::shared_ptr<RenderingContext> context,
                   vk::SwapchainCreateInfoKHR swapchain_create_info,
-                  vk::Format swapchain_image_format,
-                  uint32_t graphics_queue_family_index,
-                  vk::Queue graphics_queue);
+                  vk::Format swapchain_image_format);
 
   VulkanSwapchain(const VulkanSwapchain& swapchain, vk::Extent2D new_extents);
 
@@ -52,13 +52,13 @@ class VulkanSwapchain {
  private:
   Delegate& delegate_;
   const vk::Device device_;
+  std::shared_ptr<RenderingContext> context_;
   const vk::SwapchainCreateInfoKHR swapchain_create_info_;
   const vk::Format image_format_;
-  const uint32_t graphics_queue_family_index_;
-  const vk::Queue graphics_queue_;
   const vk::Extent2D extents_;
   vk::UniqueSwapchainKHR swapchain_;
   std::vector<vk::UniqueImageView> image_views_;
+  std::unique_ptr<ImageView> depth_stencil_image_view_;
   std::vector<vk::UniqueFramebuffer> frame_buffers_;
   vk::UniqueRenderPass render_pass_;
   vk::UniqueCommandPool command_pool_;

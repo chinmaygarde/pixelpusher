@@ -216,7 +216,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateHostVisibleBuffer(
   return host_visible_buffer;
 }
 
-static VmaAllocationCreateInfo DeviceLocalAllocationInfo() {
+VmaAllocationCreateInfo DefaultDeviceLocalAllocationCreateInfo() {
   VmaAllocationCreateInfo device_allocation_info = {};
   device_allocation_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
   device_allocation_info.requiredFlags =
@@ -233,7 +233,7 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBuffer(
   device_buffer_info.setSize(buffer_size);
   device_buffer_info.setSharingMode(vk::SharingMode::eExclusive);
 
-  auto device_allocation_info = DeviceLocalAllocationInfo();
+  auto device_allocation_info = DefaultDeviceLocalAllocationCreateInfo();
 
   auto device_buffer =
       CreateBuffer(device_buffer_info, device_allocation_info,
@@ -354,7 +354,7 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
     return nullptr;
   }
 
-  auto device_allocation_info = DeviceLocalAllocationInfo();
+  auto device_allocation_info = DefaultDeviceLocalAllocationCreateInfo();
 
   auto device_image =
       CreateImage(image_info, device_allocation_info, debug_name);

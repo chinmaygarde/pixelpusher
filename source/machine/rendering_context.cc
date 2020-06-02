@@ -1,5 +1,7 @@
 #include "rendering_context.h"
 
+#include <vector>
+
 #include "logging.h"
 #include "string_utils.h"
 
@@ -143,6 +145,60 @@ vk::Viewport RenderingContext::GetViewport() const {
 vk::Rect2D RenderingContext::GetScissorRect() const {
   const auto extents = GetExtents();
   return {{0, 0}, {extents.width, extents.height}};
+}
+
+bool RenderingContext::FormatSupportsFeatures(
+    vk::Format format,
+    vk::FormatFeatureFlags buffer_features,
+    vk::FormatFeatureFlags linear_tiling_features,
+    vk::FormatFeatureFlags optimal_tiling_features) const {
+  const auto properties = physical_device_.getFormatProperties(format);
+
+  if (buffer_features && !(properties.bufferFeatures & buffer_features)) {
+    return false;
+  }
+
+  if (linear_tiling_features &&
+      !(properties.linearTilingFeatures & linear_tiling_features)) {
+    return false;
+  }
+
+  if (optimal_tiling_features &&
+      !(properties.optimalTilingFeatures & optimal_tiling_features)) {
+    return false;
+  }
+
+  return true;
+}
+
+const std::vector<vk::Format> kKnownDepthStencilFormats = {
+    vk::Format::eD24UnormS8Uint,   //
+    vk::Format::eD16UnormS8Uint,   //
+    vk::Format::eD32SfloatS8Uint,  //
+    vk::Format::eD32Sfloat,        //
+    vk::Format::eD16Unorm,         //
+};
+
+std::optional<vk::Format>
+RenderingContext::GetOptimalSupportedDepthAttachmentFormat() const {
+  for (const auto& depth_format : kKnownDepthStencilFormats) {
+    if (FormatSupportsFeatures(
+            depth_format,                                       // format
+            {},                                                 // buffer
+            {},                                                 // linear
+            vk::FormatFeatureFlagBits::eDepthStencilAttachment  // optimal
+            )) {
+      return depth_format;
+    }
+  }
+
+  return std::nullopt;
+}
+
+bool RenderingContext::KnownDepthFormatHasStencilComponent(vk::Format format) {
+  return format == vk::Format::eD24UnormS8Uint ||
+         format == vk::Format::eD16UnormS8Uint ||
+         format == vk::Format::eD32SfloatS8Uint;
 }
 
 }  // namespace pixel

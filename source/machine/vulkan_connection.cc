@@ -49,6 +49,7 @@ struct SwapchainDetails {
 
   std::unique_ptr<VulkanSwapchain> CreateSwapchain(
       VulkanSwapchain::Delegate& delegate,
+      std::shared_ptr<RenderingContext> rendering_context,
       vk::Device device,
       vk::SurfaceKHR surface,
       uint32_t graphics_family_index,
@@ -89,14 +90,12 @@ struct SwapchainDetails {
         vk::CompositeAlphaFlagBitsKHR::eOpaque;
     swapchain_create_info.setClipped(true);
 
-    auto vulkan_swapchain = std::make_unique<VulkanSwapchain>(
-        delegate,
-        device,                                     //
-        swapchain_create_info,                      //
-        surface_format.value().format,              //
-        graphics_family_index,                      //
-        device.getQueue(graphics_family_index, 0u)  //
-    );
+    auto vulkan_swapchain =
+        std::make_unique<VulkanSwapchain>(delegate,                      //
+                                          rendering_context,             //
+                                          swapchain_create_info,         //
+                                          surface_format.value().format  //
+        );
 
     if (!vulkan_swapchain->IsValid()) {
       return nullptr;
@@ -123,6 +122,7 @@ struct PhysicalDeviceSelection {
 
   std::unique_ptr<VulkanSwapchain> CreateSwapchain(
       VulkanSwapchain::Delegate& delegate,
+      std::shared_ptr<RenderingContext> context,
       vk::Device device,
       vk::SurfaceKHR surface) {
     if (!IsValid()) {
@@ -131,6 +131,7 @@ struct PhysicalDeviceSelection {
 
     return swapchain_details.value().CreateSwapchain(
         delegate,                       //
+        context,                        //
         device,                         //
         surface,                        //
         graphics_family_index.value(),  //
@@ -508,7 +509,33 @@ VulkanConnection::VulkanConnection(
 
   VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
-  auto swapchain = selection.CreateSwapchain(*this, device.get(), surface);
+  const auto graphhics_family_index = selection.graphics_family_index.value();
+  const auto graphics_queue = device.get().getQueue(graphhics_family_index, 0u);
+
+  // TODO: Both graphics and transfer queues are same. Separate them out.
+  QueueSelection graphics_queue_selection = {graphhics_family_index,
+                                             graphics_queue};
+  QueueSelection transfer_queue_selection = {graphhics_family_index,
+                                             graphics_queue};
+
+  auto rendering_context = std::make_shared<RenderingContext>(
+      *this,                                             // delegate
+      instance.get(),                                    // instance
+      physical_devices[selection.device_index.value()],  // physical device
+      device.get(),                                      // logical device
+      graphics_queue_selection,                          // graphics queue
+      transfer_queue_selection,                          // transfer queue
+      enabled_features,                                  // features
+      "Main"                                             // debug name
+  );
+
+  if (!rendering_context->IsValid()) {
+    P_ERROR << "Could not create main rendering context.";
+    return;
+  }
+
+  auto swapchain = selection.CreateSwapchain(*this, rendering_context,
+                                             device.get(), surface);
   if (!swapchain) {
     P_ERROR << "Could not create swapchain.";
     return;
@@ -520,6 +547,7 @@ VulkanConnection::VulkanConnection(
   physical_device_ = physical_devices[selection.device_index.value()];
   device_ = std::move(device);
   surface_ = std::move(surface);
+  rendering_context_ = std::move(rendering_context);
   swapchain_ = std::move(swapchain);
   debug_utils_messenger_ = std::move(debug_utils_messenger);
   available_features_ = enabled_features;
@@ -579,35 +607,9 @@ vk::PhysicalDevice VulkanConnection::GetPhysicalDevice() const {
   return physical_device_;
 }
 
-std::shared_ptr<RenderingContext> VulkanConnection::CreateRenderingContext()
+std::shared_ptr<RenderingContext> VulkanConnection::GetRenderingContext()
     const {
-  if (!IsValid()) {
-    return nullptr;
-  }
-
-  auto family_index = physical_device_selection_->graphics_family_index.value();
-  auto queue = device_.get().getQueue(family_index, 0u);
-
-  // TODO: Both graphics and transfer queues are same. Separate them out.
-  QueueSelection graphics_queue = {family_index, queue};
-  QueueSelection transfer_queue = {family_index, queue};
-
-  auto context =
-      std::make_shared<RenderingContext>(*this,             // delegate
-                                         instance_.get(),   // instance
-                                         physical_device_,  // physical device
-                                         device_.get(),     // logical device
-                                         graphics_queue,    // graphics queue
-                                         transfer_queue,    // transfer queue
-                                         available_features_,  // features
-                                         "Main"                // debug name
-      );
-
-  if (!context->IsValid()) {
-    return nullptr;
-  }
-
-  return context;
+  return rendering_context_;
 }
 
 // |VulkanSwapchain::Delegate|

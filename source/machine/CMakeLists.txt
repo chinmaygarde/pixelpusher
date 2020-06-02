@@ -10,6 +10,8 @@ add_library(machine_lib
   fence_waiter.cc
   fence_waiter.h
   glfw.h
+  image.cc
+  image.h
   image_decoder.cc
   image_decoder.h
   imgui_renderer.cc

@@ -66,6 +66,16 @@ class RenderingContext {
 
   const vk::PhysicalDeviceFeatures& GetFeatures() const;
 
+  bool FormatSupportsFeatures(
+      vk::Format format,
+      vk::FormatFeatureFlags buffer_features,
+      vk::FormatFeatureFlags linear_tiling_features,
+      vk::FormatFeatureFlags optimal_tiling_features) const;
+
+  std::optional<vk::Format> GetOptimalSupportedDepthAttachmentFormat() const;
+
+  static bool KnownDepthFormatHasStencilComponent(vk::Format format);
+
  private:
   const Delegate& delegate_;
   const vk::Instance instance_;

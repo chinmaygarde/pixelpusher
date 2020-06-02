@@ -14,9 +14,7 @@ namespace pixel {
 
 class MainRenderer final : public Renderer {
  public:
-  MainRenderer(VulkanConnection& connection,
-               std::shared_ptr<RenderingContext> context,
-               GLFWwindow* window);
+  MainRenderer(VulkanConnection& connection, GLFWwindow* window);
 
   ~MainRenderer();
 

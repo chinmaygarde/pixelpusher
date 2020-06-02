@@ -10,10 +10,9 @@ namespace pixel {
 
 #define MODEL_NAME "Box"
 
-MainRenderer::MainRenderer(VulkanConnection& connection,
-                           std::shared_ptr<RenderingContext> context,
-                           GLFWwindow* window)
-    : Renderer(context), connection_(connection) {
+MainRenderer::MainRenderer(VulkanConnection& connection, GLFWwindow* window)
+    : Renderer(connection.GetRenderingContext()), connection_(connection) {
+  auto context = connection_.GetRenderingContext();
   is_valid_ = PushRenderer(std::make_unique<TutorialRenderer>(context)) &&
               /* PushRenderer(std::make_unique<ModelRenderer>(
                   context, PIXEL_GLTF_MODELS_LOCATION "/" MODEL_NAME "/glTF",

@@ -96,13 +96,7 @@ static bool Main(int argc, char const* argv[]) {
     return false;
   }
 
-  auto rendering_context = connection.CreateRenderingContext();
-
-  if (!rendering_context || !rendering_context->IsValid()) {
-    return false;
-  }
-
-  MainRenderer renderer(connection, rendering_context, window);
+  MainRenderer renderer(connection, window);
 
   if (!renderer.IsValid()) {
     P_ERROR << "Could not create a valid renderer.";

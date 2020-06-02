@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "closure.h"
+#include "image.h"
 #include "logging.h"
 #include "vulkan.h"
 

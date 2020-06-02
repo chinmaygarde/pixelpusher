@@ -39,7 +39,7 @@ class VulkanConnection : public VulkanSwapchain::Delegate,
 
   const vk::PhysicalDeviceFeatures& GetAvailableFeatures() const;
 
-  std::shared_ptr<RenderingContext> CreateRenderingContext() const;
+  std::shared_ptr<RenderingContext> GetRenderingContext() const;
 
  private:
   vk::UniqueInstance instance_;
@@ -48,6 +48,7 @@ class VulkanConnection : public VulkanSwapchain::Delegate,
   vk::PhysicalDeviceFeatures available_features_;
   vk::UniqueDevice device_;
   vk::SurfaceKHR surface_;
+  std::shared_ptr<RenderingContext> rendering_context_;
   // TODO: Don't make the connection own the swapchain.
   std::unique_ptr<VulkanSwapchain> swapchain_;
   vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;

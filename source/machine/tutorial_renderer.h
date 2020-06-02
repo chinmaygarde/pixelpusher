@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "image.h"
 #include "image_decoder.h"
 #include "macros.h"
 #include "memory_allocator.h"

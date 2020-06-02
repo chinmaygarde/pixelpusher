@@ -4,36 +4,13 @@
 
 #include "command_pool.h"
 #include "geometry.h"
+#include "image.h"
 #include "macros.h"
 #include "mapping.h"
 #include "memory_allocator.h"
 #include "vulkan.h"
 
 namespace pixel {
-
-class ImageView {
- public:
-  ImageView(std::shared_ptr<Image> image, vk::UniqueImageView view)
-      : image_(std::move(image)), view_(std::move(view)) {}
-
-  ~ImageView() = default;
-
-  operator bool() const { return IsValid(); }
-
-  bool IsValid() const { return view_ && image_; }
-
-  const vk::ImageView* operator->() const { return &view_.get(); }
-
-  const vk::ImageView& GetImageView() const { return view_.get(); }
-
-  const vk::Image& GetImage() const { return image_->image; };
-
- private:
-  std::shared_ptr<Image> image_;
-  vk::UniqueImageView view_;
-
-  P_DISALLOW_COPY_AND_ASSIGN(ImageView);
-};
 
 class ImageDecoder {
  public:

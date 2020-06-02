@@ -73,7 +73,8 @@ static std::optional<std::vector<vk::UniqueFramebuffer>>
 CreateSwapchainFramebuffers(const vk::Device& device,
                             const std::vector<vk::UniqueImageView>& image_views,
                             const vk::RenderPass& render_pass,
-                            vk::Extent2D extents) {
+                            vk::Extent2D extents,
+                            vk::ImageView depth_stencil_image) {
   std::vector<vk::UniqueFramebuffer> framebuffers;
 
   vk::FramebufferCreateInfo framebuffer_info;
@@ -84,9 +85,10 @@ CreateSwapchainFramebuffers(const vk::Device& device,
   framebuffer_info.setLayers(1u);
 
   for (size_t i = 0; i < image_views.size(); i++) {
-    vk::ImageView attachment = image_views[i].get();
-    framebuffer_info.setPAttachments(&attachment);
-
+    vk::ImageView color_attachment_image = image_views[i].get();
+    vk::ImageView attachment_images[] = {color_attachment_image,
+                                         depth_stencil_image};
+    framebuffer_info.setPAttachments(attachment_images);
     auto result = device.createFramebufferUnique(framebuffer_info);
     if (result.result != vk::Result::eSuccess) {
       P_ERROR << "Could not create framebuffer.";
@@ -122,20 +124,94 @@ CreateSwapchainCommandBuffers(const vk::Device& device,
   return command_buffers;
 }
 
+static std::unique_ptr<ImageView> CreateDepthStencilImageView(
+    std::shared_ptr<RenderingContext> context,
+    const vk::Extent2D& extents) {
+  auto depth_format = context->GetOptimalSupportedDepthAttachmentFormat();
+  if (!depth_format.has_value()) {
+    P_ERROR << "No supported depth/stencil attachment format found.";
+    return {};
+  }
+
+  vk::ImageCreateInfo image_info = {
+      {},                    // flags of vk::ImageCreateFlags
+      vk::ImageType::e2D,    // image type
+      depth_format.value(),  // format
+      vk::Extent3D{extents.width, extents.height, 1},   // extents
+      1,                                                // mip level
+      1,                                                // array layers
+      vk::SampleCountFlagBits::e1,                      // samples
+      vk::ImageTiling::eOptimal,                        // tiling
+      vk::ImageUsageFlagBits::eDepthStencilAttachment,  // usage
+      vk::SharingMode::eExclusive,                      // sharing mode
+      0u,                                               // queue families count
+      {},  // queue families (sharing mode is not concurrent so ignored)
+      vk::ImageLayout::eUndefined  // initial layout
+  };
+
+  auto image = context->GetMemoryAllocator().CreateImage(
+      image_info, DefaultDeviceLocalAllocationCreateInfo(),
+      "Swapchain Depth/Stencil Image");
+
+  if (!image) {
+    P_ERROR << "Could not create swapchain depth stencil image.";
+    return {};
+  }
+
+  // TODO: Figure out what to do with the stencil.
+  vk::ImageAspectFlags aspect_mask = vk::ImageAspectFlagBits::eDepth;
+
+  vk::ImageViewCreateInfo image_view_create_info = {
+      {},                      // flags
+      image->image,            // image
+      vk::ImageViewType::e2D,  // type
+      depth_format.value(),    // format
+      {},                      // component mapping
+      vk::ImageSubresourceRange{
+          aspect_mask,  // aspect mask
+          0u,           // base mip level
+          1u,           // level count
+          0u,           // base array layer
+          1u            // layer count
+      }                 // subresource range
+  };
+
+  auto image_view = UnwrapResult(
+      context->GetDevice().createImageViewUnique(image_view_create_info));
+  if (!image_view) {
+    P_ERROR << "Could not create image view.";
+    return {};
+  }
+
+  SetDebugName(context->GetDevice(), image_view.get(),
+               "Swapchain Depth/Stencil ImageView");
+
+  auto image_view_wrapper =
+      std::make_unique<ImageView>(std::move(image), std::move(image_view));
+  if (!image_view_wrapper->IsValid()) {
+    P_ERROR << "Could not create depth/stencil image view.";
+    return {};
+  }
+  return image_view_wrapper;
+  ;
+}
+
 VulkanSwapchain::VulkanSwapchain(
     Delegate& p_delegate,
-    vk::Device p_device,
+    std::shared_ptr<RenderingContext> context,
     vk::SwapchainCreateInfoKHR p_swapchain_create_info,
-    vk::Format p_swapchain_image_format,
-    uint32_t p_graphics_queue_family_index,
-    vk::Queue p_graphics_queue)
+    vk::Format p_swapchain_image_format)
     : delegate_(p_delegate),
-      device_(p_device),
+      device_(context->GetDevice()),
+      context_(context),
       swapchain_create_info_(p_swapchain_create_info),
       image_format_(p_swapchain_image_format),
-      graphics_queue_family_index_(p_graphics_queue_family_index),
-      graphics_queue_(p_graphics_queue),
       extents_(swapchain_create_info_.imageExtent) {
+  if (!context_ | !context_->IsValid()) {
+    P_ERROR << "Swapchain created with invalid rendering context.";
+    return;
+  }
+
   swapchain_ =
       UnwrapResult(device_.createSwapchainKHRUnique(swapchain_create_info_));
   if (!swapchain_) {
@@ -158,11 +234,18 @@ VulkanSwapchain::VulkanSwapchain(
     return;
   }
 
-  auto frame_buffers = CreateSwapchainFramebuffers(device_,              //
-                                                   image_views.value(),  //
-                                                   render_pass_.get(),   //
-                                                   extents_              //
-  );
+  depth_stencil_image_view_ = CreateDepthStencilImageView(context_, extents_);
+  if (!depth_stencil_image_view_) {
+    return;
+  }
+
+  auto frame_buffers =
+      CreateSwapchainFramebuffers(device_,                                   //
+                                  image_views.value(),                       //
+                                  render_pass_.get(),                        //
+                                  extents_,                                  //
+                                  depth_stencil_image_view_->GetImageView()  //
+      );
 
   if (!frame_buffers.has_value()) {
     P_ERROR << "Could not materialize all swapchain framebuffers.";
@@ -171,7 +254,8 @@ VulkanSwapchain::VulkanSwapchain(
 
   vk::CommandPoolCreateInfo pool_info;
   pool_info.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-  pool_info.setQueueFamilyIndex(graphics_queue_family_index_);
+  pool_info.setQueueFamilyIndex(
+      context_->GetGraphicsQueue().queue_family_index);
   command_pool_ = UnwrapResult(device_.createCommandPoolUnique(pool_info));
   if (!command_pool_) {
     P_ERROR << "Could not create command buffer pool.";
@@ -219,16 +303,12 @@ static vk::SwapchainCreateInfoKHR VkSwapchainCreateInfoWithUpdatedExtents(
 
 VulkanSwapchain::VulkanSwapchain(const VulkanSwapchain& swapchain,
                                  vk::Extent2D new_extents)
-    : VulkanSwapchain(
-          swapchain.delegate_,  // delegate
-          swapchain.device_,    // device
-          VkSwapchainCreateInfoWithUpdatedExtents(
-              swapchain.swapchain_create_info_,
-              new_extents),         // swapchain_create_info
-          swapchain.image_format_,  // swapchain_image_format
-          swapchain
-              .graphics_queue_family_index_,  // graphics_queue_family_index
-          swapchain.graphics_queue_           // graphics_queue
+    : VulkanSwapchain(swapchain.delegate_,  // delegate
+                      swapchain.context_,   // context
+                      VkSwapchainCreateInfoWithUpdatedExtents(
+                          swapchain.swapchain_create_info_,
+                          new_extents),        // swapchain_create_info
+                      swapchain.image_format_  // swapchain_image_format
       ) {}
 
 VulkanSwapchain::~VulkanSwapchain() = default;
@@ -305,6 +385,8 @@ VulkanSwapchain::SubmitResult VulkanSwapchain::SubmitCommandBuffer(
     return SubmitResult::kFailure;
   }
 
+  const auto graphics_queue = context_->GetGraphicsQueue().queue;
+
   // ---------------------------------------------------------------------------
   // Submit the command buffer.
   // ---------------------------------------------------------------------------
@@ -326,7 +408,7 @@ VulkanSwapchain::SubmitResult VulkanSwapchain::SubmitCommandBuffer(
   submit_info.setSignalSemaphoreCount(1u);
 
   auto command_buffer_submit_result =
-      graphics_queue_.submit(submit_info, nullptr /* fences */);
+      graphics_queue.submit(submit_info, nullptr /* fences */);
   if (command_buffer_submit_result != vk::Result::eSuccess) {
     P_ERROR << "Could not submit the pending command buffer.";
     return SubmitResult::kFailure;
@@ -357,7 +439,7 @@ VulkanSwapchain::SubmitResult VulkanSwapchain::SubmitCommandBuffer(
   // Select the swapchain image to present to.
   present_info.setPImageIndices(&pending_swapchain_image_index_.value());
 
-  auto present_result = graphics_queue_.presentKHR(&present_info);
+  auto present_result = graphics_queue.presentKHR(&present_info);
   switch (present_result) {
     case vk::Result::eSuccess:
       break;
@@ -375,7 +457,7 @@ VulkanSwapchain::SubmitResult VulkanSwapchain::SubmitCommandBuffer(
 
   // TODO: Remove temporary pessimization till multiple frames in flight are
   // implemented.
-  if (graphics_queue_.waitIdle() != vk::Result::eSuccess) {
+  if (graphics_queue.waitIdle() != vk::Result::eSuccess) {
     P_ERROR << "Could not wait the graphics queue to go idle.";
     return SubmitResult::kFailure;
   }
