@@ -187,7 +187,6 @@ static std::unique_ptr<ImageView> CreateDepthStencilImageView(
     return {};
   }
   return image_view_wrapper;
-  ;
 }
 
 static vk::UniqueRenderPass CreateSwapchainRenderPass(
@@ -241,16 +240,6 @@ static vk::UniqueRenderPass CreateSwapchainRenderPass(
       {},                                // preserve attachment references
   };
 
-  vk::SubpassDependency subpass_dependency = {
-      VK_SUBPASS_EXTERNAL,  // source subpass
-      0u,                   // destination subpass (the first and only subpass)
-      vk::PipelineStageFlagBits::eColorAttachmentOutput,  // src stage mask
-      vk::PipelineStageFlagBits::eColorAttachmentOutput,  // dst stage mask
-      {},                                                 // src access mask
-      vk::AccessFlagBits::eColorAttachmentWrite,          // dst access mask
-      {}                                                  // dependency flags
-  };
-
   std::vector<vk::AttachmentDescription> attachments = {color_attachment,
                                                         depth_attachment};
 
@@ -260,8 +249,8 @@ static vk::UniqueRenderPass CreateSwapchainRenderPass(
       attachments.data(),                         // attachments
       1u,                                         // subpass count
       &subpass,                                   // subpass description
-      1u,                                         // dependency count
-      &subpass_dependency                         // dependencies
+      0u,                                         // dependency count
+      {}                                          // dependencies
   };
 
   auto render_pass =
