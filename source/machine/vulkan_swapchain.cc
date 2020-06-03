@@ -152,9 +152,6 @@ static std::unique_ptr<ImageView> CreateDepthStencilImageView(
     return {};
   }
 
-  // TODO: Figure out what to do with the stencil.
-  vk::ImageAspectFlags aspect_mask = vk::ImageAspectFlagBits::eDepth;
-
   vk::ImageViewCreateInfo image_view_create_info = {
       {},                      // flags
       image->image,            // image
@@ -162,12 +159,12 @@ static std::unique_ptr<ImageView> CreateDepthStencilImageView(
       depth_format,            // format
       {},                      // component mapping
       vk::ImageSubresourceRange{
-          aspect_mask,  // aspect mask
-          0u,           // base mip level
-          1u,           // level count
-          0u,           // base array layer
-          1u            // layer count
-      }                 // subresource range
+          vk::ImageAspectFlagBits::eDepth,  // aspect mask
+          0u,                               // base mip level
+          1u,                               // level count
+          0u,                               // base array layer
+          1u                                // layer count
+      }                                     // subresource range
   };
 
   auto image_view = UnwrapResult(
@@ -558,7 +555,7 @@ bool VulkanSwapchain::PrepareCommandBuffer(vk::CommandBuffer buffer,
   }
 
   std::vector<vk::ClearValue> clear_values = {
-      vk::ClearColorValue{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}},
+      vk::ClearColorValue{std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.0f}},
       vk::ClearDepthStencilValue{1.0, 0},
   };
 

@@ -9,6 +9,7 @@
 #include "macros.h"
 #include "memory_allocator.h"
 #include "renderer.h"
+#include "shader_library.h"
 #include "shaders/triangle.h"
 #include "vulkan.h"
 
@@ -40,6 +41,7 @@ class TutorialRenderer final : public Renderer {
   using Clock = std::chrono::high_resolution_clock;
 
   vk::Device device_;
+  ShaderLibrary shader_library_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   std::unique_ptr<Buffer> vertex_buffer_;
   std::unique_ptr<Buffer> index_buffer_;
@@ -51,9 +53,13 @@ class TutorialRenderer final : public Renderer {
   vk::UniqueSampler sampler_;
 
   float fov_ = 90.0f;
-  float rotation_rate_ = 10.0f;
+  float rotation_rate_ = 100.0f;
+  float z_near_ = 0.001f;
+  float z_far_ = 10.0f;
 
   bool is_valid_ = false;
+
+  bool RebuildPipelines();
 
   P_DISALLOW_COPY_AND_ASSIGN(TutorialRenderer);
 };

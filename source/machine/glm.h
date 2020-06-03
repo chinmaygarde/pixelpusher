@@ -9,6 +9,7 @@
 
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 template <class T>
 vk::Format ToVKFormat();

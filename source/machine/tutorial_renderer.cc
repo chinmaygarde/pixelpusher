@@ -15,9 +15,16 @@
 namespace pixel {
 
 TutorialRenderer::TutorialRenderer(std::shared_ptr<RenderingContext> context)
-    : Renderer(std::move(context)) {
-  device_ = GetContext().GetDevice();
+    : Renderer(std::move(context)),
+      device_(GetContext().GetDevice()),
+      shader_library_(device_) {
   is_valid_ = true;
+  shader_library_.AddLiveUpdateCallback([this]() {
+    P_LOG << "Tutorial shader updated. Rebuilding pipelines.";
+    if (!RebuildPipelines()) {
+      P_ERROR << "Could not rebuild pipelines.";
+    }
+  });
 }
 
 TutorialRenderer::~TutorialRenderer() = default;
@@ -31,42 +38,24 @@ bool TutorialRenderer::Setup() {
     return false;
   }
 
-  // Load shader stages.
-  auto vertex_shader_module =
-      ShaderModule::Load(device_, "triangle.vert", "Triangle");
-  auto fragment_shader_module =
-      ShaderModule::Load(device_, "triangle.frag", "Triangle");
-
-  if (!vertex_shader_module || !fragment_shader_module) {
-    P_ERROR << "Could not load shader modules.";
+  if (!shader_library_.AddDefaultVertexShader("triangle.vert",
+                                              "Triangle Vertex") ||
+      !shader_library_.AddDefaultFragmentShader("triangle.frag",
+                                                "Triangle Fragment")) {
+    P_ERROR << "Could not build shader library.";
     return false;
   }
 
-  vk::PipelineShaderStageCreateInfo vertex_shader;
-  vertex_shader.setModule(vertex_shader_module->GetShaderModule());
-  vertex_shader.setStage(vk::ShaderStageFlagBits::eVertex);
-  vertex_shader.setPName("main");
-
-  vk::PipelineShaderStageCreateInfo fragment_shader;
-  fragment_shader.setModule(fragment_shader_module->GetShaderModule());
-  fragment_shader.setStage(vk::ShaderStageFlagBits::eFragment);
-  fragment_shader.setPName("main");
-
-  std::vector<vk::PipelineShaderStageCreateInfo> shader_stages = {
-      vertex_shader,    //
-      fragment_shader,  //
-  };
-
   const std::vector<TriangleVertices> vertices = {
-      {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}},  // 0
-      {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}},   // 1
-      {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}},    // 2
-      {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}},   // 3
+      {{-0.5f, -0.5f, 0.1f}, {0.0f, 0.0f}},  // 0
+      {{0.5f, -0.5f, 0.1f}, {1.0f, 0.0f}},   // 1
+      {{0.5f, 0.5f, 0.1f}, {1.0f, 1.0f}},    // 2
+      {{-0.5f, 0.5f, 0.1f}, {0.0f, 1.0f}},   // 3
 
-      {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}},  // 4
-      {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}},   // 5
-      {{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}},    // 6
-      {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}},   // 7
+      {{-0.5f, -0.5f, 0.2f}, {0.0f, 0.0f}},  // 4
+      {{0.5f, -0.5f, 0.2f}, {1.0f, 0.0f}},   // 5
+      {{0.5f, 0.5f, 0.2f}, {1.0f, 1.0f}},    // 6
+      {{-0.5f, 0.5f, 0.2f}, {0.0f, 1.0f}},   // 7
   };
 
   const std::vector<uint16_t> indices = {
@@ -242,49 +231,10 @@ bool TutorialRenderer::Setup() {
   // Setup pipeline layout.
   pipeline_layout_ = CreatePipelineLayout(device_, layouts2);
 
-  PipelineBuilder pipeline_builder;
-
-  pipeline_builder.SetDepthStencilTestInfo(
-      vk::PipelineDepthStencilStateCreateInfo{
-          {},                    // flags
-          true,                  // depth test enable
-          true,                  // depth write enable
-          vk::CompareOp::eLess,  // compare op
-          false,                 // depth bounds test enable
-          false,                 // stencil test enable
-          {},                    // front stencil op state
-          {},                    // back stencil op state
-          0.0f,                  // min depth bounds
-          1.0f                   // max max bounds
-      });
-  const auto extents = GetContext().GetExtents();
-
-  pipeline_builder.SetScissor({{0u, 0u}, {extents.width, extents.height}});
-  pipeline_builder.SetViewport({0.0f, 0.0f, static_cast<float>(extents.width),
-                                static_cast<float>(extents.height), 0.0f,
-                                1.0f});
-  pipeline_builder.SetVertexInputDescription(
-      {TriangleVertices::GetVertexInputBindingDescription()},
-      TriangleVertices::GetVertexInputAttributeDescription());
-  pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
-  pipeline_builder.AddDynamicState(vk::DynamicState::eViewport);
-
-  auto pipeline = pipeline_builder.CreatePipeline(
-      device_,                               // device
-      GetContext().GetPipelineCache(),       // pipeline cache
-      pipeline_layout_.get(),                // pipeline layout
-      GetContext().GetOnScreenRenderPass(),  // render pass
-      shader_stages                          // shader stages
-  );
-
-  if (!pipeline) {
-    P_ERROR << "Could not create pipeline.";
+  if (!RebuildPipelines()) {
+    P_ERROR << "Could not build pipelines.";
     return false;
   }
-
-  SetDebugName(device_, pipeline.get(), "Triangle Pipeline");
-
-  pipeline_ = std::move(pipeline);
 
   return true;
 }  // namespace pixel
@@ -308,22 +258,26 @@ bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
 
   ::ImGui::InputFloat("FOV", &fov_);
   ::ImGui::InputFloat("Rotation Rate", &rotation_rate_);
+  ::ImGui::SliderFloat("zNear", &z_near_, 0.001f, 10.0f);
+  ::ImGui::SliderFloat("zFar", &z_far_, 0.001f, 10.0f);
 
   ::ImGui::End();
 
   auto rate =
       std::chrono::duration<float>(Clock::now().time_since_epoch()).count();
   triangle_ubo_->model =
-      glm::rotate(glm::mat4(1.0f),                             // model
+      glm::rotate(glm::mat4(1.0),                              // model
                   glm::radians<float>(rate * rotation_rate_),  // radians
                   glm::vec3(0.0f, 0.0f, 1.0f)                  // center
       );
-  triangle_ubo_->view =
-      glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                  glm::vec3(0.0f, 0.0f, 1.0f));
+  triangle_ubo_->view = glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f),  // eye
+                                    glm::vec3(0.0f, 0.0f, 0.0f),  // center
+                                    glm::vec3(0.0f, 0.0f, 1.0f)   // up
+  );
   triangle_ubo_->projection = glm::perspective(
-      glm::radians(fov_), static_cast<float>(extents.width) / extents.height,
-      0.0f, 10.0f);
+      glm::radians(fov_),
+      static_cast<float>(extents.width) / static_cast<float>(extents.height),
+      z_near_, z_far_);
 
   if (!triangle_ubo_.UpdateUniformData()) {
     P_ERROR << "Could not write uniform data.";
@@ -348,6 +302,52 @@ bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
 }
 
 bool TutorialRenderer::Teardown() {
+  return true;
+}
+
+bool TutorialRenderer::RebuildPipelines() {
+  PipelineBuilder pipeline_builder;
+
+  pipeline_builder.SetDepthStencilTestInfo(
+      vk::PipelineDepthStencilStateCreateInfo{
+          {},                    // flags
+          true,                  // depth test enable
+          true,                  // depth write enable
+          vk::CompareOp::eLess,  // compare op
+          false,                 // depth bounds test enable
+          false,                 // stencil test enable
+          {},                    // front stencil op state
+          {},                    // back stencil op state
+          0.0f,                  // min depth bounds
+          1.0f                   // max max bounds
+      });
+
+  pipeline_builder.SetVertexInputDescription(
+      {TriangleVertices::GetVertexInputBindingDescription()},
+      TriangleVertices::GetVertexInputAttributeDescription());
+  pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
+  pipeline_builder.AddDynamicState(vk::DynamicState::eViewport);
+
+  const auto& shader_stages =
+      shader_library_.GetPipelineShaderStageCreateInfos();
+
+  auto pipeline = pipeline_builder.CreatePipeline(
+      device_,                               // device
+      GetContext().GetPipelineCache(),       // pipeline cache
+      pipeline_layout_.get(),                // pipeline layout
+      GetContext().GetOnScreenRenderPass(),  // render pass
+      shader_stages                          // shader stages
+  );
+
+  if (!pipeline) {
+    P_ERROR << "Could not create pipeline.";
+    return false;
+  }
+
+  SetDebugName(device_, pipeline.get(), "Triangle Pipeline");
+
+  pipeline_ = std::move(pipeline);
+
   return true;
 }
 
