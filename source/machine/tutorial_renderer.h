@@ -56,6 +56,7 @@ class TutorialRenderer final : public Renderer {
   float rotation_rate_ = 100.0f;
   float z_near_ = 0.001f;
   float z_far_ = 10.0f;
+  float eye_[3] = {1.0, 1.0, 1.0};
 
   bool is_valid_ = false;
 

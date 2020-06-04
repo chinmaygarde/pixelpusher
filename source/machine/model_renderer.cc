@@ -240,7 +240,7 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
   auto projection = glm::perspective(
       glm::radians(90.0f),
       static_cast<float>(extents.width) / static_cast<float>(extents.height),
-      0.0f, 10.0f);
+      0.1f, 10.0f);
 
   uniform_buffer_->mvp = projection * view * model;
 
@@ -329,6 +329,19 @@ bool ModelRenderer::RebuildPipelines() {
   auto vertex_input_attributes =
       shaders::model_renderer::Vertex::GetVertexInputAttributes();
   PipelineBuilder pipeline_builder;
+  pipeline_builder.SetDepthStencilTestInfo(
+      vk::PipelineDepthStencilStateCreateInfo{
+          {},                    // flags
+          true,                  // depth test enable
+          true,                  // depth write enable
+          vk::CompareOp::eLess,  // compare op
+          false,                 // depth bounds test enable
+          false,                 // stencil test enable
+          {},                    // front stencil op state
+          {},                    // back stencil op state
+          0.0f,                  // min depth bounds
+          1.0f                   // max max bounds
+      });
   pipeline_builder.AddDynamicState(vk::DynamicState::eViewport);
   pipeline_builder.AddDynamicState(vk::DynamicState::eScissor);
   pipeline_builder.SetVertexInputDescription(vertex_input_bindings,

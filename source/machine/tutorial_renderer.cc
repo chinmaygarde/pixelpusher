@@ -256,10 +256,11 @@ bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
 
   ::ImGui::Begin("Tutorial");
 
-  ::ImGui::InputFloat("FOV", &fov_);
+  ::ImGui::SliderFloat("FOV", &fov_, 1.0f, 180.0f);
   ::ImGui::InputFloat("Rotation Rate", &rotation_rate_);
   ::ImGui::SliderFloat("zNear", &z_near_, 0.001f, 10.0f);
   ::ImGui::SliderFloat("zFar", &z_far_, 0.001f, 10.0f);
+  ::ImGui::SliderFloat3("Eye", eye_, 0.0f, 2.0f);
 
   ::ImGui::End();
 
@@ -270,10 +271,11 @@ bool TutorialRenderer::RenderFrame(vk::CommandBuffer command_buffer) {
                   glm::radians<float>(rate * rotation_rate_),  // radians
                   glm::vec3(0.0f, 0.0f, 1.0f)                  // center
       );
-  triangle_ubo_->view = glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f),  // eye
-                                    glm::vec3(0.0f, 0.0f, 0.0f),  // center
-                                    glm::vec3(0.0f, 0.0f, 1.0f)   // up
-  );
+  triangle_ubo_->view =
+      glm::lookAt(glm::vec3(eye_[0], eye_[1], eye_[2]),  // eye
+                  glm::vec3(0.0f, 0.0f, 0.0f),           // center
+                  glm::vec3(0.0f, 0.0f, 1.0f)            // up
+      );
   triangle_ubo_->projection = glm::perspective(
       glm::radians(fov_),
       static_cast<float>(extents.width) / static_cast<float>(extents.height),
