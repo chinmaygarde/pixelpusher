@@ -268,13 +268,15 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
 
   bool CollectDrawData(DrawData& data, TransformationStack stack) const;
 
+  glm::mat4 GetTransformation() const;
+
  private:
   std::string name_;
   std::shared_ptr<Camera> camera_;
   std::shared_ptr<Skin> skin_;
   std::shared_ptr<Mesh> mesh_;
   std::vector<std::shared_ptr<Node>> children_;
-  glm::quat rotation_;
+  glm::quat rotation_ = glm::identity<glm::quat>();
   glm::vec3 scale_ = glm::vec4(1.0);
   glm::vec3 translation_ = glm::vec3(0.0);
   glm::mat4 matrix_ = glm::identity<glm::mat4>();

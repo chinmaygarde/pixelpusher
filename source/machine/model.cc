@@ -687,6 +687,18 @@ std::shared_ptr<Accessor> Primitive::GetNormalAttribute() const {
   return found->second;
 }
 
+static std::vector<glm::vec3> VectorWithAppliedTransformations(
+    const TransformationStack& stack,
+    const std::vector<glm::vec3>& vec) {
+  std::vector<glm::vec3> result;
+  result.reserve(vec.size());
+  for (const auto& item : vec) {
+    const auto transformed = stack.transformation * glm::vec4(item, 0.0);
+    result.push_back(glm::vec3{transformed.x, transformed.y, transformed.z});
+  }
+  return result;
+}
+
 bool Primitive::CollectDrawData(DrawData& draw_data,
                                 const TransformationStack& stack) const {
   std::vector<uint32_t> indices;
@@ -704,7 +716,8 @@ bool Primitive::CollectDrawData(DrawData& draw_data,
   if (auto position = GetPositionAttribute()) {
     auto position_data = position->ReadVec3List();
     if (position_data.has_value()) {
-      positions = std::move(position_data.value());
+      positions = VectorWithAppliedTransformations(
+          stack, std::move(position_data.value()));
     }
   }
 
@@ -788,9 +801,9 @@ Node::~Node() = default;
 void Node::ReadFromArchive(const tinygltf::Node& node) {
   name_ = node.name;
   ArchiveRead(rotation_, node.rotation);
-  ArchiveRead(scale_, node.rotation);
-  ArchiveRead(translation_, node.rotation);
-  ArchiveRead(matrix_, node.rotation);
+  ArchiveRead(scale_, node.scale);
+  ArchiveRead(translation_, node.translation);
+  ArchiveRead(matrix_, node.matrix);
   weights_ = node.weights;
 }
 
@@ -806,11 +819,7 @@ void Node::ResolveReferences(const Model& model, const tinygltf::Node& node) {
 }
 
 bool Node::CollectDrawData(DrawData& data, TransformationStack stack) const {
-  auto scale = glm::scale(glm::identity<glm::mat4>(), scale_);
-  auto rotate = glm::mat4(rotation_);
-  auto translate = glm::translate(glm::identity<glm::mat4>(), translation_);
-
-  stack.transformation *= translate * rotate * scale * matrix_;
+  stack.transformation *= GetTransformation();
 
   if (mesh_) {
     if (!mesh_->CollectDrawData(data, stack)) {
@@ -825,6 +834,14 @@ bool Node::CollectDrawData(DrawData& data, TransformationStack stack) const {
   }
 
   return true;
+}
+
+glm::mat4 Node::GetTransformation() const {
+  auto scale = glm::scale(glm::identity<glm::mat4>(), scale_);
+  auto rotate = glm::mat4(rotation_);
+  auto translate = glm::translate(glm::identity<glm::mat4>(), translation_);
+
+  return translate * rotate * scale * matrix_;
 }
 
 // *****************************************************************************
