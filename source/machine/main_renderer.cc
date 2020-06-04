@@ -8,7 +8,7 @@
 
 namespace pixel {
 
-#define MODEL_NAME "Box"
+#define MODEL_NAME "BoxTextured"
 
 MainRenderer::MainRenderer(VulkanConnection& connection, GLFWwindow* window)
     : Renderer(connection.GetRenderingContext()), connection_(connection) {

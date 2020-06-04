@@ -188,6 +188,93 @@ class BufferView final : public GLTFArchivable<tinygltf::BufferView> {
   P_DISALLOW_COPY_AND_ASSIGN(BufferView);
 };
 
+class TextureInfo final : public GLTFArchivable<tinygltf::TextureInfo> {
+ public:
+  TextureInfo();
+
+  ~TextureInfo();
+
+  void ReadFromArchive(const tinygltf::TextureInfo& texture) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::TextureInfo& texture) override;
+
+ private:
+  std::shared_ptr<Texture> texture_;
+  // TODO: What is this?
+  int texture_coord_index_ = 0;
+
+  P_DISALLOW_COPY_AND_ASSIGN(TextureInfo);
+};
+
+class NormalTextureInfo final
+    : public GLTFArchivable<tinygltf::NormalTextureInfo> {
+ public:
+  NormalTextureInfo();
+
+  ~NormalTextureInfo();
+
+  void ReadFromArchive(const tinygltf::NormalTextureInfo& normal) override;
+
+  void ResolveReferences(const Model& model,
+                         const tinygltf::NormalTextureInfo& normal) override;
+
+ private:
+  std::shared_ptr<Texture> texture_;
+  // TODO: What is this?
+  int texture_coord_index_ = 0;
+  double scale_ = 0.0;
+
+  P_DISALLOW_COPY_AND_ASSIGN(NormalTextureInfo);
+};
+
+class OcclusionTextureInfo final
+    : public GLTFArchivable<tinygltf::OcclusionTextureInfo> {
+ public:
+  OcclusionTextureInfo();
+
+  ~OcclusionTextureInfo();
+
+  void ReadFromArchive(
+      const tinygltf::OcclusionTextureInfo& occlusion) override;
+
+  void ResolveReferences(
+      const Model& model,
+      const tinygltf::OcclusionTextureInfo& occlusion) override;
+
+ private:
+  std::shared_ptr<Texture> texture_;
+  // TODO: What is this?
+  int texture_coord_index_ = 0;
+  double strength_ = 0.0;
+
+  P_DISALLOW_COPY_AND_ASSIGN(OcclusionTextureInfo);
+};
+
+class PBRMetallicRoughness final
+    : public GLTFArchivable<tinygltf::PbrMetallicRoughness> {
+ public:
+  PBRMetallicRoughness();
+
+  ~PBRMetallicRoughness();
+
+  void ReadFromArchive(
+      const tinygltf::PbrMetallicRoughness& roughness) override;
+
+  void ResolveReferences(
+      const Model& model,
+      const tinygltf::PbrMetallicRoughness& roughness) override;
+
+ private:
+  std::vector<double> base_color_factor_;
+  std::shared_ptr<TextureInfo> base_color_texture_;
+  double metallic_factor_ = 1.0;
+  double roughness_factor_ = 1.0;
+  std::shared_ptr<TextureInfo> metallic_roughness_texture_;
+
+  P_DISALLOW_COPY_AND_ASSIGN(PBRMetallicRoughness);
+};
+
 class Material final : public GLTFArchivable<tinygltf::Material> {
  public:
   Material();
@@ -200,7 +287,15 @@ class Material final : public GLTFArchivable<tinygltf::Material> {
                          const tinygltf::Material& material) override;
 
  private:
-  // TOOD
+  std::string name_;
+  std::vector<double> emissive_factor_;
+  bool is_opaque_ = false;
+  double alpha_cutoff_ = 0.5;
+  bool double_sided_ = false;
+  std::shared_ptr<PBRMetallicRoughness> pbr_metallic_roughness_;
+  std::shared_ptr<NormalTextureInfo> normal_texture_;
+  std::shared_ptr<OcclusionTextureInfo> occlusion_texture_;
+  std::shared_ptr<TextureInfo> emissive_texture_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Material);
 };
@@ -494,6 +589,10 @@ class Model final {
   friend class Camera;
   friend class Scene;
   friend class Light;
+  friend class TextureInfo;
+  friend class NormalTextureInfo;
+  friend class OcclusionTextureInfo;
+  friend class PBRMetallicRoughness;
 
   Accessors accessors_;
   Animations animations_;

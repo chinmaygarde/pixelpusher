@@ -6,6 +6,13 @@ namespace pixel {
 namespace model {
 
 template <class ResourceType, class GLTFResourceType>
+static std::shared_ptr<ResourceType> Inflate(const GLTFResourceType& item) {
+  auto resource = std::make_shared<ResourceType>();
+  resource->ReadFromArchive(item);
+  return resource;
+}
+
+template <class ResourceType, class GLTFResourceType>
 static std::vector<std::shared_ptr<ResourceType>> Inflate(
     const std::vector<GLTFResourceType>& items) {
   auto collection = std::vector<std::shared_ptr<ResourceType>>{};
@@ -165,6 +172,7 @@ auto BoundsCheckGet(const T& collection, int index) {
   const auto count = collection.size();
 
   if (index >= count) {
+    P_ERROR << "Attempted to access resource at index out-of-bounds.";
     return ReturnType{};
   }
 
@@ -607,6 +615,90 @@ size_t BufferView::GetStride() const {
 }
 
 // *****************************************************************************
+// *** TextureInfo
+// *****************************************************************************
+
+TextureInfo::TextureInfo() = default;
+
+TextureInfo::~TextureInfo() = default;
+
+void TextureInfo::ReadFromArchive(const tinygltf::TextureInfo& texture) {
+  texture_coord_index_ = texture.texCoord;
+}
+
+void TextureInfo::ResolveReferences(const Model& model,
+                                    const tinygltf::TextureInfo& texture) {
+  texture_ = BoundsCheckGet(model.textures_, texture.index);
+}
+
+// *****************************************************************************
+// *** NormalTextureInfo
+// *****************************************************************************
+
+NormalTextureInfo::NormalTextureInfo() = default;
+
+NormalTextureInfo::~NormalTextureInfo() = default;
+
+void NormalTextureInfo::ReadFromArchive(
+    const tinygltf::NormalTextureInfo& normal) {
+  texture_coord_index_ = normal.texCoord;
+  scale_ = normal.scale;
+}
+
+void NormalTextureInfo::ResolveReferences(
+    const Model& model,
+    const tinygltf::NormalTextureInfo& normal) {
+  texture_ = BoundsCheckGet(model.textures_, normal.index);
+}
+
+// *****************************************************************************
+// *** OcclusionTextureInfo
+// *****************************************************************************
+
+OcclusionTextureInfo::OcclusionTextureInfo() = default;
+
+OcclusionTextureInfo::~OcclusionTextureInfo() = default;
+
+void OcclusionTextureInfo::ReadFromArchive(
+    const tinygltf::OcclusionTextureInfo& occlusion) {
+  texture_coord_index_ = occlusion.texCoord;
+  strength_ = occlusion.strength;
+}
+
+void OcclusionTextureInfo::ResolveReferences(
+    const Model& model,
+    const tinygltf::OcclusionTextureInfo& occlusion) {
+  texture_ = BoundsCheckGet(model.textures_, occlusion.index);
+}
+
+// *****************************************************************************
+// *** PBRMetallicRoughness
+// *****************************************************************************
+
+PBRMetallicRoughness::PBRMetallicRoughness() = default;
+
+PBRMetallicRoughness::~PBRMetallicRoughness() = default;
+
+void PBRMetallicRoughness::ReadFromArchive(
+    const tinygltf::PbrMetallicRoughness& roughness) {
+  base_color_factor_ = roughness.baseColorFactor;
+  base_color_texture_ =
+      Inflate<TextureInfo, tinygltf::TextureInfo>(roughness.baseColorTexture);
+  metallic_factor_ = roughness.metallicFactor;
+  roughness_factor_ = roughness.roughnessFactor;
+  metallic_roughness_texture_ = Inflate<TextureInfo, tinygltf::TextureInfo>(
+      roughness.metallicRoughnessTexture);
+}
+
+void PBRMetallicRoughness::ResolveReferences(
+    const Model& model,
+    const tinygltf::PbrMetallicRoughness& roughness) {
+  base_color_texture_->ResolveReferences(model, roughness.baseColorTexture);
+  metallic_roughness_texture_->ResolveReferences(
+      model, roughness.metallicRoughnessTexture);
+}
+
+// *****************************************************************************
 // *** Material
 // *****************************************************************************
 
@@ -614,10 +706,29 @@ Material::Material() = default;
 
 Material::~Material() = default;
 
-void Material::ReadFromArchive(const tinygltf::Material& material) {}
+void Material::ReadFromArchive(const tinygltf::Material& material) {
+  name_ = material.name;
+  emissive_factor_ = material.emissiveFactor;
+  is_opaque_ = material.alphaMode == "OPAQUE";
+  alpha_cutoff_ = material.alphaCutoff;
+  double_sided_ = material.doubleSided;
+  pbr_metallic_roughness_ =
+      Inflate<PBRMetallicRoughness, tinygltf::PbrMetallicRoughness>(
+          material.pbrMetallicRoughness);
+  occlusion_texture_ =
+      Inflate<OcclusionTextureInfo, tinygltf::OcclusionTextureInfo>(
+          material.occlusionTexture);
+  emissive_texture_ =
+      Inflate<TextureInfo, tinygltf::TextureInfo>(material.emissiveTexture);
+}
 
 void Material::ResolveReferences(const Model& model,
-                                 const tinygltf::Material& material) {}
+                                 const tinygltf::Material& material) {
+  pbr_metallic_roughness_->ResolveReferences(model,
+                                             material.pbrMetallicRoughness);
+  occlusion_texture_->ResolveReferences(model, material.occlusionTexture);
+  emissive_texture_->ResolveReferences(model, material.emissiveTexture);
+}
 
 // *****************************************************************************
 // *** Primitive
