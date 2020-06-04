@@ -631,19 +631,26 @@ void Primitive::ReadFromArchive(const tinygltf::Primitive& primitive) {
   switch (primitive.mode) {
     case TINYGLTF_MODE_POINTS:
       mode_ = vk::PrimitiveTopology::ePointList;
+      break;
     case TINYGLTF_MODE_LINE:
       mode_ = vk::PrimitiveTopology::eLineList;
+      break;
     case TINYGLTF_MODE_LINE_LOOP:
       // TODO: WTF is this?
       // mode_ = vk::PrimitiveTopology::elineloop;
+      break;
     case TINYGLTF_MODE_LINE_STRIP:
       mode_ = vk::PrimitiveTopology::eLineStrip;
+      break;
     case TINYGLTF_MODE_TRIANGLES:
       mode_ = vk::PrimitiveTopology::eTriangleList;
+      break;
     case TINYGLTF_MODE_TRIANGLE_STRIP:
       mode_ = vk::PrimitiveTopology::eTriangleStrip;
+      break;
     case TINYGLTF_MODE_TRIANGLE_FAN:
       mode_ = vk::PrimitiveTopology::eTriangleFan;
+      break;
   }
 }
 
