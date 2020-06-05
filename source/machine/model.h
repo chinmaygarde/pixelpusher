@@ -11,6 +11,7 @@
 #include "asset_loader.h"
 #include "glm.h"
 #include "macros.h"
+#include "model_draw_data.h"
 #include "shaders/model_renderer.h"
 
 namespace pixel {
@@ -32,8 +33,6 @@ class Sampler;
 class Camera;
 class Scene;
 class Light;
-
-using DrawData = shaders::model_renderer::DrawData;
 
 template <class T>
 using Collection = std::vector<std::shared_ptr<T>>;
@@ -199,6 +198,10 @@ class TextureInfo final : public GLTFArchivable<tinygltf::TextureInfo> {
   void ResolveReferences(const Model& model,
                          const tinygltf::TextureInfo& texture) override;
 
+  bool CollectDrawData(ModelDrawData& data,
+                       ModelDrawCallBuilder& draw_call,
+                       const TransformationStack& stack) const;
+
  private:
   std::shared_ptr<Texture> texture_;
   // TODO: What is this?
@@ -218,6 +221,10 @@ class NormalTextureInfo final
 
   void ResolveReferences(const Model& model,
                          const tinygltf::NormalTextureInfo& normal) override;
+
+  bool CollectDrawData(ModelDrawData& data,
+                       ModelDrawCallBuilder& draw_call,
+                       const TransformationStack& stack) const;
 
  private:
   std::shared_ptr<Texture> texture_;
@@ -242,6 +249,10 @@ class OcclusionTextureInfo final
       const Model& model,
       const tinygltf::OcclusionTextureInfo& occlusion) override;
 
+  bool CollectDrawData(ModelDrawData& data,
+                       ModelDrawCallBuilder& draw_call,
+                       const TransformationStack& stack) const;
+
  private:
   std::shared_ptr<Texture> texture_;
   // TODO: What is this?
@@ -265,6 +276,10 @@ class PBRMetallicRoughness final
       const Model& model,
       const tinygltf::PbrMetallicRoughness& roughness) override;
 
+  bool CollectDrawData(ModelDrawData& data,
+                       ModelDrawCallBuilder& draw_call,
+                       const TransformationStack& stack) const;
+
  private:
   std::vector<double> base_color_factor_;
   std::shared_ptr<TextureInfo> base_color_texture_;
@@ -285,6 +300,10 @@ class Material final : public GLTFArchivable<tinygltf::Material> {
 
   void ResolveReferences(const Model& model,
                          const tinygltf::Material& material) override;
+
+  bool CollectDrawData(ModelDrawData& data,
+                       ModelDrawCallBuilder& draw_call,
+                       const TransformationStack& stack) const;
 
  private:
   std::string name_;
@@ -317,7 +336,8 @@ class Primitive final : public GLTFArchivable<tinygltf::Primitive> {
 
   std::shared_ptr<Accessor> GetNormalAttribute() const;
 
-  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
+  bool CollectDrawData(ModelDrawData& data,
+                       const TransformationStack& stack) const;
 
  private:
   std::map<std::string, std::shared_ptr<Accessor>> attributes_;
@@ -340,7 +360,8 @@ class Mesh final : public GLTFArchivable<tinygltf::Mesh> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Mesh& mesh) override;
 
-  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
+  bool CollectDrawData(ModelDrawData& data,
+                       const TransformationStack& stack) const;
 
  private:
   std::string name_;
@@ -361,7 +382,7 @@ class Node final : public GLTFArchivable<tinygltf::Node> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Node& node) override;
 
-  bool CollectDrawData(DrawData& data, TransformationStack stack) const;
+  bool CollectDrawData(ModelDrawData& data, TransformationStack stack) const;
 
   glm::mat4 GetTransformation() const;
 
@@ -391,6 +412,9 @@ class Texture final : public GLTFArchivable<tinygltf::Texture> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Texture& texture) override;
 
+  bool CollectDrawData(ModelDrawData& data,
+                       const TransformationStack& stack) const;
+
  private:
   std::string name_;
   std::shared_ptr<Sampler> sampler_;
@@ -409,6 +433,8 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
 
   void ResolveReferences(const Model& model,
                          const tinygltf::Image& image) override;
+
+  bool CollectDrawData(ModelDrawData& data) const;
 
  private:
   std::string name_;
@@ -453,6 +479,8 @@ class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
 
   void ResolveReferences(const Model& model,
                          const tinygltf::Sampler& sampler) override;
+
+  bool CollectDrawData(ModelDrawData& data) const;
 
  private:
   std::string name_;
@@ -512,7 +540,8 @@ class Scene final : public GLTFArchivable<tinygltf::Scene> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Scene& scene) override;
 
-  bool CollectDrawData(DrawData& data, const TransformationStack& stack) const;
+  bool CollectDrawData(ModelDrawData& data,
+                       const TransformationStack& stack) const;
 
  private:
   std::string name_;
@@ -571,7 +600,7 @@ class Model final {
 
   const Lights& GetLights() const;
 
-  DrawData GetDrawData() const;
+  std::shared_ptr<ModelDrawData> CreateDrawData() const;
 
  private:
   friend class Accessor;

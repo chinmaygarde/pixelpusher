@@ -276,15 +276,15 @@ static size_t SizeOfComponentType(ComponentType type) {
   return 0;
 }
 
-DrawData Model::GetDrawData() const {
-  DrawData data;
+std::shared_ptr<ModelDrawData> Model::CreateDrawData() const {
+  auto draw_data = std::make_shared<ModelDrawData> draw_data();
   TransformationStack stack;
   for (const auto& scene : scenes_) {
-    if (!scene->CollectDrawData(data, stack)) {
+    if (!scene->CollectDrawData(*draw_data, stack)) {
       return {};
     }
   }
-  return data;
+  return draw_data;
 }
 
 // *****************************************************************************
@@ -631,6 +631,18 @@ void TextureInfo::ResolveReferences(const Model& model,
   texture_ = BoundsCheckGet(model.textures_, texture.index);
 }
 
+bool TextureInfo::CollectDrawData(ModelDrawData& data,
+                                  ModelDrawCallBuilder& draw_call,
+                                  const TransformationStack& stack) const {
+  if (texture_) {
+    if (!texture_->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // *****************************************************************************
 // *** NormalTextureInfo
 // *****************************************************************************
@@ -651,6 +663,19 @@ void NormalTextureInfo::ResolveReferences(
   texture_ = BoundsCheckGet(model.textures_, normal.index);
 }
 
+bool NormalTextureInfo::CollectDrawData(
+    ModelDrawData& data,
+    ModelDrawCallBuilder& draw_call,
+    const TransformationStack& stack) const {
+  if (texture_) {
+    if (!texture_->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // *****************************************************************************
 // *** OcclusionTextureInfo
 // *****************************************************************************
@@ -669,6 +694,19 @@ void OcclusionTextureInfo::ResolveReferences(
     const Model& model,
     const tinygltf::OcclusionTextureInfo& occlusion) {
   texture_ = BoundsCheckGet(model.textures_, occlusion.index);
+}
+
+bool OcclusionTextureInfo::CollectDrawData(
+    ModelDrawData& data,
+    ModelDrawCallBuilder& draw_call,
+    const TransformationStack& stack) const {
+  if (texture_) {
+    if (!texture_->CollectDrawData(data, stack)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // *****************************************************************************
@@ -696,6 +734,25 @@ void PBRMetallicRoughness::ResolveReferences(
   base_color_texture_->ResolveReferences(model, roughness.baseColorTexture);
   metallic_roughness_texture_->ResolveReferences(
       model, roughness.metallicRoughnessTexture);
+}
+
+bool PBRMetallicRoughness::CollectDrawData(
+    ModelDrawData& data,
+    ModelDrawCallBuilder& draw_call,
+    const TransformationStack& stack) const {
+  if (base_color_texture_) {
+    if (!base_color_texture_->CollectDrawData(data, draw_call, stack)) {
+      return false;
+    }
+  }
+
+  if (metallic_roughness_texture_) {
+    if (!metallic_roughness_texture_->CollectDrawData(data, draw_call, stack)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // *****************************************************************************
@@ -728,6 +785,30 @@ void Material::ResolveReferences(const Model& model,
                                              material.pbrMetallicRoughness);
   occlusion_texture_->ResolveReferences(model, material.occlusionTexture);
   emissive_texture_->ResolveReferences(model, material.emissiveTexture);
+}
+
+bool Material::CollectDrawData(ModelDrawData& data,
+                               ModelDrawCallBuilder& draw_call,
+                               const TransformationStack& stack) const {
+  if (pbr_metallic_roughness_) {
+    if (!pbr_metallic_roughness_->CollectDrawData(data, draw_call, stack)) {
+      return false;
+    }
+  }
+
+  if (occlusion_texture_) {
+    if (!occlusion_texture_->CollectDrawData(data, draw_call, stack)) {
+      return false;
+    }
+  }
+
+  if (emissive_texture_) {
+    if (!emissive_texture_->CollectDrawData(data, draw_call, stack)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // *****************************************************************************
@@ -817,65 +898,84 @@ static std::vector<glm::vec3> VectorWithAppliedTransformations(
   return result;
 }
 
-bool Primitive::CollectDrawData(DrawData& draw_data,
+bool Primitive::CollectDrawData(ModelDrawData& draw_data,
                                 const TransformationStack& stack) const {
-  std::vector<uint32_t> indices;
-  std::vector<glm::vec3> positions;
-  std::vector<glm::vec2> texture_coords;
-  std::vector<glm::vec3> normals;
+  ModelDrawCallBuilder draw_call_builder;
+
+  draw_call_builder.SetTopology(mode_);
+
+  // Collect indices.
 
   if (indices_) {
     auto index_data = indices_->ReadIndexList();
     if (index_data.has_value()) {
-      indices = std::move(index_data.value());
+      auto indices = std::move(index_data.value());
+
+      for (const auto& index : indices) {
+        if (index >= positions.size()) {
+          P_ERROR << "Index specified vertex position that was out of bounds.";
+          return false;
+        }
+      }
+
+      draw_call_builder.SetIndices(std::move(indices));
     }
   }
 
-  if (auto position = GetPositionAttribute()) {
-    auto position_data = position->ReadVec3List();
-    if (position_data.has_value()) {
-      positions = VectorWithAppliedTransformations(
-          stack, std::move(position_data.value()));
+  // Collect vertices.
+  {
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec2> texture_coords;
+    std::vector<glm::vec3> normals;
+
+    if (auto position = GetPositionAttribute()) {
+      auto position_data = position->ReadVec3List();
+      if (position_data.has_value()) {
+        positions = VectorWithAppliedTransformations(
+            stack, std::move(position_data.value()));
+      }
     }
+
+    if (auto normal = GetNormalAttribute()) {
+      auto normal_data = normal->ReadVec3List();
+      if (normal_data.has_value()) {
+        normals = std::move(normal_data.value());
+      }
+    }
+
+    if (auto texture_coord = GetTextureCoordAttribute()) {
+      auto texture_coord_data = texture_coord->ReadVec2List();
+      if (texture_coord_data.has_value()) {
+        texture_coords = std::move(texture_coord_data.value());
+      }
+    }
+
+    const bool has_normals = normals.size() == positions.size();
+    const bool has_texture_coords = texture_coords.size() == positions.size();
+
+    std::vector<shaders::model_renderer::Vertex> vertices;
+    vertices.reserve(positions.size());
+
+    for (size_t i = 0, count = positions.size(); i < count; i++) {
+      vertices.push_back(shaders::model_renderer::Vertex{
+          positions[i],                                // position
+          has_normals ? normals[i] : glm::vec3{0.0f},  // normal
+          has_texture_coords ? texture_coords[i]
+                             : glm::vec2{0.0f},  // texture coords
+      });
+    }
+
+    draw_call_builder.SetVertices(std::move(vertices));
   }
 
-  if (auto normal = GetNormalAttribute()) {
-    auto normal_data = normal->ReadVec3List();
-    if (normal_data.has_value()) {
-      normals = std::move(normal_data.value());
-    }
-  }
-
-  if (auto texture_coord = GetTextureCoordAttribute()) {
-    auto texture_coord_data = texture_coord->ReadVec2List();
-    if (texture_coord_data.has_value()) {
-      texture_coords = std::move(texture_coord_data.value());
-    }
-  }
-
-  for (const auto& index : indices) {
-    if (index >= positions.size()) {
-      P_ERROR << "Index specified vertex position that was out of bounds.";
+  // Collect materials (samplers, etc.)
+  if (material_) {
+    if (!material_->CollectDrawData(draw_data, draw_call_builder, stack)) {
       return false;
     }
   }
 
-  const bool has_normals = normals.size() == positions.size();
-  const bool has_texture_coords = texture_coords.size() == positions.size();
-
-  std::vector<shaders::model_renderer::Vertex> vertices;
-  vertices.reserve(positions.size());
-
-  for (size_t i = 0, count = positions.size(); i < count; i++) {
-    vertices.push_back(shaders::model_renderer::Vertex{
-        positions[i],                                // position
-        has_normals ? normals[i] : glm::vec3{0.0f},  // normal
-        has_texture_coords ? texture_coords[i]
-                           : glm::vec2{0.0f},  // texture coords
-    });
-  }
-
-  draw_data.AddDrawOp(mode_, std::move(vertices), std::move(indices));
+  draw_data.AddDrawCall(draw_call_builder.CreateDrawCall());
 
   return true;
 }
@@ -898,7 +998,7 @@ void Mesh::ResolveReferences(const Model& model, const tinygltf::Mesh& mesh) {
   ResolveCollectionReferences(model, primitives_, mesh.primitives);
 }
 
-bool Mesh::CollectDrawData(DrawData& data,
+bool Mesh::CollectDrawData(ModelDrawData& data,
                            const TransformationStack& stack) const {
   for (const auto& primitive : primitives_) {
     if (!primitive->CollectDrawData(data, stack)) {
@@ -936,7 +1036,8 @@ void Node::ResolveReferences(const Model& model, const tinygltf::Node& node) {
   }
 }
 
-bool Node::CollectDrawData(DrawData& data, TransformationStack stack) const {
+bool Node::CollectDrawData(ModelDrawData& data,
+                           TransformationStack stack) const {
   stack.transformation *= GetTransformation();
 
   if (mesh_) {
@@ -980,6 +1081,20 @@ void Texture::ResolveReferences(const Model& model,
   source_ = BoundsCheckGet(model.images_, texture.source);
 }
 
+bool Texture::CollectDrawData(ModelDrawData& data) const {
+  if (sampler_) {
+    if (!sampler_->CollectDrawData(data)) {
+      return false;
+    }
+  }
+
+  if (source_) {
+    if (!source_->CollectDrawData(data)) {
+      return false;
+    }
+  }
+}
+
 // *****************************************************************************
 // *** Image
 // *****************************************************************************
@@ -1005,6 +1120,8 @@ void Image::ResolveReferences(const Model& model,
                               const tinygltf::Image& image) {
   buffer_view_ = BoundsCheckGet(model.bufferViews_, image.bufferView);
 }
+
+bool Image::CollectDrawData(ModelDrawData& data) const {}
 
 // *****************************************************************************
 // *** Skin
@@ -1069,6 +1186,8 @@ void Sampler::ReadFromArchive(const tinygltf::Sampler& sampler) {
 void Sampler::ResolveReferences(const Model& model,
                                 const tinygltf::Sampler& sampler) {}
 
+bool Sampler::CollectDrawData(ModelDrawData& data) const {}
+
 // *****************************************************************************
 // *** Camera
 // *****************************************************************************
@@ -1125,7 +1244,7 @@ void Scene::ResolveReferences(const Model& model,
   }
 }
 
-bool Scene::CollectDrawData(DrawData& data,
+bool Scene::CollectDrawData(ModelDrawData& data,
                             const TransformationStack& stack) const {
   for (const auto& node : nodes_) {
     if (!node->CollectDrawData(data, stack)) {

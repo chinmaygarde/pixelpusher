@@ -22,6 +22,8 @@ add_library(machine_lib
   memory_allocator.h
   model.cc
   model.h
+  model_draw_data.cc
+  model_draw_data.h
   model_renderer.cc
   model_renderer.h
   pipeline_builder.cc
