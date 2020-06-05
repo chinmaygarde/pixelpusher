@@ -45,7 +45,7 @@ bool ModelRenderer::Setup() {
     return false;
   }
 
-  auto draw_data = model_->GetDrawData();
+  auto draw_data = model_->CreateDrawData();
   required_topologies_ = draw_data.RequiredTopologies();
 
   shader_library_ = std::make_unique<ShaderLibrary>(GetContext().GetDevice());

@@ -2,6 +2,8 @@
 
 #include <type_traits>
 
+#include "model_draw_data.h"
+
 namespace pixel {
 namespace model {
 
@@ -277,7 +279,20 @@ static size_t SizeOfComponentType(ComponentType type) {
 }
 
 std::shared_ptr<ModelDrawData> Model::CreateDrawData() const {
-  auto draw_data = std::make_shared<ModelDrawData> draw_data();
+  auto draw_data = std::make_shared<ModelDrawData>();
+
+  for (const auto& sampler : samplers_) {
+    if (!draw_data->RegisterSampler(sampler)) {
+      return nullptr;
+    }
+  }
+
+  for (const auto& image : images_) {
+    if (!draw_data->RegisterImage(image)) {
+      return nullptr;
+    }
+  }
+
   TransformationStack stack;
   for (const auto& scene : scenes_) {
     if (!scene->CollectDrawData(*draw_data, stack)) {
@@ -631,18 +646,16 @@ void TextureInfo::ResolveReferences(const Model& model,
   texture_ = BoundsCheckGet(model.textures_, texture.index);
 }
 
-bool TextureInfo::CollectDrawData(ModelDrawData& data,
-                                  ModelDrawCallBuilder& draw_call,
-                                  const TransformationStack& stack) const {
+bool TextureInfo::CollectDrawData(TextureType type,
+                                  ModelDrawCallBuilder& draw_call) const {
   if (texture_) {
-    if (!texture_->CollectDrawData(data, stack)) {
+    if (!texture_->CollectDrawData(type, draw_call)) {
       return false;
     }
   }
 
   return true;
 }
-
 // *****************************************************************************
 // *** NormalTextureInfo
 // *****************************************************************************
@@ -663,19 +676,6 @@ void NormalTextureInfo::ResolveReferences(
   texture_ = BoundsCheckGet(model.textures_, normal.index);
 }
 
-bool NormalTextureInfo::CollectDrawData(
-    ModelDrawData& data,
-    ModelDrawCallBuilder& draw_call,
-    const TransformationStack& stack) const {
-  if (texture_) {
-    if (!texture_->CollectDrawData(data, stack)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 // *****************************************************************************
 // *** OcclusionTextureInfo
 // *****************************************************************************
@@ -694,19 +694,6 @@ void OcclusionTextureInfo::ResolveReferences(
     const Model& model,
     const tinygltf::OcclusionTextureInfo& occlusion) {
   texture_ = BoundsCheckGet(model.textures_, occlusion.index);
-}
-
-bool OcclusionTextureInfo::CollectDrawData(
-    ModelDrawData& data,
-    ModelDrawCallBuilder& draw_call,
-    const TransformationStack& stack) const {
-  if (texture_) {
-    if (!texture_->CollectDrawData(data, stack)) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 // *****************************************************************************
@@ -738,18 +725,10 @@ void PBRMetallicRoughness::ResolveReferences(
 
 bool PBRMetallicRoughness::CollectDrawData(
     ModelDrawData& data,
-    ModelDrawCallBuilder& draw_call,
-    const TransformationStack& stack) const {
+    ModelDrawCallBuilder& draw_call) const {
   if (base_color_texture_) {
-    if (!base_color_texture_->CollectDrawData(data, draw_call, stack)) {
-      return false;
-    }
-  }
-
-  if (metallic_roughness_texture_) {
-    if (!metallic_roughness_texture_->CollectDrawData(data, draw_call, stack)) {
-      return false;
-    }
+    base_color_texture_->CollectDrawData(TextureType::kTextureTypeBaseColor,
+                                         draw_call);
   }
 
   return true;
@@ -791,19 +770,7 @@ bool Material::CollectDrawData(ModelDrawData& data,
                                ModelDrawCallBuilder& draw_call,
                                const TransformationStack& stack) const {
   if (pbr_metallic_roughness_) {
-    if (!pbr_metallic_roughness_->CollectDrawData(data, draw_call, stack)) {
-      return false;
-    }
-  }
-
-  if (occlusion_texture_) {
-    if (!occlusion_texture_->CollectDrawData(data, draw_call, stack)) {
-      return false;
-    }
-  }
-
-  if (emissive_texture_) {
-    if (!emissive_texture_->CollectDrawData(data, draw_call, stack)) {
+    if (!pbr_metallic_roughness_->CollectDrawData(data, draw_call)) {
       return false;
     }
   }
@@ -904,27 +871,12 @@ bool Primitive::CollectDrawData(ModelDrawData& draw_data,
 
   draw_call_builder.SetTopology(mode_);
 
-  // Collect indices.
-
-  if (indices_) {
-    auto index_data = indices_->ReadIndexList();
-    if (index_data.has_value()) {
-      auto indices = std::move(index_data.value());
-
-      for (const auto& index : indices) {
-        if (index >= positions.size()) {
-          P_ERROR << "Index specified vertex position that was out of bounds.";
-          return false;
-        }
-      }
-
-      draw_call_builder.SetIndices(std::move(indices));
-    }
-  }
+  // Outside scope of vertices because we will be performing an index bounds
+  // check later.
+  std::vector<glm::vec3> positions;
 
   // Collect vertices.
   {
-    std::vector<glm::vec3> positions;
     std::vector<glm::vec2> texture_coords;
     std::vector<glm::vec3> normals;
 
@@ -966,6 +918,23 @@ bool Primitive::CollectDrawData(ModelDrawData& draw_data,
     }
 
     draw_call_builder.SetVertices(std::move(vertices));
+  }
+
+  // Collect indices.
+  if (indices_) {
+    auto index_data = indices_->ReadIndexList();
+    if (index_data.has_value()) {
+      auto indices = std::move(index_data.value());
+
+      for (const auto& index : indices) {
+        if (index >= positions.size()) {
+          P_ERROR << "Index specified vertex position that was out of bounds.";
+          return false;
+        }
+      }
+
+      draw_call_builder.SetIndices(std::move(indices));
+    }
   }
 
   // Collect materials (samplers, etc.)
@@ -1081,18 +1050,10 @@ void Texture::ResolveReferences(const Model& model,
   source_ = BoundsCheckGet(model.images_, texture.source);
 }
 
-bool Texture::CollectDrawData(ModelDrawData& data) const {
-  if (sampler_) {
-    if (!sampler_->CollectDrawData(data)) {
-      return false;
-    }
-  }
-
-  if (source_) {
-    if (!source_->CollectDrawData(data)) {
-      return false;
-    }
-  }
+bool Texture::CollectDrawData(TextureType type,
+                              ModelDrawCallBuilder& draw_call) const {
+  draw_call.SetTexture(type, source_, sampler_);
+  return true;
 }
 
 // *****************************************************************************
@@ -1120,8 +1081,6 @@ void Image::ResolveReferences(const Model& model,
                               const tinygltf::Image& image) {
   buffer_view_ = BoundsCheckGet(model.bufferViews_, image.bufferView);
 }
-
-bool Image::CollectDrawData(ModelDrawData& data) const {}
 
 // *****************************************************************************
 // *** Skin
@@ -1185,8 +1144,6 @@ void Sampler::ReadFromArchive(const tinygltf::Sampler& sampler) {
 
 void Sampler::ResolveReferences(const Model& model,
                                 const tinygltf::Sampler& sampler) {}
-
-bool Sampler::CollectDrawData(ModelDrawData& data) const {}
 
 // *****************************************************************************
 // *** Camera

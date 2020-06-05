@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "macros.h"
+#include "model.h"
 #include "shaders/model_renderer.h"
 
 namespace pixel {
@@ -28,6 +29,10 @@ class ModelDrawCallBuilder {
   ModelDrawCallBuilder& SetVertices(
       std::vector<pixel::shaders::model_renderer::Vertex> vertices);
 
+  ModelDrawCallBuilder& SetTexture(TextureType type,
+                                   std::shared_ptr<Image> image,
+                                   std::shared_ptr<Sampler> sampler);
+
   std::shared_ptr<ModelDrawCall> CreateDrawCall();
 
  private:
@@ -41,6 +46,10 @@ class ModelDrawData {
   ~ModelDrawData();
 
   void AddDrawCall(std::shared_ptr<ModelDrawCall> draw_call);
+
+  bool RegisterSampler(std::shared_ptr<Sampler> sampler);
+
+  bool RegisterImage(std::shared_ptr<Image> image);
 
  private:
   std::vector<std::shared_ptr<ModelDrawCall>> draw_calls_;

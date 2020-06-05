@@ -36,6 +36,7 @@ TEST(ModelTest, CanLoadModelFromAsset) {
   ASSERT_EQ(model.GetScenes()[0]->GetNodes().size(), 1u);
 };
 
+#if 0
 static std::optional<DrawData> GetDrawDataForModelName(
     const std::string& model_name) {
   AssetLoader loader;
@@ -111,6 +112,7 @@ TEST(ModelTest, DrawDataTestBox) {
   EXPECT_EQ(draw_op.vertices.size(), 24u);
   EXPECT_EQ(draw_op.indices.size(), 36u);
 }
+#endif
 
 }  // namespace test
 }  // namespace model
