@@ -15,7 +15,8 @@ class PipelineLayoutBuilder {
 
   PipelineLayoutBuilder& AddPushConstantRange(vk::PushConstantRange range);
 
-  vk::UniquePipelineLayout CreatePipelineLayout(vk::Device device) const;
+  vk::UniquePipelineLayout CreatePipelineLayout(vk::Device device,
+                                                const char* debug_name) const;
 
  private:
   std::vector<vk::DescriptorSetLayout> descriptor_set_layouts_;

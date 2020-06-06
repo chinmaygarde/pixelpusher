@@ -20,6 +20,7 @@ PipelineLayoutBuilder& PipelineLayoutBuilder::AddPushConstantRange(
   return *this;
 }
 
+// TODO: Deprecate
 vk::UniquePipelineLayout CreatePipelineLayout(
     vk::Device device,
     vk::ArrayProxy<vk::DescriptorSetLayout> descriptors_set_layouts) {
@@ -34,7 +35,8 @@ vk::UniquePipelineLayout CreatePipelineLayout(
 }
 
 vk::UniquePipelineLayout PipelineLayoutBuilder::CreatePipelineLayout(
-    vk::Device device) const {
+    vk::Device device,
+    const char* debug_name) const {
   vk::PipelineLayoutCreateInfo pipeline_layout = {
       {},                                                     // flags
       static_cast<uint32_t>(descriptor_set_layouts_.size()),  // layouts size
@@ -43,7 +45,14 @@ vk::UniquePipelineLayout PipelineLayoutBuilder::CreatePipelineLayout(
           push_constant_ranges_.size()),  // push constants size
       push_constant_ranges_.data()        // push constants
   };
-  return UnwrapResult(device.createPipelineLayoutUnique(pipeline_layout));
+  auto result =
+      UnwrapResult(device.createPipelineLayoutUnique(pipeline_layout));
+
+  if (!result) {
+    return {};
+  }
+
+  SetDebugNameF(device, result.get(), "%s Pipeline Layout", debug_name);
 }
 
 }  // namespace pixel

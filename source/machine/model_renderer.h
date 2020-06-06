@@ -37,16 +37,8 @@ class ModelRenderer : public Renderer {
     size_t vertex_count = 0;
     DrawType type = DrawType::kIndexed;
   };
-  const std::string debug_name_;
+
   std::unique_ptr<const model::Model> model_;
-  std::unique_ptr<ShaderLibrary> shader_library_;
-  vk::UniqueDescriptorSetLayout descriptor_set_layout_;
-  vk::UniquePipelineLayout pipeline_layout_;
-  std::unique_ptr<Buffer> vertex_buffer_;
-  std::unique_ptr<Buffer> index_buffer_;
-  UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
-  DescriptorSets descriptor_sets_;
-  std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
   std::vector<DrawData> draw_data_;
   std::vector<vk::PrimitiveTopology> required_topologies_;
   bool is_valid_ = false;
