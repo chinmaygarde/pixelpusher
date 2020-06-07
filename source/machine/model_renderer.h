@@ -27,7 +27,6 @@ class ModelRenderer : public Renderer {
   enum class DrawType {
     kIndexed,
     kVertex,
-
   };
   struct DrawData {
     vk::PrimitiveTopology topology;

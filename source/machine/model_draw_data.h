@@ -2,13 +2,16 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "macros.h"
+#include "mapping.h"
 #include "memory_allocator.h"
 #include "model.h"
 #include "rendering_context.h"
 #include "shader_library.h"
+// TODO: Move the contents of this file into this one.
 #include "shaders/model_renderer.h"
 #include "vulkan.h"
 
@@ -21,12 +24,24 @@ using ModelTextureMap =
 
 class ModelDrawCall {
  public:
+  using VertexValueType = pixel::shaders::model_renderer::Vertex;
+  using IndexValueType = uint32_t;
+
   ModelDrawCall(vk::PrimitiveTopology topology,
                 std::vector<uint32_t> indices,
                 std::vector<pixel::shaders::model_renderer::Vertex> vertices,
                 ModelTextureMap textures);
 
   ~ModelDrawCall();
+
+  vk::PrimitiveTopology GetTopology() const;
+
+  const std::vector<uint32_t>& GetIndices() const;
+
+  const std::vector<pixel::shaders::model_renderer::Vertex>& GetVertices()
+      const;
+
+  const ModelTextureMap& GetTextures() const;
 
  private:
   vk::PrimitiveTopology topology_;
@@ -65,9 +80,20 @@ class ModelDrawCallBuilder {
   P_DISALLOW_COPY_AND_ASSIGN(ModelDrawCallBuilder);
 };
 
+struct ModelDeviceDrawData {
+  vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleStrip;
+  vk::DeviceSize vertex_buffer_offset = 0;
+  vk::DeviceSize index_buffer_offset = 0;
+  size_t index_count = 0;
+  size_t vertex_count = 0;
+};
+
 class ModelDeviceContext {
  public:
   ModelDeviceContext(std::shared_ptr<RenderingContext> context,
+                     std::unique_ptr<pixel::Buffer> vertex_buffer,
+                     std::unique_ptr<pixel::Buffer> index_buffer,
+                     std::vector<ModelDeviceDrawData> draw_data,
                      std::string debug_name);
 
   ~ModelDeviceContext();
@@ -75,11 +101,12 @@ class ModelDeviceContext {
  private:
   std::shared_ptr<RenderingContext> context_;
   const std::string debug_name_;
+  const std::vector<ModelDeviceDrawData> draw_data_;
   std::unique_ptr<ShaderLibrary> shader_library_;
   vk::UniqueDescriptorSetLayout descriptor_set_layout_;
   vk::UniquePipelineLayout pipeline_layout_;
-  std::unique_ptr<Buffer> vertex_buffer_;
-  std::unique_ptr<Buffer> index_buffer_;
+  std::unique_ptr<pixel::Buffer> vertex_buffer_;
+  std::unique_ptr<pixel::Buffer> index_buffer_;
   UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
   DescriptorSets descriptor_sets_;
   std::vector<vk::PrimitiveTopology> required_topologies_;
@@ -96,11 +123,6 @@ class ModelDeviceContext {
 
   bool CreatePipelineLayout();
 
-  bool CreateVertexBuffer(
-      const std::vector<pixel::shaders::model_renderer::Vertex>& vertices);
-
-  bool CreateIndexBuffer(const std::vector<uint32_t>& indices);
-
   bool CreateUniformBuffer();
 
   bool CreatePipelines();
@@ -112,14 +134,24 @@ class ModelDeviceContext {
 
 class ModelDrawData {
  public:
-  ModelDrawData();
+  ModelDrawData(std::string debug_name);
 
   ~ModelDrawData();
 
-  void AddDrawCall(std::shared_ptr<ModelDrawCall> draw_call);
+  bool AddDrawCall(std::shared_ptr<ModelDrawCall> draw_call);
+
+  std::shared_ptr<ModelDeviceContext> CreateModelDeviceContext(
+      std::shared_ptr<RenderingContext> context) const;
 
  private:
-  std::vector<std::shared_ptr<ModelDrawCall>> draw_calls_;
+  std::string debug_name_;
+  std::vector<std::shared_ptr<const ModelDrawCall>> draw_calls_;
+
+  std::unique_ptr<pixel::Buffer> CreateVertexBuffer(
+      const RenderingContext& context) const;
+
+  std::unique_ptr<pixel::Buffer> CreateIndexBuffer(
+      const RenderingContext& context) const;
 
   P_DISALLOW_COPY_AND_ASSIGN(ModelDrawData);
 };

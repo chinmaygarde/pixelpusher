@@ -65,16 +65,21 @@ std::shared_ptr<ModelDrawCall> ModelDrawCallBuilder::CreateDrawCall() {
 
 ModelDeviceContext::ModelDeviceContext(
     std::shared_ptr<RenderingContext> context,
+    std::unique_ptr<pixel::Buffer> vertex_buffer,
+    std::unique_ptr<pixel::Buffer> index_buffer,
+    std::vector<ModelDeviceDrawData> draw_data,
     std::string debug_name)
-    : context_(std::move(context)), debug_name_(std::move(debug_name)) {
-  is_valid_ = CreateShaderLibrary() &&         //
-              CreateDescriptorSetLayout() &&   //
-              CreateDescriptorSets() &&        //
-              BindDescriptorSets() &&          //
-              CreatePipelineLayout() &&        //
-              CreateVertexBuffer(vertices) &&  //
-              CreateIndexBuffer(indices) &&    //
-              CreateUniformBuffer() &&         //
+    : context_(std::move(context)),
+      debug_name_(std::move(debug_name)),
+      draw_data_(std::move(draw_data)),
+      vertex_buffer_(std::move(vertex_buffer)),
+      index_buffer_(std::move(index_buffer)) {
+  is_valid_ = CreateShaderLibrary() &&        //
+              CreateDescriptorSetLayout() &&  //
+              CreateDescriptorSets() &&       //
+              BindDescriptorSets() &&         //
+              CreatePipelineLayout() &&       //
+              CreateUniformBuffer() &&        //
               CreatePipelines();
 }
 
@@ -117,48 +122,6 @@ bool ModelDeviceContext::CreatePipelineLayout() {
       context_->GetDevice(), debug_name_.c_str());
 
   return static_cast<bool>(pipeline_layout_);
-}
-
-bool ModelDeviceContext::CreateVertexBuffer(
-    const std::vector<pixel::shaders::model_renderer::Vertex>& vertices) {
-  vertex_buffer_.reset();
-
-  if (vertices.empty()) {
-    return true;
-  }
-
-  vertex_buffer_ = context_->GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-      vk::BufferUsageFlagBits::eVertexBuffer,                 //
-      vertices,                                               //
-      context_->GetTransferCommandPool(),                     //
-      MakeStringF("%s Vertex", debug_name_.c_str()).c_str(),  //
-      nullptr,                                                //
-      nullptr,                                                //
-      nullptr,                                                //
-      nullptr);
-
-  return static_cast<bool>(vertex_buffer_);
-}
-
-bool ModelDeviceContext::CreateIndexBuffer(
-    const std::vector<uint32_t>& indices) {
-  index_buffer_.reset();
-
-  if (indices.empty()) {
-    return true;
-  }
-
-  index_buffer_ = context_->GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-      vk::BufferUsageFlagBits::eIndexBuffer,                 //
-      indices,                                               //
-      context_->GetTransferCommandPool(),                    //
-      MakeStringF("%s Index", debug_name_.c_str()).c_str(),  //
-      nullptr,                                               //
-      nullptr,                                               //
-      nullptr,                                               //
-      nullptr);
-
-  return static_cast<bool>(index_buffer_);
 }
 
 bool ModelDeviceContext::CreateUniformBuffer() {
@@ -277,16 +240,146 @@ void ModelDeviceContext::OnShaderLibraryDidUpdate() {
 // *** ModelDrawData
 // *****************************************************************************
 
-ModelDrawData::ModelDrawData() = default;
+ModelDrawData::ModelDrawData(std::string debug_name)
+    : debug_name_(std::move(debug_name)) {}
 
 ModelDrawData::~ModelDrawData() = default;
 
-void ModelDrawData::AddDrawCall(std::shared_ptr<ModelDrawCall> draw_call) {
+bool ModelDrawData::AddDrawCall(std::shared_ptr<ModelDrawCall> draw_call) {
   if (!draw_call) {
-    return;
+    return false;
   }
 
   draw_calls_.emplace_back(std::move(draw_call));
+  return true;
+}
+
+std::unique_ptr<pixel::Buffer> ModelDrawData::CreateVertexBuffer(
+    const RenderingContext& context) const {
+  vk::DeviceSize vertex_buffer_size = 0;
+  for (const auto& call : draw_calls_) {
+    const auto& vertices = call->GetVertices();
+    vertex_buffer_size +=
+        vertices.size() * sizeof(ModelDrawCall::VertexValueType);
+  }
+
+  auto copy_callback = [&](uint8_t* staging_buffer,
+                           size_t staging_buffer_size) -> bool {
+    if (staging_buffer_size < vertex_buffer_size) {
+      return false;
+    }
+
+    size_t current_size = 0;
+    for (const auto& call : draw_calls_) {
+      const auto& vertices = call->GetVertices();
+      const size_t copy_size =
+          vertices.size() * sizeof(ModelDrawCall::VertexValueType);
+      ::memcpy(staging_buffer + staging_buffer_size,  //
+               vertices.data(),                       //
+               copy_size                              //
+      );
+      current_size += copy_size;
+    }
+
+    return true;
+  };
+
+  return context.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+      vk::BufferUsageFlagBits::eVertexBuffer,                   //
+      copy_callback,                                            //
+      vertex_buffer_size,                                       //
+      context.GetTransferCommandPool(),                         //
+      MakeStringF("%s Vertices", debug_name_.c_str()).c_str(),  //
+      nullptr,                                                  //
+      nullptr,                                                  //
+      nullptr,                                                  //
+      nullptr                                                   //
+  );
+}
+
+std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
+    const RenderingContext& context) const {
+  vk::DeviceSize index_buffer_size = 0;
+  for (const auto& call : draw_calls_) {
+    const auto& indices = call->GetIndices();
+    index_buffer_size += indices.size() * sizeof(ModelDrawCall::IndexValueType);
+  }
+
+  auto copy_callback = [&](uint8_t* staging_buffer,
+                           size_t staging_buffer_size) -> bool {
+    if (staging_buffer_size < index_buffer_size) {
+      return false;
+    }
+
+    size_t current_size = 0;
+    for (const auto& call : draw_calls_) {
+      const auto& indices = call->GetIndices();
+      const size_t copy_size =
+          indices.size() * sizeof(ModelDrawCall::IndexValueType);
+      ::memcpy(staging_buffer + staging_buffer_size,  //
+               indices.data(),                        //
+               copy_size                              //
+      );
+      current_size += copy_size;
+    }
+
+    return true;
+  };
+
+  return context.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
+      vk::BufferUsageFlagBits::eVertexBuffer,                  //
+      copy_callback,                                           //
+      index_buffer_size,                                       //
+      context.GetTransferCommandPool(),                        //
+      MakeStringF("%s Indices", debug_name_.c_str()).c_str(),  //
+      nullptr,                                                 //
+      nullptr,                                                 //
+      nullptr,                                                 //
+      nullptr                                                  //
+  );
+}
+
+std::shared_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
+    std::shared_ptr<RenderingContext> context) const {
+  if (!context || context->IsValid()) {
+    return nullptr;
+  }
+
+  auto vertex_buffer = CreateVertexBuffer(*context);
+  auto index_buffer = CreateIndexBuffer(*context);
+
+  // TODO: Remove this and add fence waits.
+  context->GetDevice().waitIdle();
+
+  std::set<vk::PrimitiveTopology> required_topologies;
+  std::vector<ModelDeviceDrawData> draw_data;
+  vk::DeviceSize vertex_buffer_offset = 0;
+  vk::DeviceSize index_buffer_offset = 0;
+
+  for (const auto& call : draw_calls_) {
+    required_topologies.insert(call->GetTopology());
+
+    ModelDeviceDrawData data;
+    data.topology = call->GetTopology();
+    data.vertex_buffer_offset = vertex_buffer_offset;
+    data.index_buffer_offset = index_buffer_offset;
+    data.vertex_count = call->GetVertices().size();
+    data.index_count = call->GetIndices().size();
+
+    vertex_buffer_offset +=
+        call->GetVertices().size() * sizeof(ModelDrawCall::VertexValueType);
+    index_buffer_offset +=
+        call->GetIndices().size() * sizeof(ModelDrawCall::IndexValueType);
+
+    draw_data.push_back(data);
+  }
+
+  return std::make_shared<ModelDeviceContext>(context,                   //
+                                              std::move(vertex_buffer),  //
+                                              std::move(index_buffer),   //
+                                              std::move(draw_data),      //
+                                              debug_name_,               //
+  );
 }
 
 }  // namespace model

@@ -257,18 +257,70 @@ std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
     vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
     vk::ArrayProxy<vk::Semaphore> signal_semaphores,
     std::function<void(void)> on_done) {
+  if (buffer_size == 0 || buffer == nullptr) {
+    return nullptr;
+  }
+
+  auto copy_callback = [buffer, buffer_size](
+                           uint8_t* staging_buffer,
+                           size_t staging_buffer_size) -> bool {
+    if (buffer_size < staging_buffer_size) {
+      return false;
+    }
+
+    ::memcpy(staging_buffer, buffer, buffer_size);
+    return true;
+  };
+  return CreateDeviceLocalBufferCopy(usage,              //
+                                     copy_callback,      //
+                                     buffer_size,        //
+                                     pool,               //
+                                     debug_name,         //
+                                     wait_semaphores,    //
+                                     wait_stages,        //
+                                     signal_semaphores,  //
+                                     on_done             //
+  );
+}
+
+std::unique_ptr<Buffer> MemoryAllocator::CreateDeviceLocalBufferCopy(
+    vk::BufferUsageFlags usage,
+    std::function<bool(uint8_t* buffer, size_t buffer_size)> copy_callback,
+    size_t buffer_size,
+    const CommandPool& pool,
+    const char* debug_name,
+    vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+    vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+    vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+    std::function<void(void)> on_done) {
   if (!IsValid()) {
     return nullptr;
   }
 
-  // Create a host visible staging buffer.
-  auto staging_buffer =
-      CreateHostVisibleBufferCopy(usage | vk::BufferUsageFlagBits::eTransferSrc,
-                                  buffer, buffer_size, debug_name);
+  if (buffer_size == 0 || !copy_callback) {
+    return nullptr;
+  }
+
+  auto staging_buffer = CreateHostVisibleBuffer(
+      usage | vk::BufferUsageFlagBits::eTransferSrc,      //
+      buffer_size,                                        //
+      MakeStringF("%s Host Staging", debug_name).c_str()  //
+  );
 
   if (!staging_buffer) {
-    P_ERROR << "Could not create staging buffer.";
     return nullptr;
+  }
+
+  {
+    BufferMapping mapping(*staging_buffer);
+    if (!mapping) {
+      return nullptr;
+    }
+
+    if (!copy_callback(reinterpret_cast<uint8_t*>(mapping.GetMapping()),
+                       buffer_size)) {
+      return nullptr;
+    }
   }
 
   // Copy the staging buffer to the device.

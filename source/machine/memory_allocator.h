@@ -145,6 +145,17 @@ class MemoryAllocator {
       vk::ArrayProxy<vk::Semaphore> signal_semaphores,
       std::function<void(void)> on_done);
 
+  std::unique_ptr<Buffer> CreateDeviceLocalBufferCopy(
+      vk::BufferUsageFlags usage,
+      std::function<bool(uint8_t* buffer, size_t buffer_size)> copy_callback,
+      size_t buffer_size,
+      const CommandPool& pool,
+      const char* debug_name,
+      vk::ArrayProxy<vk::Semaphore> wait_semaphores,
+      vk::ArrayProxy<vk::PipelineStageFlags> wait_stages,
+      vk::ArrayProxy<vk::Semaphore> signal_semaphores,
+      std::function<void(void)> on_done);
+
   std::unique_ptr<Image> CreateDeviceLocalImageCopy(
       vk::ImageCreateInfo image_info,
       const void* image_data,
