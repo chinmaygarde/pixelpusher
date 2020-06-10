@@ -53,6 +53,8 @@ vk::UniquePipelineLayout PipelineLayoutBuilder::CreatePipelineLayout(
   }
 
   SetDebugNameF(device, result.get(), "%s Pipeline Layout", debug_name);
+
+  return result;
 }
 
 }  // namespace pixel

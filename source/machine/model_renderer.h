@@ -5,9 +5,9 @@
 #include "asset_loader.h"
 #include "macros.h"
 #include "model.h"
+#include "model_draw_data.h"
 #include "renderer.h"
 #include "shader_library.h"
-#include "shaders/model_renderer.h"
 #include "unshared_weak.h"
 #include "vulkan.h"
 
@@ -24,22 +24,8 @@ class ModelRenderer : public Renderer {
   ~ModelRenderer() override;
 
  private:
-  enum class DrawType {
-    kIndexed,
-    kVertex,
-  };
-  struct DrawData {
-    vk::PrimitiveTopology topology;
-    vk::DeviceSize vertex_buffer_offset = 0;
-    vk::DeviceSize index_buffer_offset = 0;
-    size_t index_count = 0;
-    size_t vertex_count = 0;
-    DrawType type = DrawType::kIndexed;
-  };
-
-  std::unique_ptr<const model::Model> model_;
-  std::vector<DrawData> draw_data_;
-  std::vector<vk::PrimitiveTopology> required_topologies_;
+  const std::string debug_name_;
+  std::unique_ptr<model::ModelDeviceContext> model_device_context_;
   bool is_valid_ = false;
 
   // |Renderer|
@@ -56,10 +42,6 @@ class ModelRenderer : public Renderer {
 
   // |Renderer|
   bool Teardown() override;
-
-  void OnShaderLibraryDidUpdate();
-
-  bool RebuildPipelines();
 
   P_DISALLOW_COPY_AND_ASSIGN(ModelRenderer);
 };

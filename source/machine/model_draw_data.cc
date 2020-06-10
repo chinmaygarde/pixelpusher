@@ -236,6 +236,75 @@ void ModelDeviceContext::OnShaderLibraryDidUpdate() {
   }
 }
 
+const UniformBuffer<shaders::model_renderer::UniformBuffer>&
+ModelDeviceContext::GetUniformBuffer() const {
+  return uniform_buffer_;
+}
+
+bool ModelDeviceContext::Render(vk::CommandBuffer buffer) {
+  if (draw_data_.empty()) {
+    return true;
+  }
+
+  if (!vertex_buffer_) {
+    return false;
+  }
+
+  if (!uniform_buffer_.UpdateUniformData()) {
+    return false;
+  }
+
+  const auto uniform_index = uniform_buffer_.GetCurrentIndex();
+
+  if (uniform_index >= descriptor_sets_.GetSize()) {
+    return false;
+  }
+
+  buffer.setScissor(0u, {context_->GetScissorRect()});
+  buffer.setViewport(0u, {context_->GetViewport()});
+
+  for (const auto& draw : draw_data_) {
+    auto found = pipelines_.find(draw.topology);
+    if (found == pipelines_.end()) {
+      return false;
+    }
+
+    buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, found->second.get());
+    buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer},
+                             {draw.vertex_buffer_offset});
+    buffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics,  // bind point
+        pipeline_layout_.get(),            // layout
+        0u,                                // first set
+        descriptor_sets_[uniform_index],   // descriptor set
+        nullptr                            // dynamic_offsets
+    );
+
+    if (draw.index_count > 0u) {
+      if (!index_buffer_) {
+        return false;
+      }
+
+      buffer.bindIndexBuffer(index_buffer_->buffer, draw.index_buffer_offset,
+                             vk::IndexType::eUint32);
+      buffer.drawIndexed(draw.index_count,  // index count
+                         1u,                // instance count
+                         0u,                // first index
+                         0u,                // vertex offset
+                         0u                 // first instance
+      );
+    } else {
+      buffer.draw(draw.vertex_count,  // vertex count
+                  1u,                 // instance count
+                  0u,                 // first vertex
+                  0u                  // first instance
+      );
+    }
+  }
+
+  return false;
+}
+
 // *****************************************************************************
 // *** ModelDrawData
 // *****************************************************************************
@@ -378,8 +447,16 @@ std::shared_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
                                               std::move(vertex_buffer),  //
                                               std::move(index_buffer),   //
                                               std::move(draw_data),      //
-                                              debug_name_,               //
+                                              debug_name_                //
   );
+}
+
+bool ModelDrawData::RegisterSampler(std::shared_ptr<Sampler> sampler) {
+  return false;
+}
+
+bool ModelDrawData::RegisterImage(std::shared_ptr<Image> image) {
+  return false;
 }
 
 }  // namespace model
