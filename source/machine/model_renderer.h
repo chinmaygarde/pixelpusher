@@ -7,8 +7,6 @@
 #include "model.h"
 #include "model_draw_data.h"
 #include "renderer.h"
-#include "shader_library.h"
-#include "unshared_weak.h"
 #include "vulkan.h"
 
 namespace pixel {

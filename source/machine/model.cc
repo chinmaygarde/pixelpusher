@@ -278,9 +278,9 @@ static size_t SizeOfComponentType(ComponentType type) {
   return 0;
 }
 
-std::shared_ptr<ModelDrawData> Model::CreateDrawData(
+std::unique_ptr<ModelDrawData> Model::CreateDrawData(
     std::string debug_name) const {
-  auto draw_data = std::make_shared<ModelDrawData>(std::move(debug_name));
+  auto draw_data = std::make_unique<ModelDrawData>(std::move(debug_name));
 
   for (const auto& sampler : samplers_) {
     if (!draw_data->RegisterSampler(sampler)) {

@@ -98,8 +98,7 @@ class ModelDeviceContext {
 
   ~ModelDeviceContext();
 
-  const UniformBuffer<shaders::model_renderer::UniformBuffer>&
-  GetUniformBuffer() const;
+  UniformBuffer<shaders::model_renderer::UniformBuffer>& GetUniformBuffer();
 
   bool Render(vk::CommandBuffer buffer);
 
@@ -145,7 +144,7 @@ class ModelDrawData {
 
   bool AddDrawCall(std::shared_ptr<ModelDrawCall> draw_call);
 
-  std::shared_ptr<ModelDeviceContext> CreateModelDeviceContext(
+  std::unique_ptr<ModelDeviceContext> CreateModelDeviceContext(
       std::shared_ptr<RenderingContext> context) const;
 
   bool RegisterSampler(std::shared_ptr<Sampler> sampler);

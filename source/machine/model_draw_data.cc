@@ -7,6 +7,10 @@
 namespace pixel {
 namespace model {
 
+// *****************************************************************************
+// *** ModelDrawCall
+// *****************************************************************************
+
 ModelDrawCall::ModelDrawCall(
     vk::PrimitiveTopology topology,
     std::vector<uint32_t> indices,
@@ -18,6 +22,23 @@ ModelDrawCall::ModelDrawCall(
       textures_(std::move(textures)) {}
 
 ModelDrawCall::~ModelDrawCall() = default;
+
+vk::PrimitiveTopology ModelDrawCall::GetTopology() const {
+  return topology_;
+}
+
+const std::vector<uint32_t>& ModelDrawCall::GetIndices() const {
+  return indices_;
+}
+
+const std::vector<pixel::shaders::model_renderer::Vertex>&
+ModelDrawCall::GetVertices() const {
+  return vertices_;
+}
+
+const ModelTextureMap& ModelDrawCall::GetTextures() const {
+  return textures_;
+}
 
 // *****************************************************************************
 // *** ModelDrawCallBuilder
@@ -236,8 +257,8 @@ void ModelDeviceContext::OnShaderLibraryDidUpdate() {
   }
 }
 
-const UniformBuffer<shaders::model_renderer::UniformBuffer>&
-ModelDeviceContext::GetUniformBuffer() const {
+UniformBuffer<shaders::model_renderer::UniformBuffer>&
+ModelDeviceContext::GetUniformBuffer() {
   return uniform_buffer_;
 }
 
@@ -408,7 +429,7 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
   );
 }
 
-std::shared_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
+std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     std::shared_ptr<RenderingContext> context) const {
   if (!context || context->IsValid()) {
     return nullptr;
@@ -443,7 +464,7 @@ std::shared_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     draw_data.push_back(data);
   }
 
-  return std::make_shared<ModelDeviceContext>(context,                   //
+  return std::make_unique<ModelDeviceContext>(context,                   //
                                               std::move(vertex_buffer),  //
                                               std::move(index_buffer),   //
                                               std::move(draw_data),      //

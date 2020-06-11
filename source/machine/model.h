@@ -591,7 +591,7 @@ class Model final {
 
   const Lights& GetLights() const;
 
-  std::shared_ptr<ModelDrawData> CreateDrawData(std::string debug_name) const;
+  std::unique_ptr<ModelDrawData> CreateDrawData(std::string debug_name) const;
 
  private:
   friend class Accessor;
