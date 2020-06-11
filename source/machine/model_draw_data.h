@@ -102,6 +102,8 @@ class ModelDeviceContext {
 
   bool Render(vk::CommandBuffer buffer);
 
+  bool IsValid() const;
+
  private:
   std::shared_ptr<RenderingContext> context_;
   const std::string debug_name_;
@@ -113,7 +115,7 @@ class ModelDeviceContext {
   std::unique_ptr<pixel::Buffer> index_buffer_;
   UniformBuffer<shaders::model_renderer::UniformBuffer> uniform_buffer_;
   DescriptorSets descriptor_sets_;
-  std::vector<vk::PrimitiveTopology> required_topologies_;
+  std::set<vk::PrimitiveTopology> required_topologies_;
   std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
   bool is_valid_ = false;
 

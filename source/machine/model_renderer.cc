@@ -38,7 +38,7 @@ ModelRenderer::ModelRenderer(std::shared_ptr<RenderingContext> context,
   }
 
   auto model_device_context = draw_data->CreateModelDeviceContext(context);
-  if (!model_device_context) {
+  if (!model_device_context || !model_device_context->IsValid()) {
     P_ERROR << "Could not create model device context.";
     return;
   }
@@ -90,6 +90,10 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
 
   model_device_context_->GetUniformBuffer().prototype.mvp =
       projection * view * model;
+
+  if (!model_device_context_->Render(buffer)) {
+    return false;
+  }
 
   return true;
 }

@@ -95,16 +95,50 @@ ModelDeviceContext::ModelDeviceContext(
       draw_data_(std::move(draw_data)),
       vertex_buffer_(std::move(vertex_buffer)),
       index_buffer_(std::move(index_buffer)) {
-  is_valid_ = CreateShaderLibrary() &&        //
-              CreateDescriptorSetLayout() &&  //
-              CreateDescriptorSets() &&       //
-              BindDescriptorSets() &&         //
-              CreatePipelineLayout() &&       //
-              CreateUniformBuffer() &&        //
-              CreatePipelines();
+  for (const auto& draw_call : draw_data_) {
+    required_topologies_.insert(draw_call.topology);
+  }
+
+  if (!CreateShaderLibrary()) {
+    return;
+  }
+
+  if (!CreateDescriptorSetLayout()) {
+    return;
+  }
+
+  if (!CreateDescriptorSets()) {
+    return;
+  }
+
+  if (!CreateUniformBuffer()) {
+    return;
+  }
+
+  if (!BindDescriptorSets()) {
+    return;
+  }
+
+  if (!CreatePipelineLayout()) {
+    return;
+  }
+
+  if (!CreatePipelines()) {
+    return;
+  }
+
+  if (pipelines_.size() != required_topologies_.size()) {
+    return;
+  }
+
+  is_valid_ = true;
 }
 
 ModelDeviceContext::~ModelDeviceContext() = default;
+
+bool ModelDeviceContext::IsValid() const {
+  return is_valid_;
+}
 
 bool ModelDeviceContext::CreateShaderLibrary() {
   shader_library_ = std::make_unique<ShaderLibrary>(context_->GetDevice());
@@ -263,6 +297,10 @@ ModelDeviceContext::GetUniformBuffer() {
 }
 
 bool ModelDeviceContext::Render(vk::CommandBuffer buffer) {
+  if (!IsValid()) {
+    return false;
+  }
+
   if (draw_data_.empty()) {
     return true;
   }
@@ -323,7 +361,7 @@ bool ModelDeviceContext::Render(vk::CommandBuffer buffer) {
     }
   }
 
-  return false;
+  return true;
 }
 
 // *****************************************************************************
@@ -364,9 +402,9 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateVertexBuffer(
       const auto& vertices = call->GetVertices();
       const size_t copy_size =
           vertices.size() * sizeof(ModelDrawCall::VertexValueType);
-      ::memcpy(staging_buffer + staging_buffer_size,  //
-               vertices.data(),                       //
-               copy_size                              //
+      ::memcpy(staging_buffer + current_size,  //
+               vertices.data(),                //
+               copy_size                       //
       );
       current_size += copy_size;
     }
@@ -406,9 +444,9 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
       const auto& indices = call->GetIndices();
       const size_t copy_size =
           indices.size() * sizeof(ModelDrawCall::IndexValueType);
-      ::memcpy(staging_buffer + staging_buffer_size,  //
-               indices.data(),                        //
-               copy_size                              //
+      ::memcpy(staging_buffer + current_size,  //
+               indices.data(),                 //
+               copy_size                       //
       );
       current_size += copy_size;
     }
@@ -417,7 +455,7 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
   };
 
   return context.GetMemoryAllocator().CreateDeviceLocalBufferCopy(
-      vk::BufferUsageFlagBits::eVertexBuffer,                  //
+      vk::BufferUsageFlagBits::eIndexBuffer,                   //
       copy_callback,                                           //
       index_buffer_size,                                       //
       context.GetTransferCommandPool(),                        //
@@ -431,7 +469,7 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
 
 std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     std::shared_ptr<RenderingContext> context) const {
-  if (!context || context->IsValid()) {
+  if (!context || !context->IsValid()) {
     return nullptr;
   }
 
@@ -464,20 +502,27 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     draw_data.push_back(data);
   }
 
-  return std::make_unique<ModelDeviceContext>(context,                   //
-                                              std::move(vertex_buffer),  //
-                                              std::move(index_buffer),   //
-                                              std::move(draw_data),      //
-                                              debug_name_                //
-  );
+  auto device_context =
+      std::make_unique<ModelDeviceContext>(context,                   //
+                                           std::move(vertex_buffer),  //
+                                           std::move(index_buffer),   //
+                                           std::move(draw_data),      //
+                                           debug_name_                //
+      );
+
+  if (!device_context->IsValid()) {
+    return nullptr;
+  }
+
+  return device_context;
 }
 
 bool ModelDrawData::RegisterSampler(std::shared_ptr<Sampler> sampler) {
-  return false;
+  return true;
 }
 
 bool ModelDrawData::RegisterImage(std::shared_ptr<Image> image) {
-  return false;
+  return true;
 }
 
 }  // namespace model
