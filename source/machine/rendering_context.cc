@@ -195,4 +195,13 @@ RenderingContext::GetOptimalSupportedDepthAttachmentFormat() const {
   return std::nullopt;
 }
 
+std::optional<vk::Format>
+RenderingContext::GetImageFormatForHostImageAllocation(
+    size_t components,
+    size_t bits_per_component,
+    ScalarFormat component_format) const {
+  // TODO: This is just a placeholder for better format resolution. Fill this
+  // out for real formats and have them checked against device features.
+}
+
 }  // namespace pixel

@@ -74,6 +74,11 @@ class RenderingContext {
 
   std::optional<vk::Format> GetOptimalSupportedDepthAttachmentFormat() const;
 
+  std::optional<vk::Format> GetImageFormatForHostImageAllocation(
+      size_t components,
+      size_t bits_per_component,
+      ScalarFormat component_format) const;
+
  private:
   const Delegate& delegate_;
   const vk::Instance instance_;

@@ -1053,14 +1053,35 @@ Image::Image() = default;
 
 Image::~Image() = default;
 
+static ScalarFormat PixelTypeToScalarFormat(int pixel_type) {
+  switch (pixel_type) {
+    case TINYGLTF_COMPONENT_TYPE_BYTE:
+      return ScalarFormat::kByte;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+      return ScalarFormat::kUnsignedByte;
+    case TINYGLTF_COMPONENT_TYPE_SHORT:
+      return ScalarFormat::kShort;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+      return ScalarFormat::kUnsignedShort;
+    case TINYGLTF_COMPONENT_TYPE_INT:
+      return ScalarFormat::kInt;
+    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+      return ScalarFormat::kUnsignedInt;
+    case TINYGLTF_COMPONENT_TYPE_FLOAT:
+      return ScalarFormat::kFloat;
+    case TINYGLTF_COMPONENT_TYPE_DOUBLE:
+      return ScalarFormat::kDouble;
+  }
+  return ScalarFormat::kUnknown;
+}
+
 void Image::ReadFromArchive(const tinygltf::Image& image) {
   name_ = image.name;
   width_ = std::max<int>(0u, image.width);
   height_ = std::max<int>(0u, image.height);
   components_ = std::max<int>(0u, image.component);
-  bits_per_channel_ = std::max<int>(0u, image.bits);
-  pixel_stride_ =
-      std::max<int>(0u, tinygltf::GetComponentSizeInBytes(image.pixel_type));
+  bits_per_component_ = std::max<int>(0u, image.bits);
+  component_format_ = PixelTypeToScalarFormat(image.pixel_type);
   decompressed_image_ = CopyMapping(image.image.data(), image.image.size());
   mime_type_ = image.mimeType;
   uri_ = image.uri;
@@ -1073,7 +1094,57 @@ void Image::ResolveReferences(const Model& model,
 
 std::unique_ptr<pixel::ImageView> Image::CreateImageView(
     const RenderingContext& context) const {
-  return nullptr;
+  if (width_ == 0 || height_ == 0) {
+    return nullptr;
+  }
+
+  if (!decompressed_image_ || decompressed_image_->GetData() == nullptr) {
+    return nullptr;
+  }
+
+  auto format =
+      context.GetImageFormatForHostImageAllocation(components_,          //
+                                                   bits_per_component_,  //
+                                                   component_format_     //
+      );
+
+  if (!format.has_value()) {
+    return nullptr;
+  }
+
+  vk::ImageCreateInfo image_create_info = {
+      {},                  // flags
+      vk::ImageType::e2D,  // image type
+      format.value(),      // image format
+      vk::Extent3D{static_cast<uint32_t>(width_),
+                   static_cast<uint32_t>(height_), 1u},  // extents
+      1u,                                                // mip levels
+      1u,                                                // array layers
+      vk::SampleCountFlagBits::e1,                       // samples
+      vk::ImageTiling::eOptimal,                         // tiling
+      vk::ImageUsageFlagBits::eSampled |
+          vk::ImageUsageFlagBits::eTransferDst,  // usage
+      vk::SharingMode::eExclusive,               // sharing (we are not)
+      0u,                          // queue family index count (for sharing)
+      nullptr,                     // queue families (for sharing)
+      vk::ImageLayout::eUndefined  // initial layout
+  };
+
+  // TODO: Figure out device synchronization.
+
+  auto image = context.GetMemoryAllocator().CreateDeviceLocalImageCopy(
+      image_create_info,                              //
+      decompressed_image_->GetData(),                 //
+      decompressed_image_->GetSize(),                 //
+      context.GetTransferCommandPool(),               //
+      name_.empty() ? "Model Image" : name_.c_str(),  //
+      nullptr,                                        // wait semaphores
+      nullptr,                                        //  wait stages
+      nullptr,                                        // signal semaphores
+      nullptr                                         // on done
+  );
+
+  xxx
 }
 
 // *****************************************************************************

@@ -439,8 +439,8 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
   size_t width_ = 0;
   size_t height_ = 0;
   size_t components_ = 0;
-  size_t bits_per_channel_ = 0;
-  size_t pixel_stride_ = 0;
+  size_t bits_per_component_ = 0;
+  ScalarFormat component_format_ = ScalarFormat::kUnknown;
   // Default image decompression can be disabled by the Image::as_is flag and a
   // custom image decompression routine.
   std::unique_ptr<Mapping> decompressed_image_;

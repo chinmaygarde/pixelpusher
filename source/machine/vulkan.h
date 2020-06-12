@@ -11,6 +11,18 @@
 
 namespace pixel {
 
+enum class ScalarFormat {
+  kUnknown,
+  kByte,
+  kUnsignedByte,
+  kShort,
+  kUnsignedShort,
+  kInt,
+  kUnsignedInt,
+  kFloat,
+  kDouble
+};
+
 template <class T>
 inline auto UnwrapHandles(
     const vk::ArrayProxy<
