@@ -1,8 +1,11 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "command_buffer.h"
 #include "command_pool.h"
 #include "descriptor_pool.h"
+#include "hash.h"
 #include "macros.h"
 #include "memory_allocator.h"
 #include "queue_selection.h"
@@ -74,12 +77,39 @@ class RenderingContext {
 
   std::optional<vk::Format> GetOptimalSupportedDepthAttachmentFormat() const;
 
-  std::optional<vk::Format> GetImageFormatForHostImageAllocation(
+  std::optional<vk::Format> GetOptimalSampledImageFormat(
       size_t components,
       size_t bits_per_component,
       ScalarFormat component_format) const;
 
  private:
+  struct ImageFormatKey {
+    size_t components = 0u;
+    size_t bits_per_component = 0u;
+    ScalarFormat component_format = ScalarFormat::kUnknown;
+
+    struct Hash {
+      constexpr std::size_t operator()(const ImageFormatKey& k) const {
+        return HashCombine(k.components, k.bits_per_component,
+                           k.component_format);
+      }
+    };
+
+    struct Equal {
+      constexpr bool operator()(const ImageFormatKey& lhs,
+                                const ImageFormatKey& rhs) const {
+        return lhs.components == rhs.components &&
+               lhs.bits_per_component == rhs.bits_per_component &&
+               lhs.component_format == rhs.component_format;
+      }
+    };
+  };
+
+  using ImageFormatsMap = std::unordered_map<ImageFormatKey,
+                                             vk::Format,
+                                             ImageFormatKey::Hash,
+                                             ImageFormatKey::Equal>;
+
   const Delegate& delegate_;
   const vk::Instance instance_;
   const vk::PhysicalDevice physical_device_;
@@ -92,7 +122,10 @@ class RenderingContext {
   std::shared_ptr<CommandPool> transfer_command_pool_;
   std::unique_ptr<DescriptorPool> descriptor_pool_;
   const vk::PhysicalDeviceFeatures features_;
+  ImageFormatsMap optimal_image_formats_;
   bool is_valid_ = false;
+
+  bool ReadOptimalImageFormats();
 
   P_DISALLOW_COPY_AND_ASSIGN(RenderingContext);
 };

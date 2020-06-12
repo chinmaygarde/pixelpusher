@@ -1,5 +1,6 @@
 #include "rendering_context.h"
 
+#include <set>
 #include <vector>
 
 #include "logging.h"
@@ -64,6 +65,10 @@ RenderingContext::RenderingContext(const Delegate& delegate,
 
   descriptor_pool_ = std::make_unique<DescriptorPool>(device_, debug_name);
   if (!descriptor_pool_) {
+    return;
+  }
+
+  if (!ReadOptimalImageFormats()) {
     return;
   }
 
@@ -171,6 +176,31 @@ bool RenderingContext::FormatSupportsFeatures(
   return true;
 }
 
+bool RenderingContext::ReadOptimalImageFormats() {
+  auto add_if_supported = [&](ImageFormatKey key, vk::Format format) {
+    if (optimal_image_formats_.count(key) != 0u) {
+      // We already found a supported format for this key. No need to look
+      // further.
+      return;
+    }
+    if (FormatSupportsFeatures(
+            format,                                   // format
+            {},                                       // buffer
+            {},                                       // linear
+            vk::FormatFeatureFlagBits::eSampledImage  // optimal
+            )) {
+      optimal_image_formats_[key] = format;
+    };
+  };
+
+  // Add more here are they are encountered. This list is a pretty conservative.
+  add_if_supported({4, 8, ScalarFormat::kByte}, vk::Format::eR8G8B8A8Sint);
+  add_if_supported({4, 8, ScalarFormat::kUnsignedByte},
+                   vk::Format::eR8G8B8A8Uint);
+
+  return !optimal_image_formats_.empty();
+}
+
 const std::vector<vk::Format> kKnownDepthStencilFormats = {
     vk::Format::eD24UnormS8Uint,   //
     vk::Format::eD16UnormS8Uint,   //
@@ -195,13 +225,22 @@ RenderingContext::GetOptimalSupportedDepthAttachmentFormat() const {
   return std::nullopt;
 }
 
-std::optional<vk::Format>
-RenderingContext::GetImageFormatForHostImageAllocation(
+std::optional<vk::Format> RenderingContext::GetOptimalSampledImageFormat(
     size_t components,
     size_t bits_per_component,
     ScalarFormat component_format) const {
-  // TODO: This is just a placeholder for better format resolution. Fill this
-  // out for real formats and have them checked against device features.
+  ImageFormatKey key = {components, bits_per_component, component_format};
+
+  auto found = optimal_image_formats_.find(key);
+
+  if (found == optimal_image_formats_.end()) {
+    P_ERROR << "No supported image format for an image with " << components
+            << " component(s) " << bits_per_component
+            << " bit(s) per component and a scalar format.";
+    return std::nullopt;
+  }
+
+  return found->second;
 }
 
 }  // namespace pixel

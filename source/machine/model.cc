@@ -1102,11 +1102,10 @@ std::unique_ptr<pixel::ImageView> Image::CreateImageView(
     return nullptr;
   }
 
-  auto format =
-      context.GetImageFormatForHostImageAllocation(components_,          //
-                                                   bits_per_component_,  //
-                                                   component_format_     //
-      );
+  auto format = context.GetOptimalSampledImageFormat(components_,          //
+                                                     bits_per_component_,  //
+                                                     component_format_     //
+  );
 
   if (!format.has_value()) {
     return nullptr;
@@ -1144,7 +1143,37 @@ std::unique_ptr<pixel::ImageView> Image::CreateImageView(
       nullptr                                         // on done
   );
 
-  xxx
+  if (!image) {
+    return nullptr;
+  }
+
+  vk::ImageViewCreateInfo image_view_create_info = {
+      {},                      // flags
+      image->image,            // image
+      vk::ImageViewType::e2D,  // type
+      format.value(),          // format
+      {},                      // component mapping
+      vk::ImageSubresourceRange{
+          vk::ImageAspectFlagBits::eColor,  // aspect
+          0u,                               // base mip level
+          1u,                               // level count
+          0u,                               // base array layer
+          1u,                               // layer count
+      },                                    // subresource range
+  };
+
+  auto image_view = UnwrapResult(
+      context.GetDevice().createImageViewUnique(image_view_create_info));
+
+  if (!image_view) {
+    return nullptr;
+  }
+
+  SetDebugName(context.GetDevice(), image_view.get(),
+               name_.empty() ? "Model Image View" : name_.c_str());
+
+  return std::make_unique<pixel::ImageView>(std::move(image),
+                                            std::move(image_view));
 }
 
 // *****************************************************************************
