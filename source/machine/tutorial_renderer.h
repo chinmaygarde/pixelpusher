@@ -11,6 +11,7 @@
 #include "renderer.h"
 #include "shader_library.h"
 #include "shaders/triangle.h"
+#include "uniform_buffer.h"
 #include "vulkan.h"
 
 namespace pixel {

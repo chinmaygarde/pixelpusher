@@ -45,6 +45,8 @@ add_library(machine_lib
   tiny_gltf.h
   tutorial_renderer.cc
   tutorial_renderer.h
+  uniform_buffer.cc
+  uniform_buffer.h
   vulkan.h
   vulkan_connection.cc
   vulkan_connection.h

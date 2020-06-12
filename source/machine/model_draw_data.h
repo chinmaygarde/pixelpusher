@@ -12,6 +12,7 @@
 #include "model.h"
 #include "rendering_context.h"
 #include "shader_library.h"
+#include "uniform_buffer.h"
 // TODO: Move the contents of this file into this one.
 #include "shaders/model_renderer.h"
 #include "vulkan.h"
