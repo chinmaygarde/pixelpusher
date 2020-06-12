@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 
+#include "image.h"
 #include "macros.h"
 #include "mapping.h"
 #include "memory_allocator.h"
@@ -117,6 +118,8 @@ class ModelDeviceContext {
   DescriptorSets descriptor_sets_;
   std::set<vk::PrimitiveTopology> required_topologies_;
   std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
+  std::vector<vk::UniqueSampler> samplers_;
+  std::vector<std::unique_ptr<pixel::ImageView>> images_;
   bool is_valid_ = false;
 
   bool CreateShaderLibrary();
@@ -149,10 +152,6 @@ class ModelDrawData {
   std::unique_ptr<ModelDeviceContext> CreateModelDeviceContext(
       std::shared_ptr<RenderingContext> context) const;
 
-  bool RegisterSampler(std::shared_ptr<Sampler> sampler);
-
-  bool RegisterImage(std::shared_ptr<Image> image);
-
  private:
   std::string debug_name_;
   std::vector<std::shared_ptr<const ModelDrawCall>> draw_calls_;
@@ -162,6 +161,13 @@ class ModelDrawData {
 
   std::unique_ptr<pixel::Buffer> CreateIndexBuffer(
       const RenderingContext& context) const;
+
+  std::optional<
+      std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>>>
+  CreateImages(std::shared_ptr<RenderingContext> context) const;
+
+  std::optional<std::map<std::shared_ptr<Sampler>, vk::UniqueSampler>>
+  CreateSamplers(std::shared_ptr<RenderingContext> context) const;
 
   P_DISALLOW_COPY_AND_ASSIGN(ModelDrawData);
 };

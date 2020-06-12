@@ -467,6 +467,47 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
   );
 }
 
+std::optional<
+    std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>>>
+ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
+  std::set<std::shared_ptr<Image>> images;
+  for (const auto& call : draw_calls_) {
+    for (const auto& texture : call->GetTextures()) {
+      images.insert(texture.second.first);
+    }
+  }
+
+  std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>> result;
+  for (const auto& image : images) {
+    if (auto image_view = image->CreateImageView(*context)) {
+      result[image] = std::move(image_view);
+    } else {
+      return std::nullopt;
+    }
+  }
+  return result;
+}
+
+std::optional<std::map<std::shared_ptr<Sampler>, vk::UniqueSampler>>
+ModelDrawData::CreateSamplers(std::shared_ptr<RenderingContext> context) const {
+  std::set<std::shared_ptr<Sampler>> samplers;
+  for (const auto& call : draw_calls_) {
+    for (const auto& texture : call->GetTextures()) {
+      samplers.insert(texture.second.second);
+    }
+  }
+
+  std::map<std::shared_ptr<Sampler>, vk::UniqueSampler> result;
+  for (const auto& sampler : samplers) {
+    if (auto device_sampler = sampler->CreateSampler(*context)) {
+      result[sampler] = std::move(device_sampler);
+    } else {
+      return std::nullopt;
+    }
+  }
+  return result;
+}
+
 std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     std::shared_ptr<RenderingContext> context) const {
   if (!context || !context->IsValid()) {
@@ -475,6 +516,14 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
 
   auto vertex_buffer = CreateVertexBuffer(*context);
   auto index_buffer = CreateIndexBuffer(*context);
+  auto samplers = CreateSamplers(context);
+  auto images = CreateImages(context);
+
+  if (!samplers.has_value() || !images.has_value()) {
+    P_ERROR << "Could not create combined image samplers for images referenced "
+               "in the model.";
+    return nullptr;
+  }
 
   // TODO: Remove this and add fence waits.
   context->GetDevice().waitIdle();
@@ -515,14 +564,6 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
   }
 
   return device_context;
-}
-
-bool ModelDrawData::RegisterSampler(std::shared_ptr<Sampler> sampler) {
-  return true;
-}
-
-bool ModelDrawData::RegisterImage(std::shared_ptr<Image> image) {
-  return true;
 }
 
 }  // namespace model

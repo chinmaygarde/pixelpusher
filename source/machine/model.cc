@@ -282,18 +282,6 @@ std::unique_ptr<ModelDrawData> Model::CreateDrawData(
     std::string debug_name) const {
   auto draw_data = std::make_unique<ModelDrawData>(std::move(debug_name));
 
-  for (const auto& sampler : samplers_) {
-    if (!draw_data->RegisterSampler(sampler)) {
-      return nullptr;
-    }
-  }
-
-  for (const auto& image : images_) {
-    if (!draw_data->RegisterImage(image)) {
-      return nullptr;
-    }
-  }
-
   TransformationStack stack;
   for (const auto& scene : scenes_) {
     if (!scene->CollectDrawData(*draw_data, stack)) {
@@ -1083,6 +1071,11 @@ void Image::ResolveReferences(const Model& model,
   buffer_view_ = BoundsCheckGet(model.bufferViews_, image.bufferView);
 }
 
+std::unique_ptr<pixel::ImageView> Image::CreateImageView(
+    const RenderingContext& context) const {
+  return nullptr;
+}
+
 // *****************************************************************************
 // *** Skin
 // *****************************************************************************
@@ -1144,7 +1137,43 @@ void Sampler::ReadFromArchive(const tinygltf::Sampler& sampler) {
 }
 
 void Sampler::ResolveReferences(const Model& model,
-                                const tinygltf::Sampler& sampler) {}
+                                const tinygltf::Sampler& sampler) {
+  // Nothing to do.
+}
+
+vk::UniqueSampler Sampler::CreateSampler(
+    const RenderingContext& context) const {
+  vk::SamplerCreateInfo sampler_info = {
+      {},                                       // flags
+      mag_filter_,                              // mag filter
+      min_filter_,                              // min filter
+      mipmap_mode_,                             // mip map mode
+      wrap_s_,                                  // address mode U
+      wrap_t_,                                  // address mode V
+      wrap_r_,                                  // address mode W
+      0.0f,                                     // mip LOD bias
+      context.GetFeatures().samplerAnisotropy,  // enable anisotropic filtering
+      16.0f,                                    // max anisotropy
+      false,                                    // compare enable
+      vk::CompareOp::eNever,                    // copare op
+      0.0f,                                     // min LOD
+      0.0f,                                     // max LOD
+      vk::BorderColor::eFloatTransparentBlack,  // border color
+      false,                                    // unnormalized coordinates
+  };
+
+  auto sampler =
+      UnwrapResult(context.GetDevice().createSamplerUnique(sampler_info));
+  if (!sampler) {
+    return {};
+  }
+
+  if (!name_.empty()) {
+    SetDebugName(context.GetDevice(), sampler.get(), name_.c_str());
+  }
+
+  return sampler;
+}
 
 // *****************************************************************************
 // *** Camera

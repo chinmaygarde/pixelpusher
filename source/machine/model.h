@@ -10,7 +10,9 @@
 
 #include "asset_loader.h"
 #include "glm.h"
+#include "image.h"
 #include "macros.h"
+#include "rendering_context.h"
 #include "shaders/model_renderer.h"
 
 namespace pixel {
@@ -429,6 +431,9 @@ class Image final : public GLTFArchivable<tinygltf::Image> {
   void ResolveReferences(const Model& model,
                          const tinygltf::Image& image) override;
 
+  std::unique_ptr<pixel::ImageView> CreateImageView(
+      const RenderingContext& context) const;
+
  private:
   std::string name_;
   size_t width_ = 0;
@@ -472,6 +477,8 @@ class Sampler final : public GLTFArchivable<tinygltf::Sampler> {
 
   void ResolveReferences(const Model& model,
                          const tinygltf::Sampler& sampler) override;
+
+  vk::UniqueSampler CreateSampler(const RenderingContext& context) const;
 
  private:
   std::string name_;
