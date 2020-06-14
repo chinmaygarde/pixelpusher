@@ -83,6 +83,8 @@ class ModelDrawCallBuilder {
 };
 
 struct ModelDeviceDrawData {
+  using Key = intptr_t;
+
   vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleStrip;
   vk::DeviceSize vertex_buffer_offset = 0;
   vk::DeviceSize index_buffer_offset = 0;
@@ -92,11 +94,15 @@ struct ModelDeviceDrawData {
 
 class ModelDeviceContext {
  public:
-  ModelDeviceContext(std::shared_ptr<RenderingContext> context,
-                     std::unique_ptr<pixel::Buffer> vertex_buffer,
-                     std::unique_ptr<pixel::Buffer> index_buffer,
-                     std::vector<ModelDeviceDrawData> draw_data,
-                     std::string debug_name);
+  ModelDeviceContext(
+      std::shared_ptr<RenderingContext> context,
+      std::unique_ptr<pixel::Buffer> vertex_buffer,
+      std::unique_ptr<pixel::Buffer> index_buffer,
+      std::vector<ModelDeviceDrawData> draw_data,
+      std::map<ModelDeviceDrawData::Key, vk::UniqueSampler> samplers,
+      std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>
+          image_views,
+      std::string debug_name);
 
   ~ModelDeviceContext();
 
@@ -119,8 +125,9 @@ class ModelDeviceContext {
   DescriptorSets descriptor_sets_;
   std::set<vk::PrimitiveTopology> required_topologies_;
   std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
-  std::vector<vk::UniqueSampler> samplers_;
-  std::vector<std::unique_ptr<pixel::ImageView>> images_;
+  std::map<ModelDeviceDrawData::Key, vk::UniqueSampler> samplers_;
+  std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>
+      image_views_;
   bool is_valid_ = false;
 
   bool CreateShaderLibrary();
@@ -164,10 +171,10 @@ class ModelDrawData {
       const RenderingContext& context) const;
 
   std::optional<
-      std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>>>
+      std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>>
   CreateImages(std::shared_ptr<RenderingContext> context) const;
 
-  std::optional<std::map<std::shared_ptr<Sampler>, vk::UniqueSampler>>
+  std::optional<std::map<ModelDeviceDrawData::Key, vk::UniqueSampler>>
   CreateSamplers(std::shared_ptr<RenderingContext> context) const;
 
   P_DISALLOW_COPY_AND_ASSIGN(ModelDrawData);

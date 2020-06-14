@@ -89,12 +89,17 @@ ModelDeviceContext::ModelDeviceContext(
     std::unique_ptr<pixel::Buffer> vertex_buffer,
     std::unique_ptr<pixel::Buffer> index_buffer,
     std::vector<ModelDeviceDrawData> draw_data,
+    std::map<ModelDeviceDrawData::Key, vk::UniqueSampler> samplers,
+    std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>
+        image_views,
     std::string debug_name)
     : context_(std::move(context)),
       debug_name_(std::move(debug_name)),
       draw_data_(std::move(draw_data)),
       vertex_buffer_(std::move(vertex_buffer)),
-      index_buffer_(std::move(index_buffer)) {
+      index_buffer_(std::move(index_buffer)),
+      samplers_(std::move(samplers)),
+      image_views_(std::move(image_views)) {
   for (const auto& draw_call : draw_data_) {
     required_topologies_.insert(draw_call.topology);
   }
@@ -468,7 +473,7 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
 }
 
 std::optional<
-    std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>>>
+    std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>>
 ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
   std::set<std::shared_ptr<Image>> images;
   for (const auto& call : draw_calls_) {
@@ -477,10 +482,11 @@ ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
     }
   }
 
-  std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>> result;
+  std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>> result;
   for (const auto& image : images) {
     if (auto image_view = image->CreateImageView(*context)) {
-      result[image] = std::move(image_view);
+      result[reinterpret_cast<ModelDeviceDrawData::Key>(image.get())] =
+          std::move(image_view);
     } else {
       return std::nullopt;
     }
@@ -488,7 +494,7 @@ ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
   return result;
 }
 
-std::optional<std::map<std::shared_ptr<Sampler>, vk::UniqueSampler>>
+std::optional<std::map<ModelDeviceDrawData::Key, vk::UniqueSampler>>
 ModelDrawData::CreateSamplers(std::shared_ptr<RenderingContext> context) const {
   std::set<std::shared_ptr<Sampler>> samplers;
   for (const auto& call : draw_calls_) {
@@ -497,10 +503,11 @@ ModelDrawData::CreateSamplers(std::shared_ptr<RenderingContext> context) const {
     }
   }
 
-  std::map<std::shared_ptr<Sampler>, vk::UniqueSampler> result;
+  std::map<ModelDeviceDrawData::Key, vk::UniqueSampler> result;
   for (const auto& sampler : samplers) {
     if (auto device_sampler = sampler->CreateSampler(*context)) {
-      result[sampler] = std::move(device_sampler);
+      result[reinterpret_cast<ModelDeviceDrawData::Key>(sampler.get())] =
+          std::move(device_sampler);
     } else {
       return std::nullopt;
     }
@@ -524,9 +531,6 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
                "in the model.";
     return nullptr;
   }
-
-  // TODO: Remove this and add fence waits.
-  context->GetDevice().waitIdle();
 
   std::set<vk::PrimitiveTopology> required_topologies;
   std::vector<ModelDeviceDrawData> draw_data;
@@ -552,16 +556,21 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
   }
 
   auto device_context =
-      std::make_unique<ModelDeviceContext>(context,                   //
-                                           std::move(vertex_buffer),  //
-                                           std::move(index_buffer),   //
-                                           std::move(draw_data),      //
-                                           debug_name_                //
+      std::make_unique<ModelDeviceContext>(context,                      //
+                                           std::move(vertex_buffer),     //
+                                           std::move(index_buffer),      //
+                                           std::move(draw_data),         //
+                                           std::move(samplers.value()),  //
+                                           std::move(images.value()),    //
+                                           debug_name_                   //
       );
 
   if (!device_context->IsValid()) {
     return nullptr;
   }
+
+  // TODO: Remove this and add fence waits.
+  context->GetDevice().waitIdle();
 
   return device_context;
 }
