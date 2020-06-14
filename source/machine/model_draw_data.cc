@@ -289,10 +289,14 @@ bool ModelDeviceContext::CreatePipelines() {
 }
 
 void ModelDeviceContext::OnShaderLibraryDidUpdate() {
+  P_LOG << "Shader library update detected.";
+
   context_->GetDevice().waitIdle();
 
   if (!CreatePipelines()) {
     P_ERROR << "Error while rebuilding pipelines.";
+  } else {
+    P_LOG << "Pipelines recreated with updated shaders.";
   }
 }
 
