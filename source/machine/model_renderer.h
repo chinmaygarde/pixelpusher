@@ -1,8 +1,7 @@
 #pragma once
 
-#include <map>
+#include <chrono>
 
-#include "asset_loader.h"
 #include "macros.h"
 #include "model.h"
 #include "model_draw_data.h"
@@ -25,6 +24,8 @@ class ModelRenderer : public Renderer {
   const std::string debug_name_;
   std::unique_ptr<model::ModelDeviceContext> model_device_context_;
   bool is_valid_ = false;
+  std::chrono::high_resolution_clock::time_point start_time_ =
+      std::chrono::high_resolution_clock::now();
 
   // |Renderer|
   bool IsValid() const override;

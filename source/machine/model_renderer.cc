@@ -76,9 +76,22 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
     return false;
   }
 
+  const auto seconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::high_resolution_clock::now() - start_time_);
+
   const auto extents = GetContext().GetExtents();
 
-  auto model = glm::identity<glm::mat4>();
+  auto rotateX = glm::rotate(glm::identity<glm::mat4>(),
+                             glm::radians(seconds.count() * 20.0f * 1e-3f),
+                             glm::vec3(1.0f, 0.0f, 0.0f));
+  auto rotateY = glm::rotate(glm::identity<glm::mat4>(),
+                             glm::radians(seconds.count() * 40.0f * 1e-3f),
+                             glm::vec3(0.0f, 1.0f, 0.0f));
+  auto rotateZ = glm::rotate(glm::identity<glm::mat4>(),
+                             glm::radians(seconds.count() * 60.0f * 1e-3f),
+                             glm::vec3(0.0f, 0.0f, 1.0f));
+
+  auto model = rotateX * rotateY * rotateZ;
   auto view = glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f),  // eye
                           glm::vec3(0.0f),              // center
                           glm::vec3(0.0f, 0.0f, 1.0f)   // up
