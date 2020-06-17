@@ -194,9 +194,9 @@ bool RenderingContext::ReadOptimalImageFormats() {
   };
 
   // Add more here are they are encountered. This list is a pretty conservative.
-  add_if_supported({4, 8, ScalarFormat::kByte}, vk::Format::eR8G8B8A8Sint);
+  add_if_supported({4, 8, ScalarFormat::kByte}, vk::Format::eR8G8B8A8Snorm);
   add_if_supported({4, 8, ScalarFormat::kUnsignedByte},
-                   vk::Format::eR8G8B8A8Uint);
+                   vk::Format::eR8G8B8A8Unorm);
 
   return !optimal_image_formats_.empty();
 }
