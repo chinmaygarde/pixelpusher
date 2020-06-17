@@ -40,6 +40,20 @@ const ModelTextureMap& ModelDrawCall::GetTextures() const {
   return textures_;
 }
 
+bool ModelDrawCall::GetImageSampler(
+    TextureType type,
+    std::function<void(std::shared_ptr<Image>, std::shared_ptr<Sampler>)>
+        found_callback) const {
+  auto found = textures_.find(type);
+  if (found == textures_.end()) {
+    return false;
+  }
+
+  found_callback(found->second.first, found->second.second);
+
+  return true;
+}
+
 // *****************************************************************************
 // *** ModelDrawCallBuilder
 // *****************************************************************************
@@ -89,9 +103,8 @@ ModelDeviceContext::ModelDeviceContext(
     std::unique_ptr<pixel::Buffer> vertex_buffer,
     std::unique_ptr<pixel::Buffer> index_buffer,
     std::vector<ModelDeviceDrawData> draw_data,
-    std::map<ModelDeviceDrawData::Key, vk::UniqueSampler> samplers,
-    std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>
-        image_views,
+    std::vector<vk::UniqueSampler> samplers,
+    std::vector<std::unique_ptr<pixel::ImageView>> image_views,
     std::string debug_name)
     : context_(std::move(context)),
       debug_name_(std::move(debug_name)),
@@ -477,7 +490,7 @@ std::unique_ptr<pixel::Buffer> ModelDrawData::CreateIndexBuffer(
 }
 
 std::optional<
-    std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>>>
+    std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>>>
 ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
   std::set<std::shared_ptr<Image>> images;
   for (const auto& call : draw_calls_) {
@@ -486,11 +499,10 @@ ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
     }
   }
 
-  std::map<ModelDeviceDrawData::Key, std::unique_ptr<pixel::ImageView>> result;
+  std::map<std::shared_ptr<Image>, std::unique_ptr<pixel::ImageView>> result;
   for (const auto& image : images) {
     if (auto image_view = image->CreateImageView(*context)) {
-      result[reinterpret_cast<ModelDeviceDrawData::Key>(image.get())] =
-          std::move(image_view);
+      result[image] = std::move(image_view);
     } else {
       return std::nullopt;
     }
@@ -498,7 +510,7 @@ ModelDrawData::CreateImages(std::shared_ptr<RenderingContext> context) const {
   return result;
 }
 
-std::optional<std::map<ModelDeviceDrawData::Key, vk::UniqueSampler>>
+std::optional<std::map<std::shared_ptr<Sampler>, vk::UniqueSampler>>
 ModelDrawData::CreateSamplers(std::shared_ptr<RenderingContext> context) const {
   std::set<std::shared_ptr<Sampler>> samplers;
   for (const auto& call : draw_calls_) {
@@ -507,14 +519,23 @@ ModelDrawData::CreateSamplers(std::shared_ptr<RenderingContext> context) const {
     }
   }
 
-  std::map<ModelDeviceDrawData::Key, vk::UniqueSampler> result;
+  std::map<std::shared_ptr<Sampler>, vk::UniqueSampler> result;
   for (const auto& sampler : samplers) {
     if (auto device_sampler = sampler->CreateSampler(*context)) {
-      result[reinterpret_cast<ModelDeviceDrawData::Key>(sampler.get())] =
-          std::move(device_sampler);
+      result[sampler] = std::move(device_sampler);
     } else {
       return std::nullopt;
     }
+  }
+  return result;
+}
+
+template <class T, class Ignored>
+std::vector<T> MapValues(std::map<Ignored, T> map) {
+  std::vector<T> result;
+  result.reserve(map.size());
+  for (auto& value : map) {
+    result.emplace_back(std::move(value.second));
   }
   return result;
 }
@@ -551,6 +572,17 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     data.vertex_count = call->GetVertices().size();
     data.index_count = call->GetIndices().size();
 
+    call->GetImageSampler(TextureType::kTextureTypeBaseColor,
+                          [&](auto image, auto sampler) -> void {
+                            // Using at here is fine because we just iterated
+                            // over these calls to resolve the images and
+                            // samplers.
+                            data.texture_image = {
+                                samplers.value().at(sampler).get(),
+                                images.value().at(image).get()->GetImageView(),
+                            };
+                          });
+
     vertex_buffer_offset +=
         call->GetVertices().size() * sizeof(ModelDrawCall::VertexValueType);
     index_buffer_offset +=
@@ -559,15 +591,15 @@ std::unique_ptr<ModelDeviceContext> ModelDrawData::CreateModelDeviceContext(
     draw_data.push_back(data);
   }
 
-  auto device_context =
-      std::make_unique<ModelDeviceContext>(context,                      //
-                                           std::move(vertex_buffer),     //
-                                           std::move(index_buffer),      //
-                                           std::move(draw_data),         //
-                                           std::move(samplers.value()),  //
-                                           std::move(images.value()),    //
-                                           debug_name_                   //
-      );
+  auto device_context = std::make_unique<ModelDeviceContext>(
+      context,                                 //
+      std::move(vertex_buffer),                //
+      std::move(index_buffer),                 //
+      std::move(draw_data),                    //
+      MapValues(std::move(samplers.value())),  //
+      MapValues(std::move(images.value())),    //
+      debug_name_                              //
+  );
 
   if (!device_context->IsValid()) {
     return nullptr;

@@ -3,7 +3,7 @@
 
 // Uniforms
 
-// ..
+layout(binding = 1) uniform sampler2D uTextureSampler;
 
 // In
 

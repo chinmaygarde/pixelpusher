@@ -92,7 +92,15 @@ struct UniformBuffer {
             vk::DescriptorType::eUniformBuffer,  // type
             1u,                                  // descriptor count
             vk::ShaderStageFlagBits::eVertex,    // shader stage
-        }};
+        },
+        // Texture Sampler
+        {
+            1u,                                         // binding
+            vk::DescriptorType::eCombinedImageSampler,  // type
+            1u,                                         // descriptor count
+            vk::ShaderStageFlagBits::eFragment,         // shader stage
+        },
+    };
 
     vk::DescriptorSetLayoutCreateInfo layout_create_info = {
         {},                                             // flags
