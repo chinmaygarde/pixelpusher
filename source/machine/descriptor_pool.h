@@ -10,6 +10,10 @@ namespace pixel {
 
 class DescriptorPool;
 
+vk::UniqueDescriptorSetLayout CreateDescriptorSetLayoutUnique(
+    vk::Device,
+    std::vector<vk::DescriptorSetLayoutBinding> bindings);
+
 class DescriptorSets {
  public:
   DescriptorSets();
@@ -56,9 +60,15 @@ class DescriptorPool {
 
   const vk::DescriptorPool* operator->() const;
 
+  // TODO: This is the wrong abstraction. Rework.
   DescriptorSets AllocateDescriptorSets(vk::DescriptorSetLayout layout,
                                         size_t count,
                                         const char* debug_name);
+
+  std::optional<std::vector<vk::UniqueDescriptorSet>>
+  AllocateDescriptorSetsUnique(vk::DescriptorSetLayout layout,
+                               size_t count,
+                               const char* debug_name);
 
  private:
   const vk::Device device_;

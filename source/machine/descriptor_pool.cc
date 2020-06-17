@@ -2,6 +2,19 @@
 
 namespace pixel {
 
+vk::UniqueDescriptorSetLayout CreateDescriptorSetLayoutUnique(
+    vk::Device device,
+    std::vector<vk::DescriptorSetLayoutBinding> bindings) {
+  vk::DescriptorSetLayoutCreateInfo layout_create_info = {
+      {},                                      // flags
+      static_cast<uint32_t>(bindings.size()),  // bindings size
+      bindings.data()                          // bindings
+  };
+
+  return UnwrapResult(
+      device.createDescriptorSetLayoutUnique(layout_create_info));
+}
+
 DescriptorSets::DescriptorSets() = default;
 
 DescriptorSets::~DescriptorSets() = default;
@@ -125,8 +138,19 @@ DescriptorSets DescriptorPool::AllocateDescriptorSets(
     vk::DescriptorSetLayout layout,
     size_t count,
     const char* debug_name) {
+  auto result = AllocateDescriptorSetsUnique(layout, count, debug_name);
+  if (result.has_value()) {
+    return {device_, std::move(result.value())};
+  }
+  return {device_, {}};
+}
+
+std::optional<std::vector<vk::UniqueDescriptorSet>>
+DescriptorPool::AllocateDescriptorSetsUnique(vk::DescriptorSetLayout layout,
+                                             size_t count,
+                                             const char* debug_name) {
   if (!layout || count == 0 || !is_valid_) {
-    return {};
+    return std::nullopt;
   }
 
   std::vector<vk::DescriptorSetLayout> layouts{count, layout};
@@ -139,14 +163,14 @@ DescriptorSets DescriptorPool::AllocateDescriptorSets(
   auto result = UnwrapResult(
       device_.allocateDescriptorSetsUnique(descriptor_set_alloc_info));
   if (result.size() != count) {
-    return {};
+    return std::nullopt;
   }
 
   for (const auto& set : result) {
     SetDebugNameF(device_, set.get(), "%s Descriptor Set", debug_name);
   }
 
-  return {device_, std::move(result)};
+  return result;
 }
 
 }  // namespace pixel

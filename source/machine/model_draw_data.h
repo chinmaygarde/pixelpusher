@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include "image.h"
@@ -92,6 +93,19 @@ struct ModelDeviceDrawData {
   struct ImageSampler {
     vk::Sampler sampler = {};
     vk::ImageView image_view = {};
+
+    struct Hash {
+      constexpr std::size_t operator()(const ImageSampler& s) const {
+        return HashCombine(s.sampler, s.image_view);
+      }
+    };
+
+    struct Equal {
+      constexpr bool operator()(const ImageSampler& lhs,
+                                const ImageSampler& rhs) const {
+        return lhs.image_view == rhs.image_view && lhs.sampler == rhs.sampler;
+      }
+    };
   };
 
   vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleStrip;
@@ -125,7 +139,8 @@ class ModelDeviceContext {
   const std::string debug_name_;
   const std::vector<ModelDeviceDrawData> draw_data_;
   std::unique_ptr<ShaderLibrary> shader_library_;
-  vk::UniqueDescriptorSetLayout descriptor_set_layout_;
+  std::vector<vk::UniqueDescriptorSetLayout> descriptor_set_layouts_;
+  vk::UniqueDescriptorSetLayout texture_descriptor_set_layout_;
   vk::UniquePipelineLayout pipeline_layout_;
   std::unique_ptr<pixel::Buffer> vertex_buffer_;
   std::unique_ptr<pixel::Buffer> index_buffer_;
@@ -135,6 +150,11 @@ class ModelDeviceContext {
   std::map<vk::PrimitiveTopology, vk::UniquePipeline> pipelines_;
   std::vector<vk::UniqueSampler> samplers_;
   std::vector<std::unique_ptr<pixel::ImageView>> image_views_;
+  std::unordered_map<ModelDeviceDrawData::ImageSampler,
+                     vk::UniqueDescriptorSet,
+                     ModelDeviceDrawData::ImageSampler::Hash,
+                     ModelDeviceDrawData::ImageSampler::Equal>
+      sampler_descriptor_sets_;
   bool is_valid_ = false;
 
   bool CreateShaderLibrary();
@@ -143,7 +163,7 @@ class ModelDeviceContext {
 
   bool CreateDescriptorSets();
 
-  bool BindDescriptorSets();
+  bool WriteDescriptorSets();
 
   bool CreatePipelineLayout();
 

@@ -133,7 +133,7 @@ ModelDeviceContext::ModelDeviceContext(
     return;
   }
 
-  if (!BindDescriptorSets()) {
+  if (!WriteDescriptorSets()) {
     return;
   }
 
@@ -180,16 +180,25 @@ bool ModelDeviceContext::CreateShaderLibrary() {
 }
 
 bool ModelDeviceContext::CreateDescriptorSetLayout() {
-  descriptor_set_layout_ =
-      shaders::model_renderer::UniformBuffer::CreateDescriptorSetLayout(
+  auto layouts =
+      shaders::model_renderer::UniformBuffer::CreateDescriptorSetLayouts(
           context_->GetDevice());
 
-  return static_cast<bool>(descriptor_set_layout_);
+  if (!layouts.has_value()) {
+    return false;
+  }
+
+  descriptor_set_layouts_ = std::move(layouts.value());
+
+  return true;
 }
 
 bool ModelDeviceContext::CreatePipelineLayout() {
   PipelineLayoutBuilder pipeline_layout_builder;
-  pipeline_layout_builder.AddDescriptorSetLayout(descriptor_set_layout_.get());
+
+  for (const auto& layout : descriptor_set_layouts_) {
+    pipeline_layout_builder.AddDescriptorSetLayout(layout.get());
+  }
 
   pipeline_layout_ = pipeline_layout_builder.CreatePipelineLayout(
       context_->GetDevice(), debug_name_.c_str());
@@ -212,9 +221,9 @@ bool ModelDeviceContext::CreateDescriptorSets() {
   descriptor_sets_.Reset();
 
   auto descriptor_sets = context_->GetDescriptorPool().AllocateDescriptorSets(
-      descriptor_set_layout_.get(),        // layout
-      context_->GetSwapchainImageCount(),  // count
-      debug_name_.c_str()                  // debug name
+      descriptor_set_layouts_[0].get(),                     // layout 0
+      context_->GetSwapchainImageCount(),                   // count
+      MakeStringF("%s 0 UBO", debug_name_.c_str()).c_str()  // debug name
   );
 
   if (!descriptor_sets.IsValid()) {
@@ -222,10 +231,29 @@ bool ModelDeviceContext::CreateDescriptorSets() {
   }
 
   descriptor_sets_ = std::move(descriptor_sets);
+
+  for (const auto& draw_call : draw_data_) {
+    if (draw_call.texture_image.has_value()) {
+      auto sets = context_->GetDescriptorPool().AllocateDescriptorSetsUnique(
+          descriptor_set_layouts_[1].get(),  // layout 1
+          1u,                                // count
+          MakeStringF("%s 1 Texture", debug_name_.c_str())
+              .c_str()  // debug name
+      );
+
+      if (!sets.has_value()) {
+        return false;
+      }
+
+      sampler_descriptor_sets_[draw_call.texture_image.value()] =
+          std::move(sets.value()[0]);
+    }
+  }
+
   return true;
 }
 
-bool ModelDeviceContext::BindDescriptorSets() {
+bool ModelDeviceContext::WriteDescriptorSets() {
   auto buffer_infos = uniform_buffer_.GetBufferInfos();
   if (buffer_infos.size() != descriptor_sets_.GetSize()) {
     return false;
@@ -244,7 +272,43 @@ bool ModelDeviceContext::BindDescriptorSets() {
     }};
   };
 
-  return descriptor_sets_.UpdateDescriptorSets(write_descriptor_set_generator);
+  if (!descriptor_sets_.UpdateDescriptorSets(write_descriptor_set_generator)) {
+    return false;
+  }
+
+  std::vector<vk::WriteDescriptorSet> sampler_writes;
+  std::vector<vk::DescriptorImageInfo> image_infos;
+
+  for (const auto& draw_call : draw_data_) {
+    if (draw_call.texture_image.has_value()) {
+      const auto& set =
+          sampler_descriptor_sets_.at(draw_call.texture_image.value());
+
+      image_infos.push_back(vk::DescriptorImageInfo{
+          draw_call.texture_image.value().sampler,     // sampler
+          draw_call.texture_image.value().image_view,  // image view
+          vk::ImageLayout::eShaderReadOnlyOptimal,     // layout
+      });
+
+      sampler_writes.push_back(vk::WriteDescriptorSet{
+          set.get(),                                  // dst set
+          0u,                                         // binding
+          0u,                                         // array element
+          1u,                                         // descriptor count
+          vk::DescriptorType::eCombinedImageSampler,  // type
+          &image_infos.back(),                        // image
+          nullptr,                                    // buffer
+          nullptr,                                    // buffer view
+      });
+    }
+  }
+
+  context_->GetDevice().updateDescriptorSets(
+      std::move(sampler_writes),  // writes
+      nullptr                     // copies
+  );
+
+  return true;
 }
 
 bool ModelDeviceContext::CreatePipelines() {
@@ -353,12 +417,20 @@ bool ModelDeviceContext::Render(vk::CommandBuffer buffer) {
     buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, found->second.get());
     buffer.bindVertexBuffers(0u, {vertex_buffer_->buffer},
                              {draw.vertex_buffer_offset});
-    buffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics,  // bind point
-        pipeline_layout_.get(),            // layout
-        0u,                                // first set
-        descriptor_sets_[uniform_index],   // descriptor set
-        nullptr                            // dynamic_offsets
+
+    std::vector<vk::DescriptorSet> descriptor_sets;
+    descriptor_sets.push_back(descriptor_sets_[uniform_index]);
+
+    if (draw.texture_image.has_value()) {
+      descriptor_sets.push_back(
+          sampler_descriptor_sets_.at(draw.texture_image.value()).get());
+    }
+
+    buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,  // bind point
+                              pipeline_layout_.get(),            // layout
+                              0u,                                // first set
+                              std::move(descriptor_sets),  // descriptor set
+                              nullptr                      // dynamic_offsets
     );
 
     if (draw.index_count > 0u) {

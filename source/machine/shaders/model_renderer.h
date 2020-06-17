@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 
+#include "descriptor_pool.h"
 #include "glm.h"
 #include "vulkan.h"
 
@@ -83,32 +84,38 @@ struct UniformBuffer {
 
   UniformBuffer() = default;
 
-  static vk::UniqueDescriptorSetLayout CreateDescriptorSetLayout(
-      vk::Device device) {
-    std::vector<vk::DescriptorSetLayoutBinding> layout_bindings = {
-        // MVP
-        {
-            0u,                                  // binding
-            vk::DescriptorType::eUniformBuffer,  // type
-            1u,                                  // descriptor count
-            vk::ShaderStageFlagBits::eVertex,    // shader stage
-        },
-        // Texture Sampler
-        {
-            1u,                                         // binding
-            vk::DescriptorType::eCombinedImageSampler,  // type
-            1u,                                         // descriptor count
-            vk::ShaderStageFlagBits::eFragment,         // shader stage
-        },
-    };
+  static std::optional<std::vector<vk::UniqueDescriptorSetLayout>>
+  CreateDescriptorSetLayouts(vk::Device device) {
+    auto layout0 = CreateDescriptorSetLayoutUnique(
+        device, std::vector<vk::DescriptorSetLayoutBinding>{
+                    // MVP
+                    {
+                        0u,                                  // binding
+                        vk::DescriptorType::eUniformBuffer,  // type
+                        1u,                                  // descriptor count
+                        vk::ShaderStageFlagBits::eVertex,    // shader stage
+                    },
+                });
 
-    vk::DescriptorSetLayoutCreateInfo layout_create_info = {
-        {},                                             // flags
-        static_cast<uint32_t>(layout_bindings.size()),  // bindings size
-        layout_bindings.data()};
+    auto layout1 = CreateDescriptorSetLayoutUnique(
+        device, std::vector<vk::DescriptorSetLayoutBinding>{
+                    // Texture Sampler
+                    {
+                        0u,                                         // binding
+                        vk::DescriptorType::eCombinedImageSampler,  // type
+                        1u,                                  // descriptor count
+                        vk::ShaderStageFlagBits::eFragment,  // shader stage
+                    },
+                });
 
-    return UnwrapResult(
-        device.createDescriptorSetLayoutUnique(layout_create_info));
+    if (!layout0 || !layout1) {
+      return std::nullopt;
+    }
+
+    std::vector<vk::UniqueDescriptorSetLayout> layouts;
+    layouts.emplace_back(std::move(layout0));
+    layouts.emplace_back(std::move(layout1));
+    return layouts;
   }
 };
 
