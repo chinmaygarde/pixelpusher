@@ -17,7 +17,7 @@ function(compile_shader TARGET SHADER_PATH)
 
   add_custom_command(
     OUTPUT ${SHADER_OUT_PATH}
-    COMMAND glslc_exe ${SHADER_IN_PATH} -o ${SHADER_OUT_PATH}
+    COMMAND glslc_exe -finvert-y ${SHADER_IN_PATH} -o ${SHADER_OUT_PATH}
     DEPENDS ${SHADER_IN_PATH}
     IMPLICIT_DEPENDS CXX ${SHADER_IN_PATH}
   )
