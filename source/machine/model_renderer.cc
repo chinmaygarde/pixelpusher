@@ -45,6 +45,13 @@ ModelRenderer::ModelRenderer(std::shared_ptr<RenderingContext> context,
 
   model_device_context_ = std::move(model_device_context);
 
+  view_xformation_.SetInitialValue(glm::lookAt(
+      glm::vec3(1.0f, 1.0f, 1.0f),  // eye
+      glm::vec3(0.0f),              // center
+      glm::vec3(0.0f, 0.0f, 1.0f)   // up
+      ));
+  view_xformation_.SetUpdateRate(0.01);
+
   is_valid_ = true;
 }
 
@@ -76,8 +83,12 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
     return false;
   }
 
-  const auto seconds = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::high_resolution_clock::now() - start_time_);
+  const auto now = std::chrono::high_resolution_clock::now();
+
+  view_xformation_.UpdateSimulation(now);
+
+  const auto seconds =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_);
 
   const auto extents = GetContext().GetExtents();
 
@@ -92,10 +103,7 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
                              glm::vec3(0.0f, 0.0f, 1.0f));
 
   auto model = rotateX * rotateY * rotateZ;
-  auto view = glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f),  // eye
-                          glm::vec3(0.0f),              // center
-                          glm::vec3(0.0f, 0.0f, 1.0f)   // up
-  );
+  auto view = view_xformation_.GetCurrentMatrix();
   auto projection = glm::perspective(
       glm::radians(90.0f),
       static_cast<float>(extents.width) / static_cast<float>(extents.height),
@@ -124,7 +132,50 @@ bool ModelRenderer::WantsKeyEvents() {
 // |KeyInputDelegate|
 void ModelRenderer::OnKeyEvent(KeyType type,
                                KeyAction action,
-                               KeyModifiers modifiers) {  //
+                               KeyModifiers modifiers) {
+  if (type == KeyType::kKeyTypeR && action == KeyAction::kKeyActionRelease) {
+    view_xformation_.Reset();
+    return;
+  }
+
+  if (action == KeyAction::kKeyActionRepeat) {
+    return;
+  }
+
+  auto positive_update = true;
+  MatrixSimulation::UpdateType update_type =
+      MatrixSimulation::UpdateType::kUnknown;
+
+  switch (type) {
+    case KeyType::kKeyTypeD:
+      positive_update = true;
+      update_type = MatrixSimulation::UpdateType::kTranslationX;
+      break;
+    case KeyType::kKeyTypeW:
+      positive_update = true;
+      update_type = MatrixSimulation::UpdateType::kTranslationY;
+      break;
+    case KeyType::kKeyTypeA:
+      positive_update = false;
+      update_type = MatrixSimulation::UpdateType::kTranslationX;
+      break;
+    case KeyType::kKeyTypeS:
+      positive_update = false;
+      update_type = MatrixSimulation::UpdateType::kTranslationY;
+      break;
+    default:
+      return;
+  }
+
+  const auto add_or_remove = action == KeyAction::kKeyActionPress;
+
+  if (add_or_remove) {
+    // TODO: This should probably come from the dispatcher for accuracy.
+    const auto now = std::chrono::high_resolution_clock::now();
+    view_xformation_.EnableUpdates(update_type, now, positive_update);
+  } else {
+    view_xformation_.DisableUpdates(update_type);
+  }
 }
 
 }  // namespace pixel

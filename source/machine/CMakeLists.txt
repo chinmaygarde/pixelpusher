@@ -22,6 +22,8 @@ add_library(machine_lib
   key_input_glfw.h
   main_renderer.cc
   main_renderer.h
+  matrix_simulation.cc
+  matrix_simulation.h
   memory_allocator.cc
   memory_allocator.h
   model.cc

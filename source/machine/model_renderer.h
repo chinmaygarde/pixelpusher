@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "macros.h"
+#include "matrix_simulation.h"
 #include "model.h"
 #include "model_draw_data.h"
 #include "renderer.h"
@@ -26,6 +27,7 @@ class ModelRenderer : public Renderer {
   bool is_valid_ = false;
   std::chrono::high_resolution_clock::time_point start_time_ =
       std::chrono::high_resolution_clock::now();
+  MatrixSimulation view_xformation_;
 
   // |Renderer|
   bool IsValid() const override;
