@@ -15,4 +15,16 @@ RenderingContext& Renderer::GetContext() const {
   return *context_;
 }
 
+// KeyInputDelegate
+bool Renderer::WantsKeyEvents() {
+  return false;
+}
+
+// KeyInputDelegate
+void Renderer::OnKeyEvent(KeyType type,
+                          KeyAction action,
+                          KeyModifiers modifiers) {
+  //
+}
+
 }  // namespace pixel

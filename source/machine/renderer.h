@@ -1,11 +1,12 @@
 #pragma once
 
+#include "key_input.h"
 #include "rendering_context.h"
 #include "vulkan.h"
 
 namespace pixel {
 
-class Renderer {
+class Renderer : public KeyInputDelegate {
  public:
   virtual ~Renderer();
 
@@ -18,6 +19,14 @@ class Renderer {
   virtual bool RenderFrame(vk::CommandBuffer render_command_buffer) = 0;
 
   virtual bool Teardown() = 0;
+
+  // |KeyInputDelegate|
+  virtual bool WantsKeyEvents();
+
+  // |KeyInputDelegate|
+  virtual void OnKeyEvent(KeyType type,
+                          KeyAction action,
+                          KeyModifiers modifiers);
 
  protected:
   Renderer(std::shared_ptr<RenderingContext> context);

@@ -116,4 +116,15 @@ bool ModelRenderer::Teardown() {
   return true;
 }
 
+// |KeyInputDelegate|
+bool ModelRenderer::WantsKeyEvents() {
+  return true;
+}
+
+// |KeyInputDelegate|
+void ModelRenderer::OnKeyEvent(KeyType type,
+                               KeyAction action,
+                               KeyModifiers modifiers) {  //
+}
+
 }  // namespace pixel

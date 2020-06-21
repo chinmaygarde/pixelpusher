@@ -7,6 +7,7 @@
 #include "event_loop.h"
 #include "geometry.h"
 #include "glfw.h"
+#include "key_input_glfw.h"
 #include "logging.h"
 #include "main_renderer.h"
 #include "platform.h"
@@ -43,6 +44,29 @@ static Size GetCurrentWindowSize(GLFWwindow* window) {
   return {static_cast<size_t>(width), static_cast<size_t>(height)};
 }
 
+struct GLFWDelegate {
+  KeyInputDispatcher key_input_dispatcher;
+};
+
+static void OnGLFWKeyEvent(GLFWwindow* window,
+                           int key,
+                           int scancode,
+                           int action,
+                           int mods) {
+  auto delegate =
+      reinterpret_cast<GLFWDelegate*>(::glfwGetWindowUserPointer(window));
+
+  if (!delegate) {
+    return;
+  }
+
+  delegate->key_input_dispatcher.DispatchKey(GLFWKeyTypeToKeyType(key),
+                                             GLFWKeyActionToAction(action),
+                                             GLFWKeyModifiersToModifiers(mods)
+
+  );
+}
+
 static bool Main(int argc, char const* argv[]) {
   if (!::glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";
@@ -68,6 +92,11 @@ static bool Main(int argc, char const* argv[]) {
   }
 
   AutoClosure destroy_window([window]() { ::glfwDestroyWindow(window); });
+
+  GLFWDelegate glfw_delegate;
+
+  ::glfwSetWindowUserPointer(window, &glfw_delegate);
+  ::glfwSetKeyCallback(window, &OnGLFWKeyEvent);
 
   auto get_instance_proc_address = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
       ::glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
@@ -108,6 +137,8 @@ static bool Main(int argc, char const* argv[]) {
     return false;
   }
 
+  glfw_delegate.key_input_dispatcher.AddDelegate(&renderer);
+
   AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
 
   auto& loop = EventLoop::ForCurrentThread();
@@ -135,6 +166,8 @@ static bool Main(int argc, char const* argv[]) {
       return false;
     }
   }
+
+  glfw_delegate.key_input_dispatcher.RemoveDelegate(&renderer);
 
   return true;
 }

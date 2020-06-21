@@ -42,6 +42,14 @@ class ModelRenderer : public Renderer {
   // |Renderer|
   bool Teardown() override;
 
+  // |KeyInputDelegate|
+  bool WantsKeyEvents() override;
+
+  // |KeyInputDelegate|
+  void OnKeyEvent(KeyType type,
+                  KeyAction action,
+                  KeyModifiers modifiers) override;
+
   P_DISALLOW_COPY_AND_ASSIGN(ModelRenderer);
 };
 

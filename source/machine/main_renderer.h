@@ -35,6 +35,14 @@ class MainRenderer final : public Renderer {
   // |Renderer|
   bool RenderFrame(vk::CommandBuffer render_command_buffer) override;
 
+  // |KeyInputDelegate|
+  bool WantsKeyEvents() override;
+
+  // |KeyInputDelegate|
+  void OnKeyEvent(KeyType type,
+                  KeyAction action,
+                  KeyModifiers modifiers) override;
+
  private:
   VulkanConnection& connection_;
   std::vector<std::unique_ptr<Renderer>> renderers_;

@@ -129,4 +129,20 @@ bool MainRenderer::Render() {
   return true;
 }
 
+// |KeyInputDelegate|
+bool MainRenderer::WantsKeyEvents() {
+  return true;
+}
+
+// |KeyInputDelegate|
+void MainRenderer::OnKeyEvent(KeyType type,
+                              KeyAction action,
+                              KeyModifiers modifiers) {
+  for (const auto& renderer : renderers_) {
+    if (renderer->WantsKeyEvents()) {
+      renderer->OnKeyEvent(type, action, modifiers);
+    }
+  }
+}
+
 }  // namespace pixel

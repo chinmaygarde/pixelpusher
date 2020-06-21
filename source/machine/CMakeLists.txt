@@ -16,6 +16,10 @@ add_library(machine_lib
   image_decoder.h
   imgui_renderer.cc
   imgui_renderer.h
+  key_input.cc
+  key_input.h
+  key_input_glfw.cc
+  key_input_glfw.h
   main_renderer.cc
   main_renderer.h
   memory_allocator.cc
