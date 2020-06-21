@@ -24,10 +24,9 @@ class ModelRenderer : public Renderer {
  private:
   const std::string debug_name_;
   std::unique_ptr<model::ModelDeviceContext> model_device_context_;
-  bool is_valid_ = false;
-  std::chrono::high_resolution_clock::time_point start_time_ =
-      std::chrono::high_resolution_clock::now();
+  MatrixSimulation model_xformation_;
   MatrixSimulation view_xformation_;
+  bool is_valid_ = false;
 
   // |Renderer|
   bool IsValid() const override;

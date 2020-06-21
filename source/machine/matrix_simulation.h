@@ -30,6 +30,8 @@ class MatrixSimulation {
     kTranslationX,
     kTranslationY,
     kTranslationZ,
+    kRotationX,
+    kRotationY,
   };
 
   void SetUpdateRate(double rate, UpdateType type);
@@ -49,6 +51,8 @@ class MatrixSimulation {
  private:
   glm::mat4 initial_ = glm::identity<glm::mat4>();
   glm::vec3 translation_ = glm::vec3{0.0};
+  double rotation_x_ = 0.0;
+  double rotation_y_ = 0.0;
   std::map<UpdateType, UpdateValue> updates_;
   std::map<UpdateType, double> update_rates_;
 

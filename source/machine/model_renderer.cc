@@ -51,6 +51,8 @@ ModelRenderer::ModelRenderer(std::shared_ptr<RenderingContext> context,
       glm::vec3(0.0f, 0.0f, 1.0f)   // up
       ));
   view_xformation_.SetUpdateRate(0.01);
+  model_xformation_.SetUpdateRate(1, MatrixSimulation::UpdateType::kRotationX);
+  model_xformation_.SetUpdateRate(1, MatrixSimulation::UpdateType::kRotationY);
 
   is_valid_ = true;
 }
@@ -86,28 +88,16 @@ bool ModelRenderer::RenderFrame(vk::CommandBuffer buffer) {
   const auto now = std::chrono::high_resolution_clock::now();
 
   view_xformation_.UpdateSimulation(now);
-
-  const auto seconds =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_);
+  model_xformation_.UpdateSimulation(now);
 
   const auto extents = GetContext().GetExtents();
 
-  auto rotateX = glm::rotate(glm::identity<glm::mat4>(),
-                             glm::radians(seconds.count() * 20.0f * 1e-3f),
-                             glm::vec3(1.0f, 0.0f, 0.0f));
-  auto rotateY = glm::rotate(glm::identity<glm::mat4>(),
-                             glm::radians(seconds.count() * 40.0f * 1e-3f),
-                             glm::vec3(0.0f, 1.0f, 0.0f));
-  auto rotateZ = glm::rotate(glm::identity<glm::mat4>(),
-                             glm::radians(seconds.count() * 60.0f * 1e-3f),
-                             glm::vec3(0.0f, 0.0f, 1.0f));
-
-  auto model = rotateX * rotateY * rotateZ;
+  auto model = model_xformation_.GetCurrentMatrix();
   auto view = view_xformation_.GetCurrentMatrix();
   auto projection = glm::perspective(
       glm::radians(90.0f),
       static_cast<float>(extents.width) / static_cast<float>(extents.height),
-      0.1f, 10.0f);
+      0.01f, 1000.0f);
 
   model_device_context_->GetUniformBuffer().prototype.mvp =
       projection * view * model;
@@ -134,6 +124,7 @@ void ModelRenderer::OnKeyEvent(KeyType type,
                                KeyAction action,
                                KeyModifiers modifiers) {
   if (type == KeyType::kKeyTypeR && action == KeyAction::kKeyActionRelease) {
+    model_xformation_.Reset();
     view_xformation_.Reset();
     return;
   }
@@ -145,23 +136,48 @@ void ModelRenderer::OnKeyEvent(KeyType type,
   auto positive_update = true;
   MatrixSimulation::UpdateType update_type =
       MatrixSimulation::UpdateType::kUnknown;
+  bool model_or_view = true;
 
   switch (type) {
-    case KeyType::kKeyTypeD:
-      positive_update = true;
+    case KeyType::kKeyTypeA:
+      positive_update = false;
       update_type = MatrixSimulation::UpdateType::kTranslationX;
+      model_or_view = false;
       break;
     case KeyType::kKeyTypeW:
       positive_update = true;
       update_type = MatrixSimulation::UpdateType::kTranslationY;
+      model_or_view = false;
       break;
-    case KeyType::kKeyTypeA:
-      positive_update = false;
+    case KeyType::kKeyTypeD:
+      positive_update = true;
       update_type = MatrixSimulation::UpdateType::kTranslationX;
+      model_or_view = false;
       break;
     case KeyType::kKeyTypeS:
       positive_update = false;
       update_type = MatrixSimulation::UpdateType::kTranslationY;
+      model_or_view = false;
+      break;
+    case KeyType::kKeyTypeZ:
+      positive_update = true;
+      update_type = MatrixSimulation::UpdateType::kTranslationZ;
+      model_or_view = false;
+      break;
+    case KeyType::kKeyTypeX:
+      positive_update = false;
+      update_type = MatrixSimulation::UpdateType::kTranslationZ;
+      model_or_view = false;
+      break;
+    case KeyType::kKeyTypeQ:
+      positive_update = false;
+      update_type = MatrixSimulation::UpdateType::kRotationY;
+      model_or_view = true;
+      break;
+    case KeyType::kKeyTypeE:
+      positive_update = true;
+      update_type = MatrixSimulation::UpdateType::kRotationY;
+      model_or_view = true;
       break;
     default:
       return;
@@ -172,9 +188,17 @@ void ModelRenderer::OnKeyEvent(KeyType type,
   if (add_or_remove) {
     // TODO: This should probably come from the dispatcher for accuracy.
     const auto now = std::chrono::high_resolution_clock::now();
-    view_xformation_.EnableUpdates(update_type, now, positive_update);
+    if (model_or_view) {
+      model_xformation_.EnableUpdates(update_type, now, positive_update);
+    } else {
+      view_xformation_.EnableUpdates(update_type, now, positive_update);
+    }
   } else {
-    view_xformation_.DisableUpdates(update_type);
+    if (model_or_view) {
+      model_xformation_.DisableUpdates(update_type);
+    } else {
+      view_xformation_.DisableUpdates(update_type);
+    }
   }
 }
 
