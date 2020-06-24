@@ -104,7 +104,6 @@ static vk::UniqueShaderModule LoadShaderModuleSource(
   shaderc::CompileOptions options;
   options.SetSourceLanguage(shaderc_source_language_glsl);
   options.SetOptimizationLevel(shaderc_optimization_level_zero);
-  options.SetInvertY(true);
 
   shaderc::Compiler compiler;
   auto compilation_result = compiler.CompileGlslToSpv(
