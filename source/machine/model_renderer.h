@@ -24,7 +24,6 @@ class ModelRenderer : public Renderer {
  private:
   const std::string debug_name_;
   std::unique_ptr<model::ModelDeviceContext> model_device_context_;
-  MatrixSimulation model_xformation_;
   MatrixSimulation view_xformation_;
   bool is_valid_ = false;
 

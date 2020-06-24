@@ -848,7 +848,7 @@ static std::vector<glm::vec3> VectorWithAppliedTransformations(
   std::vector<glm::vec3> result;
   result.reserve(vec.size());
   for (const auto& item : vec) {
-    const auto transformed = stack.transformation * glm::vec4(item, 0.0);
+    const auto transformed = stack.transformation * glm::vec4(item, 1.0);
     result.push_back(glm::vec3{transformed.x, transformed.y, transformed.z});
   }
   return result;
