@@ -250,6 +250,21 @@ bool ModelDeviceContext::CreateDescriptorSets() {
     }
   }
 
+  {
+    auto sets = context_->GetDescriptorPool().AllocateDescriptorSetsUnique(
+        descriptor_set_layouts_[1].get(),  // layout
+        1u,                                // count
+        MakeStringF("%s Placeholder Texture", debug_name_.c_str())
+            .c_str()  // debug name
+    );
+
+    if (!sets.has_value()) {
+      return false;
+    }
+
+    placeholder_image_descriptor_set_ = std::move(sets.value()[0]);
+  }
+
   return true;
 }
 

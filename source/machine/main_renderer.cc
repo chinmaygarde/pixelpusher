@@ -8,7 +8,7 @@
 
 namespace pixel {
 
-#define MODEL_NAME "DamagedHelmet"
+#define MODEL_NAME "Triangle"
 
 MainRenderer::MainRenderer(VulkanConnection& connection, GLFWwindow* window)
     : Renderer(connection.GetRenderingContext()), connection_(connection) {

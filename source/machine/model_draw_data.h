@@ -155,6 +155,7 @@ class ModelDeviceContext {
                      ModelDeviceDrawData::ImageSampler::Hash,
                      ModelDeviceDrawData::ImageSampler::Equal>
       sampler_descriptor_sets_;
+  vk::UniqueDescriptorSet placeholder_image_descriptor_set_;
   bool is_valid_ = false;
 
   bool CreateShaderLibrary();
