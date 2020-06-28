@@ -117,6 +117,10 @@ ModelDeviceContext::ModelDeviceContext(
     required_topologies_.insert(draw_call.topology);
   }
 
+  if (!CreatePlaceholders()) {
+    return;
+  }
+
   if (!CreateShaderLibrary()) {
     return;
   }
@@ -156,6 +160,80 @@ ModelDeviceContext::~ModelDeviceContext() = default;
 
 bool ModelDeviceContext::IsValid() const {
   return is_valid_;
+}
+
+bool ModelDeviceContext::CreatePlaceholders() {
+  placeholder_sampler_ =
+      UnwrapResult(context_->GetDevice().createSamplerUnique({}));
+  if (!placeholder_sampler_) {
+    return false;
+  }
+  auto format =
+      context_->GetOptimalSampledImageFormat(4, 8, ScalarFormat::kUnsignedByte);
+  if (!format.has_value()) {
+    return false;
+  }
+
+  auto image_info = vk::ImageCreateInfo{
+      {},                                // flags
+      vk::ImageType::e2D,                // image type
+      format.value(),                    // format
+      vk::Extent3D{1u, 1u, 1u},          // extents
+      1u,                                // mip levels
+      1u,                                // array layers
+      vk::SampleCountFlagBits::e1,       // sample count
+      vk::ImageTiling::eOptimal,         // tiling
+      vk::ImageUsageFlagBits::eSampled,  // usage
+      vk::SharingMode::eExclusive,       // sharing
+      0u,                                // queue count
+      {},                                // indices
+      vk::ImageLayout::eUndefined,       // initial layout
+  };
+
+  auto data = std::make_shared<uint32_t>(0u);
+  auto image = context_->GetMemoryAllocator().CreateDeviceLocalImageCopy(
+      image_info,                          // info
+      &data,                               // data
+      sizeof(data),                        // data size
+      context_->GetTransferCommandPool(),  // command pool
+      "Placeholder 1x1",                   // debug name
+      nullptr,                             // wait sema
+      nullptr,                             // wait stages
+      nullptr,                             // signal sema
+      [data]() mutable { data.reset(); }   // on done
+  );
+
+  if (!image) {
+    return false;
+  }
+
+  auto image_view = UnwrapResult(
+      context_->GetDevice().createImageViewUnique(vk::ImageViewCreateInfo{
+          {},                      // flags
+          image->image,            // image
+          vk::ImageViewType::e2D,  // type
+          format.value(),          // format
+          {},                      // component mapping
+          vk::ImageSubresourceRange{
+              vk::ImageAspectFlagBits::eColor,  // aspect
+              0u,                               // base mip level
+              1u,                               // level count
+              0u,                               // base array layer
+              1u,                               // layer count
+          },                                    // subresource range
+      }));
+
+  if (!image_view) {
+    return false;
+  }
+
+  placeholder_image_view_ =
+      std::make_unique<ImageView>(std::move(image), std::move(image_view));
+  if (!placeholder_image_view_) {
+    return false;
+  }
+
+  return true;
 }
 
 bool ModelDeviceContext::CreateShaderLibrary() {
@@ -323,6 +401,28 @@ bool ModelDeviceContext::WriteDescriptorSets() {
       nullptr                     // copies
   );
 
+  {
+    auto placeholder_image_info = vk::DescriptorImageInfo{
+        placeholder_sampler_.get(),               // sampler
+        placeholder_image_view_->GetImageView(),  // image view
+        vk::ImageLayout::eShaderReadOnlyOptimal,  // layout
+    };
+    auto placeholder_write_descriptor_set = vk::WriteDescriptorSet{
+        placeholder_image_descriptor_set_.get(),    // dst set
+        0u,                                         // binding
+        0u,                                         // array element
+        1u,                                         // descriptor count
+        vk::DescriptorType::eCombinedImageSampler,  // type
+        &placeholder_image_info,                    // image
+        nullptr,                                    // buffer
+        nullptr,                                    // buffer view
+    };
+    context_->GetDevice().updateDescriptorSets(
+        {placeholder_write_descriptor_set},  // updates,
+        nullptr                              // copies
+    );
+  }
+
   return true;
 }
 
@@ -439,6 +539,8 @@ bool ModelDeviceContext::Render(vk::CommandBuffer buffer) {
     if (draw.texture_image.has_value()) {
       descriptor_sets.push_back(
           sampler_descriptor_sets_.at(draw.texture_image.value()).get());
+    } else {
+      descriptor_sets.push_back(placeholder_image_descriptor_set_.get());
     }
 
     buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,  // bind point

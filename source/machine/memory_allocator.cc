@@ -408,6 +408,8 @@ std::unique_ptr<Image> MemoryAllocator::CreateDeviceLocalImageCopy(
 
   auto device_allocation_info = DefaultDeviceLocalAllocationCreateInfo();
 
+  image_info.usage |= vk::ImageUsageFlagBits::eTransferDst;
+
   auto device_image =
       CreateImage(image_info, device_allocation_info, debug_name);
 

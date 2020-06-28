@@ -155,8 +155,12 @@ class ModelDeviceContext {
                      ModelDeviceDrawData::ImageSampler::Hash,
                      ModelDeviceDrawData::ImageSampler::Equal>
       sampler_descriptor_sets_;
+  vk::UniqueSampler placeholder_sampler_;
+  std::unique_ptr<ImageView> placeholder_image_view_;
   vk::UniqueDescriptorSet placeholder_image_descriptor_set_;
   bool is_valid_ = false;
+
+  bool CreatePlaceholders();
 
   bool CreateShaderLibrary();
 
