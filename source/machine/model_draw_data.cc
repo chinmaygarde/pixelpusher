@@ -190,10 +190,10 @@ bool ModelDeviceContext::CreatePlaceholders() {
       vk::ImageLayout::eUndefined,       // initial layout
   };
 
-  auto data = std::make_shared<uint32_t>(0u);
+  auto data = std::make_shared<uint32_t>(~0u);
   auto image = context_->GetMemoryAllocator().CreateDeviceLocalImageCopy(
       image_info,                          // info
-      &data,                               // data
+      data.get(),                          // data
       sizeof(data),                        // data size
       context_->GetTransferCommandPool(),  // command pool
       "Placeholder 1x1",                   // debug name
