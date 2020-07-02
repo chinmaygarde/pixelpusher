@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 
 #include "closure.h"
 #include "event_loop.h"
@@ -11,6 +12,7 @@
 #include "logging.h"
 #include "main_renderer.h"
 #include "platform.h"
+#include "pointer_input.h"
 #include "renderer.h"
 #include "vulkan.h"
 #include "vulkan_connection.h"
@@ -46,6 +48,8 @@ static Size GetCurrentWindowSize(GLFWwindow* window) {
 
 struct GLFWDelegate {
   KeyInputDispatcher key_input_dispatcher;
+  PointerInputDispatcher pointer_input_dispatcher;
+  std::optional<int> active_pointer_button;
 };
 
 static void OnGLFWKeyEvent(GLFWwindow* window,
@@ -65,6 +69,56 @@ static void OnGLFWKeyEvent(GLFWwindow* window,
                                              GLFWKeyModifiersToModifiers(mods)
 
   );
+}
+
+static void OnGLFWMouseButton(GLFWwindow* window,
+                              int button,
+                              int action,
+                              int mods) {
+  auto delegate =
+      reinterpret_cast<GLFWDelegate*>(::glfwGetWindowUserPointer(window));
+
+  if (!delegate) {
+    return;
+  }
+
+  bool add_or_remove = true;
+  switch (action) {
+    case GLFW_PRESS:
+      add_or_remove = true;
+      break;
+    case GLFW_RELEASE:
+      add_or_remove = false;
+      break;
+    default:
+      return;
+  }
+
+  if (add_or_remove) {
+    delegate->active_pointer_button = button;
+    delegate->pointer_input_dispatcher.StopTrackingAllPointers();
+    delegate->pointer_input_dispatcher.StartTrackingPointer(button);
+  } else {
+    delegate->active_pointer_button = std::nullopt;
+    delegate->pointer_input_dispatcher.StopTrackingPointer(button);
+  }
+}
+
+static void OnGLFWCursorPosition(GLFWwindow* window, double x, double y) {
+  auto delegate =
+      reinterpret_cast<GLFWDelegate*>(::glfwGetWindowUserPointer(window));
+
+  if (!delegate) {
+    return;
+  }
+
+  if (!delegate->active_pointer_button.has_value()) {
+    return;
+  }
+
+  delegate->pointer_input_dispatcher.DispatchPointerEvent(
+      delegate->active_pointer_button.value(),
+      Point{static_cast<int64_t>(x), static_cast<int64_t>(y)});
 }
 
 static bool Main(int argc, char const* argv[]) {
@@ -96,7 +150,10 @@ static bool Main(int argc, char const* argv[]) {
   GLFWDelegate glfw_delegate;
 
   ::glfwSetWindowUserPointer(window, &glfw_delegate);
+
   ::glfwSetKeyCallback(window, &OnGLFWKeyEvent);
+  ::glfwSetCursorPosCallback(window, &OnGLFWCursorPosition);
+  ::glfwSetMouseButtonCallback(window, &OnGLFWMouseButton);
 
   auto get_instance_proc_address = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
       ::glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
@@ -138,6 +195,7 @@ static bool Main(int argc, char const* argv[]) {
   }
 
   glfw_delegate.key_input_dispatcher.AddDelegate(&renderer);
+  glfw_delegate.pointer_input_dispatcher.AddDelegate(&renderer);
 
   AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
 

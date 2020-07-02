@@ -1,12 +1,13 @@
 #pragma once
 
 #include "key_input.h"
+#include "pointer_input.h"
 #include "rendering_context.h"
 #include "vulkan.h"
 
 namespace pixel {
 
-class Renderer : public KeyInputDelegate {
+class Renderer : public KeyInputDelegate, public PointerInputDelegate {
  public:
   virtual ~Renderer();
 
@@ -21,12 +22,18 @@ class Renderer : public KeyInputDelegate {
   virtual bool Teardown() = 0;
 
   // |KeyInputDelegate|
-  virtual bool WantsKeyEvents();
+  bool WantsKeyEvents() override;
 
   // |KeyInputDelegate|
-  virtual void OnKeyEvent(KeyType type,
-                          KeyAction action,
-                          KeyModifiers modifiers);
+  void OnKeyEvent(KeyType type,
+                  KeyAction action,
+                  KeyModifiers modifiers) override;
+
+  // |PointerInputDelegate|
+  bool WantsPointerInput() override;
+
+  // |PointerInputDelegate|
+  bool OnPointerEvent(int64_t pointer_id, Point point, Offset offset) override;
 
  protected:
   Renderer(std::shared_ptr<RenderingContext> context);

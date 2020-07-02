@@ -8,7 +8,7 @@
 
 namespace pixel {
 
-#define MODEL_NAME "Triangle"
+#define MODEL_NAME "DamagedHelmet"
 
 MainRenderer::MainRenderer(VulkanConnection& connection, GLFWwindow* window)
     : Renderer(connection.GetRenderingContext()), connection_(connection) {
@@ -143,6 +143,28 @@ void MainRenderer::OnKeyEvent(KeyType type,
       renderer->OnKeyEvent(type, action, modifiers);
     }
   }
+}
+
+// |PointerInputDelegate|
+bool MainRenderer::WantsPointerInput() {
+  return true;
+}
+
+// |PointerInputDelegate|
+bool MainRenderer::OnPointerEvent(int64_t pointer_id,
+                                  Point point,
+                                  Offset offset) {
+  for (auto i = renderers_.rbegin(); i != renderers_.rend(); i++) {
+    if (!(*i)->WantsPointerInput()) {
+      continue;
+    }
+
+    if ((*i)->OnPointerEvent(pointer_id, point, offset)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace pixel

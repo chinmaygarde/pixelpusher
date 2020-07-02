@@ -43,6 +43,12 @@ class MainRenderer final : public Renderer {
                   KeyAction action,
                   KeyModifiers modifiers) override;
 
+  // |PointerInputDelegate|
+  bool WantsPointerInput() override;
+
+  // |PointerInputDelegate|
+  bool OnPointerEvent(int64_t pointer_id, Point point, Offset offset) override;
+
  private:
   VulkanConnection& connection_;
   std::vector<std::unique_ptr<Renderer>> renderers_;

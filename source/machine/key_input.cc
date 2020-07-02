@@ -11,6 +11,11 @@ bool KeyInputDispatcher::AddDelegate(KeyInputDelegate* delegate) {
     return false;
   }
 
+  auto found = delegates_.find(delegate);
+  if (found != delegates_.end()) {
+    return false;
+  }
+
   delegates_.insert(delegate);
   return true;
 }

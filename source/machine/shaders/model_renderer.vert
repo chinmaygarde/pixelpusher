@@ -20,5 +20,4 @@ layout(location = 0) out vec2 outTextureCoords;
 void main() {
   gl_Position = ubo.mvp * vec4(inPosition, 1.0);
   outTextureCoords = inTextureCoords;
-  gl_Position.y = -gl_Position.y;
 }

@@ -173,4 +173,16 @@ void ModelRenderer::OnKeyEvent(KeyType type,
   }
 }
 
+// |PointerInputDelegate|
+bool ModelRenderer::WantsPointerInput() {
+  return true;
+}
+
+// |PointerInputDelegate|
+bool ModelRenderer::OnPointerEvent(int64_t pointer_id,
+                                   Point point,
+                                   Offset offset) {
+  return false;
+}
+
 }  // namespace pixel

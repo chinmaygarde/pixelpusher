@@ -36,6 +36,8 @@ add_library(machine_lib
   pipeline_builder.h
   pipeline_layout.cc
   pipeline_layout.h
+  pointer_input.cc
+  pointer_input.h
   queue_selection.cc
   queue_selection.h
   renderer.cc

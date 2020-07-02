@@ -50,6 +50,12 @@ class ModelRenderer : public Renderer {
                   KeyAction action,
                   KeyModifiers modifiers) override;
 
+  // |PointerInputDelegate|
+  bool WantsPointerInput() override;
+
+  // |PointerInputDelegate|
+  bool OnPointerEvent(int64_t pointer_id, Point point, Offset offset) override;
+
   P_DISALLOW_COPY_AND_ASSIGN(ModelRenderer);
 };
 

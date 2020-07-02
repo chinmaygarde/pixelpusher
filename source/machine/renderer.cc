@@ -27,4 +27,14 @@ void Renderer::OnKeyEvent(KeyType type,
   //
 }
 
+// |PointerInputDelegate|
+bool Renderer::WantsPointerInput() {
+  return false;
+}
+
+// |PointerInputDelegate|
+bool Renderer::OnPointerEvent(int64_t pointer_id, Point point, Offset offset) {
+  return false;
+}
+
 }  // namespace pixel
