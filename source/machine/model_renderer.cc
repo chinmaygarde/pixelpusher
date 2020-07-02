@@ -180,8 +180,8 @@ bool ModelRenderer::WantsPointerInput() {
 
 // |PointerInputDelegate|
 bool ModelRenderer::OnPointerEvent(int64_t pointer_id,
-                                   Point point,
-                                   Offset offset) {
+                                   PointerPhase phase,
+                                   const PointerData& data) {
   return false;
 }
 

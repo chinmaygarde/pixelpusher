@@ -33,7 +33,9 @@ bool Renderer::WantsPointerInput() {
 }
 
 // |PointerInputDelegate|
-bool Renderer::OnPointerEvent(int64_t pointer_id, Point point, Offset offset) {
+bool Renderer::OnPointerEvent(int64_t pointer_id,
+                              PointerPhase phase,
+                              const PointerData& data) {
   return false;
 }
 

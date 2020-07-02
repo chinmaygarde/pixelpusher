@@ -47,7 +47,9 @@ class MainRenderer final : public Renderer {
   bool WantsPointerInput() override;
 
   // |PointerInputDelegate|
-  bool OnPointerEvent(int64_t pointer_id, Point point, Offset offset) override;
+  bool OnPointerEvent(int64_t pointer_id,
+                      PointerPhase phase,
+                      const PointerData& data) override;
 
  private:
   VulkanConnection& connection_;

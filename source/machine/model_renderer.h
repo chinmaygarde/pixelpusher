@@ -54,7 +54,9 @@ class ModelRenderer : public Renderer {
   bool WantsPointerInput() override;
 
   // |PointerInputDelegate|
-  bool OnPointerEvent(int64_t pointer_id, Point point, Offset offset) override;
+  bool OnPointerEvent(int64_t pointer_id,
+                      PointerPhase phase,
+                      const PointerData& data) override;
 
   P_DISALLOW_COPY_AND_ASSIGN(ModelRenderer);
 };

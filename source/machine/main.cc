@@ -95,12 +95,15 @@ static void OnGLFWMouseButton(GLFWwindow* window,
   }
 
   if (add_or_remove) {
+    if (delegate->active_pointer_button.has_value()) {
+      delegate->pointer_input_dispatcher.StopTrackingPointer(
+          delegate->active_pointer_button.value(), true);
+    }
     delegate->active_pointer_button = button;
-    delegate->pointer_input_dispatcher.StopTrackingAllPointers();
     delegate->pointer_input_dispatcher.StartTrackingPointer(button);
   } else {
     delegate->active_pointer_button = std::nullopt;
-    delegate->pointer_input_dispatcher.StopTrackingPointer(button);
+    delegate->pointer_input_dispatcher.StopTrackingPointer(button, false);
   }
 }
 

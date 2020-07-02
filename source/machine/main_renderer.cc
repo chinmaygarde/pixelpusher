@@ -152,14 +152,14 @@ bool MainRenderer::WantsPointerInput() {
 
 // |PointerInputDelegate|
 bool MainRenderer::OnPointerEvent(int64_t pointer_id,
-                                  Point point,
-                                  Offset offset) {
+                                  PointerPhase phase,
+                                  const PointerData& data) {
   for (auto i = renderers_.rbegin(); i != renderers_.rend(); i++) {
     if (!(*i)->WantsPointerInput()) {
       continue;
     }
 
-    if ((*i)->OnPointerEvent(pointer_id, point, offset)) {
+    if ((*i)->OnPointerEvent(pointer_id, phase, data)) {
       return true;
     }
   }

@@ -33,7 +33,9 @@ class Renderer : public KeyInputDelegate, public PointerInputDelegate {
   bool WantsPointerInput() override;
 
   // |PointerInputDelegate|
-  bool OnPointerEvent(int64_t pointer_id, Point point, Offset offset) override;
+  bool OnPointerEvent(int64_t pointer_id,
+                      PointerPhase phase,
+                      const PointerData& data) override;
 
  protected:
   Renderer(std::shared_ptr<RenderingContext> context);

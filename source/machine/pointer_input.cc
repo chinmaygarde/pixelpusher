@@ -39,16 +39,33 @@ bool PointerInputDispatcher::RemoveDelegate(PointerInputDelegate* delegate) {
   return true;
 }
 
-void PointerInputDispatcher::StopTrackingAllPointers() {
-  tracked_pointers_.clear();
-}
-
 void PointerInputDispatcher::StartTrackingPointer(int64_t pointer_id) {
+  auto found = tracked_pointers_.find(pointer_id);
+  if (found != tracked_pointers_.end()) {
+    StopTrackingPointer(pointer_id, true /* cancel */);
+  }
+
   tracked_pointers_[pointer_id] = std::nullopt;
 }
 
-void PointerInputDispatcher::StopTrackingPointer(int64_t pointer_id) {
-  tracked_pointers_.erase(pointer_id);
+void PointerInputDispatcher::StopTrackingPointer(int64_t pointer_id,
+                                                 bool cancel) {
+  auto found = tracked_pointers_.find(pointer_id);
+  if (found == tracked_pointers_.end()) {
+    return;
+  }
+
+  auto found_data = found->second;
+
+  tracked_pointers_.erase(found);
+
+  if (!found_data.has_value()) {
+    return;
+  }
+
+  const auto phase = cancel ? PointerPhase::kPointerPhaseCancel
+                            : PointerPhase::kPointerPhaseEnd;
+  DispatchPointerEvent(pointer_id, phase, found_data.value());
 }
 
 bool PointerInputDispatcher::DispatchPointerEvent(int64_t pointer_id,
@@ -60,23 +77,31 @@ bool PointerInputDispatcher::DispatchPointerEvent(int64_t pointer_id,
     return false;
   }
 
+  PointerPhase phase = PointerPhase::kPointerPhaseMove;
+
   if (!found->second.has_value()) {
-    found->second = point;
+    found->second = {point};
+    phase = PointerPhase::kPointerPhaseBegin;
   }
 
-  const Offset offset(point.x - found->second.value().x,
-                      point.y - found->second.value().y);
+  found->second.value().last_point = point;
 
+  return DispatchPointerEvent(pointer_id, phase, found->second.value());
+}
+
+bool PointerInputDispatcher::DispatchPointerEvent(
+    int64_t pointer_id,
+    PointerPhase phase,
+    const PointerData& data) const {
   for (auto i = delegates_.rbegin(); i != delegates_.rend(); i++) {
     if (!(*i)->WantsPointerInput()) {
       continue;
     }
 
-    if ((*i)->OnPointerEvent(pointer_id, point, offset)) {
+    if ((*i)->OnPointerEvent(pointer_id, phase, data)) {
       return true;
     }
   }
-
   return false;
 }
 
