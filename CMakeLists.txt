@@ -15,6 +15,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/tools")
 
 include(spirv)
 include(platform_selection)
+include(flutter_engine)
 
 detect_platform()
 
@@ -31,6 +32,7 @@ endif()
 #   COMMAND ./utils/git-sync-deps
 #   WORKING_DIRECTORY third_party/shaderc
 # )
+
 add_subdirectory(third_party/glfw           EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/vulkan_headers EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/glm            EXCLUDE_FROM_ALL)

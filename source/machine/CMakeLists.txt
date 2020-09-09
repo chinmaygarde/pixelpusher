@@ -85,6 +85,7 @@ target_link_libraries(machine_lib
     imgui
     tiny_gltf
     shaderc
+    runtime
 )
 
 get_filename_component(PIXEL_SHADERS_LOCATION ${CMAKE_BINARY_DIR}/shaders ABSOLUTE)
@@ -97,6 +98,8 @@ target_include_directories(machine_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 add_executable(machine
   main.cc
 )
+
+copy_flutter_engine_resources(machine)
 
 target_link_libraries(machine
   PRIVATE
@@ -114,3 +117,5 @@ target_link_libraries(machine_unittests
     gtest
     gtest_main
 )
+
+copy_flutter_engine_resources(machine_unittests)

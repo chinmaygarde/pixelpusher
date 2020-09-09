@@ -14,6 +14,7 @@
 #include "platform.h"
 #include "pointer_input.h"
 #include "renderer.h"
+#include "runtime.h"
 #include "vulkan.h"
 #include "vulkan_connection.h"
 
@@ -125,6 +126,12 @@ static void OnGLFWCursorPosition(GLFWwindow* window, double x, double y) {
 }
 
 static bool Main(int argc, char const* argv[]) {
+  Runtime runtime("");
+  if (!runtime.IsValid()) {
+    P_ERROR << "Could not initialize the runtime.";
+    return false;
+  }
+
   if (!::glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";
     return false;
