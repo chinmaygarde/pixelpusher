@@ -16,6 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/tools")
 include(spirv)
 include(platform_selection)
 include(flutter_engine)
+include(pixel_app)
 
 detect_platform()
 
@@ -27,6 +28,8 @@ if(WINDOWS AND NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     -D_CRT_SECURE_NO_WARNINGS=0
   )
 endif()
+
+set(FLUTTER_ENGINE_DIR "C:/Users/chinm/VersionControlled/engine/src/out/host_debug")
 
 # execute_process(
 #   COMMAND ./utils/git-sync-deps
@@ -44,3 +47,4 @@ add_subdirectory(third_party/imgui          EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/tinygltf       EXCLUDE_FROM_ALL)
 
 add_subdirectory(source)
+add_subdirectory(dart/runtime)

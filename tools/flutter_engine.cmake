@@ -6,8 +6,6 @@ set(__flutter_engine INCLUDED)
 
 
 function(depend_on_flutter_engine TARGET)
-  set(FLUTTER_ENGINE_DIR "C:/Users/chinm/VersionControlled/engine/src/out/host_debug")
-
   add_library("flutter_engine_${TARGET}" SHARED IMPORTED)
 
   set(FLUTTER_ENGINE_DLL     "${FLUTTER_ENGINE_DIR}/flutter_engine.dll")
@@ -26,9 +24,8 @@ function(depend_on_flutter_engine TARGET)
 endfunction()
 
 function(copy_flutter_engine_resources TARGET)
-  set(FLUTTER_ENGINE_DIR "C:/Users/chinm/VersionControlled/engine/src/out/host_debug")
-
   add_custom_target("flutter_engine_resources_${TARGET}"
+    COMMENT "Copy Engine Resources for ${TARGET}"
     COMMAND "${CMAKE_COMMAND}" -E copy "${FLUTTER_ENGINE_DIR}/flutter_engine.dll"     "${CMAKE_CURRENT_BINARY_DIR}"
     COMMAND "${CMAKE_COMMAND}" -E copy "${FLUTTER_ENGINE_DIR}/flutter_engine.dll.lib" "${CMAKE_CURRENT_BINARY_DIR}"
     COMMAND "${CMAKE_COMMAND}" -E copy "${FLUTTER_ENGINE_DIR}/icudtl.dat"             "${CMAKE_CURRENT_BINARY_DIR}"
