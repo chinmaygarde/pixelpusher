@@ -44,7 +44,7 @@ class FileMapping : public Mapping {
     if (!::UnmapViewOfFile(data_.mapping)) {
       P_ERROR << "Could not unmap view of file.";
     }
-#else   // P_OS_WINDOWS
+#else  // P_OS_WINDOWS
     if (::munmap(const_cast<uint8_t*>(data_.mapping), data_.size) != 0) {
       P_ERROR << "Could not unmap data.";
     }
@@ -66,7 +66,7 @@ class FileMapping : public Mapping {
 bool FDTraits::IsValid(Handle fd) {
 #if P_OS_WINDOWS
   return fd != INVALID_HANDLE_VALUE;
-#else   // P_OS_WINDOWS
+#else  // P_OS_WINDOWS
   return fd >= 0;
 #endif  // P_OS_WINDOWS
 }
@@ -74,7 +74,7 @@ bool FDTraits::IsValid(Handle fd) {
 FDTraits::Handle FDTraits::DefaultValue() {
 #if P_OS_WINDOWS
   return INVALID_HANDLE_VALUE;
-#else   // P_OS_WINDOWS
+#else  // P_OS_WINDOWS
   return -1;
 #endif  // P_OS_WINDOWS
 }
@@ -85,7 +85,7 @@ void FDTraits::Collect(Handle fd) {
   if (!closed) {
     P_ERROR << "Could not close file handle.";
   }
-#else   // P_OS_WINDOWS
+#else  // P_OS_WINDOWS
   P_TEMP_FAILURE_RETRY(::close(fd));
 #endif  // P_OS_WINDOWS
 }
@@ -150,7 +150,7 @@ std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& file_path) {
   mapping_data.mapping_fd = std::move(mapping_fd);
   return std::make_unique<FileMapping>(std::move(mapping_data));
 
-#else   // P_OS_WINDOWS
+#else  // P_OS_WINDOWS
   UniqueFD fd(
       P_TEMP_FAILURE_RETRY(::open(file_name.c_str(), O_RDONLY | O_CLOEXEC)));
 
@@ -182,6 +182,20 @@ std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& file_path) {
 
 std::unique_ptr<Mapping> OpenFile(const char* file_name) {
   return OpenFile(std::filesystem::path{file_name});
+}
+
+std::filesystem::path GetCurrentExecutablePath() {
+#if P_OS_WINDOWS
+  auto module_handle = ::GetModuleHandle(nullptr);
+  P_ASSERT(module_handle);
+  char path[MAX_PATH];
+  auto read_size = ::GetModuleFileNameA(module_handle, path, MAX_PATH);
+  P_ASSERT(read_size > 0);
+  return {std::string{path, read_size}};
+#else
+#error Not currently supported on this platform.
+  return {};
+#endif
 }
 
 }  // namespace pixel

@@ -126,7 +126,10 @@ static void OnGLFWCursorPosition(GLFWwindow* window, double x, double y) {
 }
 
 static bool Main(int argc, char const* argv[]) {
-  Runtime runtime("");
+  RuntimeArgs runtime_args;
+  runtime_args.SetAssetsPath();
+  runtime_args.SetCommandLineArgs(argc, argv);
+  Runtime runtime(runtime_args);
   if (!runtime.IsValid()) {
     P_ERROR << "Could not initialize the runtime.";
     return false;

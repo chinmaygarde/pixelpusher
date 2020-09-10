@@ -14,7 +14,7 @@ namespace pixel {
 struct FDTraits {
 #if P_OS_WINDOWS
   using Handle = void*;
-#else   // P_OS_WINDOWS
+#else  // P_OS_WINDOWS
   using Handle = int;
 #endif  // P_OS_WINDOWS
 
@@ -30,5 +30,7 @@ using UniqueFD = UniqueObject<FDTraits::Handle, FDTraits>;
 std::unique_ptr<Mapping> OpenFile(const char* file_name);
 
 std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& path);
+
+std::filesystem::path GetCurrentExecutablePath();
 
 }  // namespace pixel

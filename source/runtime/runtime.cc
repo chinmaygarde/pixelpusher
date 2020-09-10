@@ -5,10 +5,40 @@
 
 namespace pixel {
 
-Runtime::Runtime(const std::string& assets_path) {
+RuntimeArgs::RuntimeArgs() = default;
+
+RuntimeArgs::~RuntimeArgs() = default;
+
+void RuntimeArgs::SetAssetsPath(std::string assets_path) {
+  assets_path_ = std::move(assets_path);
+}
+
+const std::string& RuntimeArgs::GetAssetsPath() const {
+  return assets_path_;
+}
+
+void RuntimeArgs::SetCommandLineArgs(int argc, char const* argv[]) {
+  for (int i = 0; i < argc; i++) {
+    command_line_args_.push_back(argv[i]);
+  }
+}
+
+const std::vector<std::string>& RuntimeArgs::GetCommandLineArgs() const {
+  return command_line_args_;
+}
+
+Runtime::Runtime(const RuntimeArgs& args) {
   FlutterProjectArgs project_args = {};
   project_args.struct_size = sizeof(project_args);
-  project_args.assets_path = assets_path.c_str();
+  project_args.assets_path = args.GetAssetsPath().c_str();
+
+  auto command_line_args = args.GetCommandLineArgs();
+  std::vector<const char*> c_command_line_args;
+  for (const auto& arg : command_line_args) {
+    c_command_line_args.push_back(arg.c_str());
+  }
+  project_args.command_line_argc = c_command_line_args.size();
+  project_args.command_line_argv = c_command_line_args.data();
 
   FlutterSoftwareRendererConfig software_config = {};
   software_config.struct_size = sizeof(software_config);
