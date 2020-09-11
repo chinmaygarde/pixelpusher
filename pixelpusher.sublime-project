@@ -5,7 +5,7 @@
 			"file_regex": "([a-zA-Z/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
 			"name": "Pixel Pusher Build All",
 			"shell": true,
-			"shell_cmd": "(cmake ../.. -G Ninja && ninja && .\\dart\\runtime\\machine.exe --observatory-port=8080 --disable-service-auth-codes)",
+			"shell_cmd": "(cmake ../.. -G Ninja && ninja && .\\dart\\runtime\\machine.exe)",
 			"working_dir": "${project_path}/build/clang"
 		},
 		{

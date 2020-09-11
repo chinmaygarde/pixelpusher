@@ -23,6 +23,10 @@ void RuntimeArgs::SetCommandLineArgs(int argc, char const* argv[]) {
   }
 }
 
+void RuntimeArgs::AddCommandLineArg(std::string arg) {
+  command_line_args_.emplace_back(std::move(arg));
+}
+
 const std::vector<std::string>& RuntimeArgs::GetCommandLineArgs() const {
   return command_line_args_;
 }

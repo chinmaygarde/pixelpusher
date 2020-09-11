@@ -33,6 +33,8 @@ class RuntimeArgs {
 
   void SetCommandLineArgs(int argc, char const* argv[]);
 
+  void AddCommandLineArg(std::string arg);
+
   const std::vector<std::string>& GetCommandLineArgs() const;
 
  private:

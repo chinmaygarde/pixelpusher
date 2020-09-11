@@ -127,8 +127,14 @@ static void OnGLFWCursorPosition(GLFWwindow* window, double x, double y) {
 
 static bool Main(int argc, char const* argv[]) {
   RuntimeArgs runtime_args;
+
   runtime_args.SetAssetsPath();
+
   runtime_args.SetCommandLineArgs(argc, argv);
+  runtime_args.AddCommandLineArg("--log-tag=machine");
+  runtime_args.AddCommandLineArg("--observatory-port=8080");
+  runtime_args.AddCommandLineArg("--disable-service-auth-codes");
+
   Runtime runtime(runtime_args);
   if (!runtime.IsValid()) {
     P_ERROR << "Could not initialize the runtime.";
