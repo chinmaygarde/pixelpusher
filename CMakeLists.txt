@@ -17,6 +17,7 @@ include(spirv)
 include(platform_selection)
 include(flutter_engine)
 include(pixel_app)
+include(epoxy)
 
 detect_platform()
 
@@ -44,6 +45,10 @@ add_subdirectory(third_party/shaderc        EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/googletest     EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/stb            EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/imgui          EXCLUDE_FROM_ALL)
+
+set(EPOXY_BUILD_EXAMPLES NO)
+set(EPOXY_BUILD_TESTS NO)
+add_subdirectory(third_party/epoxy          EXCLUDE_FROM_ALL)
 add_subdirectory(third_party/tinygltf       EXCLUDE_FROM_ALL)
 
 add_subdirectory(source)

@@ -75,6 +75,18 @@ compile_shaders(machine_lib
   shaders/triangle.vert
 )
 
+epoxy(machine_lib
+  ../../idl/cxx_interface.template.epoxy
+  pixel.epoxy
+  pixel.h
+)
+
+epoxy(machine_lib
+  ../../idl/cxx_impl.template.epoxy
+  pixel.epoxy
+  pixel.cc
+)
+
 target_link_libraries(machine_lib
   PUBLIC
     glfw
@@ -99,8 +111,6 @@ add_executable(machine
   main.cc
 )
 
-copy_flutter_engine_resources(machine)
-
 target_link_libraries(machine
   PRIVATE
     machine_lib
@@ -117,5 +127,3 @@ target_link_libraries(machine_unittests
     gtest
     gtest_main
 )
-
-copy_flutter_engine_resources(machine_unittests)
