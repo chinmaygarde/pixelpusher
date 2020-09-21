@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.13)
 
 project(pixel_pusher)
 
@@ -30,7 +30,11 @@ if(WINDOWS AND NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   )
 endif()
 
-set(FLUTTER_ENGINE_DIR "C:/Users/chinm/VersionControlled/engine/src/out/host_debug")
+set(FLUTTER_ENGINE_DIR "" CACHE PATH "Path to the Flutter Engine Host Debug Output")
+
+if(NOT EXISTS ${FLUTTER_ENGINE_DIR})
+  message(FATAL_ERROR "Flutter engine artifacts not specified. Use the FLUTTER_ENGINE_DIR flag.")
+endif()
 
 # execute_process(
 #   COMMAND ./utils/git-sync-deps
