@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "file.h"
@@ -44,16 +45,34 @@ class RuntimeArgs {
   P_DISALLOW_COPY_AND_ASSIGN(RuntimeArgs);
 };
 
+class RuntimeData {
+ public:
+  RuntimeData();
+
+  virtual ~RuntimeData();
+};
+
 class Runtime {
  public:
-  Runtime(const RuntimeArgs& args);
+  static void AttachToCurrentThread(std::shared_ptr<Runtime> runtime);
+
+  static void ClearCurrentThreadRuntime();
+
+  static Runtime* GetCurrentRuntime();
+
+  static RuntimeData* GetCurrentRuntimeData();
+
+  Runtime(const RuntimeArgs& args, std::unique_ptr<RuntimeData> data);
 
   ~Runtime();
 
   bool IsValid() const;
 
+  RuntimeData* GetRuntimeData() const;
+
  private:
   UniqueObject<Engine*, EngineTraits> engine_;
+  std::unique_ptr<RuntimeData> data_;
 
   P_DISALLOW_COPY_AND_ASSIGN(Runtime);
 };

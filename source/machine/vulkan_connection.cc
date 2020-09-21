@@ -262,7 +262,7 @@ static PhysicalDeviceSelection SelectPhysicalDevice(
 }
 
 static constexpr bool AreValidationLayersEnabled() {
-  return true;
+  return false;
 }
 
 static std::optional<std::set<std::string>> GetRequiredInstanceLayers() {

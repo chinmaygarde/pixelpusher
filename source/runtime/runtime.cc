@@ -31,7 +31,12 @@ const std::vector<std::string>& RuntimeArgs::GetCommandLineArgs() const {
   return command_line_args_;
 }
 
-Runtime::Runtime(const RuntimeArgs& args) {
+RuntimeData::RuntimeData() = default;
+
+RuntimeData::~RuntimeData() = default;
+
+Runtime::Runtime(const RuntimeArgs& args, std::unique_ptr<RuntimeData> data)
+    : data_(std::move(data)) {
   FlutterProjectArgs project_args = {};
   project_args.struct_size = sizeof(project_args);
   project_args.assets_path = args.GetAssetsPath().c_str();
@@ -71,6 +76,30 @@ Runtime::~Runtime() = default;
 
 bool Runtime::IsValid() const {
   return engine_.IsValid();
+}
+
+RuntimeData* Runtime::GetRuntimeData() const {
+  return data_.get();
+}
+
+thread_local std::shared_ptr<Runtime> tRuntime;
+
+void Runtime::AttachToCurrentThread(std::shared_ptr<Runtime> runtime) {
+  tRuntime = std::move(runtime);
+}
+
+void Runtime::ClearCurrentThreadRuntime() {
+  tRuntime.reset();
+}
+
+Runtime* Runtime::GetCurrentRuntime() {
+  P_ASSERT(static_cast<bool>(tRuntime) &&
+           "Thread must have a current runtime associated with it.");
+  return tRuntime.get();
+}
+
+RuntimeData* Runtime::GetCurrentRuntimeData() {
+  return GetCurrentRuntime()->GetRuntimeData();
 }
 
 bool EngineTraits::IsValid(Engine* engine) {

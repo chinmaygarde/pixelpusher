@@ -36,6 +36,10 @@ add_library(machine_lib
   pipeline_builder.h
   pipeline_layout.cc
   pipeline_layout.h
+  pixel.cc
+  pixel.h
+  pixel_runtime.cc
+  pixel_runtime.h
   pointer_input.cc
   pointer_input.h
   queue_selection.cc
@@ -78,13 +82,13 @@ compile_shaders(machine_lib
 epoxy(machine_lib
   ../../idl/cxx_interface.template.epoxy
   pixel.epoxy
-  pixel.h
+  pixel_c_bindings.h
 )
 
 epoxy(machine_lib
   ../../idl/cxx_impl.template.epoxy
   pixel.epoxy
-  pixel.cc
+  pixel_c_bindings.cc
 )
 
 target_link_libraries(machine_lib

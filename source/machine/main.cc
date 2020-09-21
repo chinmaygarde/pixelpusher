@@ -11,6 +11,7 @@
 #include "key_input_glfw.h"
 #include "logging.h"
 #include "main_renderer.h"
+#include "pixel_runtime.h"
 #include "platform.h"
 #include "pointer_input.h"
 #include "renderer.h"
@@ -135,11 +136,16 @@ static bool Main(int argc, char const* argv[]) {
   runtime_args.AddCommandLineArg("--observatory-port=8080");
   runtime_args.AddCommandLineArg("--disable-service-auth-codes");
 
-  Runtime runtime(runtime_args);
-  if (!runtime.IsValid()) {
+  auto runtime =
+      std::make_shared<Runtime>(runtime_args, std::make_unique<PixelRuntime>());
+  if (!runtime->IsValid()) {
     P_ERROR << "Could not initialize the runtime.";
     return false;
   }
+
+  Runtime::AttachToCurrentThread(std::move(runtime));
+  AutoClosure clear_runtime_thread_binding(
+      []() { Runtime::ClearCurrentThreadRuntime(); });
 
   if (!::glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";

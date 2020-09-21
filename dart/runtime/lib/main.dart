@@ -1,3 +1,5 @@
+import './gen/dart/pixel.dart' as pixel;
+
 main() {
-  print("Hello from Dart.");
+  print("Initializing Dart runtime.");
 }

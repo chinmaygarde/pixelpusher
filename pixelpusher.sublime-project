@@ -2,7 +2,7 @@
 	"build_systems":
 	[
 		{
-			"file_regex": "([a-zA-Z/_\\.\\d+-]+):(\\d+):(\\d+): ([\\w\\s':<>,&()^*=;-]+)",
+			"file_regex": "(.+):(\\d+):(\\d+): (.+)",
 			"name": "Pixel Pusher Build All",
 			"shell": true,
 			"shell_cmd": "(cmake ../.. -G Ninja && ninja && .\\dart\\runtime\\machine.exe)",
@@ -15,7 +15,7 @@
 			"working_dir": "${project_path}/build/xcode"
 		},
 		{
-			"file_regex": "([\\w\\\\:\\.]+)\\((\\d+),(\\d+)\\): (.*)",
+			"file_regex": "(.+):(\\d+):(\\d+): (.+)",
 			"name": "Pixel Pusher Windows",
 			"shell": true,
 			"shell_cmd": "msbuild pixel_pusher.sln -verbosity:quiet -nologo -maxcpucount && .\\source\\machine\\Debug\\machine.exe",
@@ -38,7 +38,10 @@
 			"path": "build",
 			"follow_symlinks": false,
 			"file_include_patterns": [
-				"compile_commands.json"
+				"compile_commands.json",
+				"*.h",
+				"*.cc",
+				"*.dart",
 			]
 		}
 	],
