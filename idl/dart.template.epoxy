@@ -166,14 +166,11 @@ ffi.Pointer<ffi.{{dart_ffi_type(arg.type)}}>
    Dylib Binding Routine.
 #}
 // This method must be called once upfront before using any of the methods in the {{ns.name}} namespace.
-void AttachNativeBindings() {
-  // Open the {{ns.name}} dylib to look for native functions.
-  final dylib = ffi.DynamicLibrary.open("example/{{ns.name}}.dll");
-
+void AttachNativeBindings(ffi.DynamicLibrary library) {
   {# Bind standalone functions. #}
   // Bind standalone functions
   {% for func in ns.functions %}
-  _{{func.name}}Desugared = dylib.lookup<ffi.NativeFunction<{{func.name}}CType>>("EPOXY_BIND_{{func.name}}").asFunction();
+  _{{func.name}}Desugared = library.lookup<ffi.NativeFunction<{{func.name}}CType>>("EPOXY_BIND_{{func.name}}").asFunction();
   {% endfor %}
 }
 
