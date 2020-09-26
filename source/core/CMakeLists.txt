@@ -9,8 +9,6 @@ add_library(core
   file.h
   filesystem_watcher.cc
   filesystem_watcher.h
-  filesystem_watcher_win.cc
-  filesystem_watcher_win.h
   geometry.h
   hash.cc
   hash.h
@@ -28,9 +26,29 @@ add_library(core
   unique_object.h
   unshared_weak.cc
   unshared_weak.h
-  win_utils.cc
-  win_utils.h
 )
+
+if(WINDOWS)
+  target_sources(core PRIVATE
+    filesystem_watcher_win.cc
+    filesystem_watcher_win.h
+    win_utils.cc
+    win_utils.h
+  )
+endif()
+
+if(APPLE)
+  set_source_files_properties(file.cc PROPERTIES LANGUAGE OBJCXX)
+
+  target_sources(core PRIVATE
+    filesystem_watcher_darwin.cc
+    filesystem_watcher_darwin.h
+  )
+
+  target_link_libraries(core
+    "-framework Foundation"
+  )
+endif(APPLE)
 
 target_include_directories(core
   PUBLIC

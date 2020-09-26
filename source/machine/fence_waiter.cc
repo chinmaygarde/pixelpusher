@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <unordered_map>
 
 #include "closure.h"
 #include "event_loop.h"

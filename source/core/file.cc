@@ -20,6 +20,10 @@
 
 #endif  // // P_OS_WINDOWS
 
+#if P_OS_MAC
+#include <Foundation/Foundation.h>
+#endif  // P_OS_MAC
+
 #include "logging.h"
 #include "mapping.h"
 
@@ -44,7 +48,7 @@ class FileMapping : public Mapping {
     if (!::UnmapViewOfFile(data_.mapping)) {
       P_ERROR << "Could not unmap view of file.";
     }
-#else  // P_OS_WINDOWS
+#else   // P_OS_WINDOWS
     if (::munmap(const_cast<uint8_t*>(data_.mapping), data_.size) != 0) {
       P_ERROR << "Could not unmap data.";
     }
@@ -66,7 +70,7 @@ class FileMapping : public Mapping {
 bool FDTraits::IsValid(Handle fd) {
 #if P_OS_WINDOWS
   return fd != INVALID_HANDLE_VALUE;
-#else  // P_OS_WINDOWS
+#else   // P_OS_WINDOWS
   return fd >= 0;
 #endif  // P_OS_WINDOWS
 }
@@ -74,7 +78,7 @@ bool FDTraits::IsValid(Handle fd) {
 FDTraits::Handle FDTraits::DefaultValue() {
 #if P_OS_WINDOWS
   return INVALID_HANDLE_VALUE;
-#else  // P_OS_WINDOWS
+#else   // P_OS_WINDOWS
   return -1;
 #endif  // P_OS_WINDOWS
 }
@@ -85,7 +89,7 @@ void FDTraits::Collect(Handle fd) {
   if (!closed) {
     P_ERROR << "Could not close file handle.";
   }
-#else  // P_OS_WINDOWS
+#else   // P_OS_WINDOWS
   P_TEMP_FAILURE_RETRY(::close(fd));
 #endif  // P_OS_WINDOWS
 }
@@ -150,9 +154,9 @@ std::unique_ptr<Mapping> OpenFile(const std::filesystem::path& file_path) {
   mapping_data.mapping_fd = std::move(mapping_fd);
   return std::make_unique<FileMapping>(std::move(mapping_data));
 
-#else  // P_OS_WINDOWS
+#else   // P_OS_WINDOWS
   UniqueFD fd(
-      P_TEMP_FAILURE_RETRY(::open(file_name.c_str(), O_RDONLY | O_CLOEXEC)));
+      P_TEMP_FAILURE_RETRY(::open(file_path.c_str(), O_RDONLY | O_CLOEXEC)));
 
   if (!fd.IsValid()) {
     P_ERROR << "Could not open FD.";
@@ -192,6 +196,8 @@ std::filesystem::path GetCurrentExecutablePath() {
   auto read_size = ::GetModuleFileNameA(module_handle, path, MAX_PATH);
   P_ASSERT(read_size > 0);
   return {std::string{path, read_size}};
+#elif P_OS_MAC
+  return {std::string{[NSBundle mainBundle].executablePath.UTF8String}};
 #else
 #error Not currently supported on this platform.
   return {};

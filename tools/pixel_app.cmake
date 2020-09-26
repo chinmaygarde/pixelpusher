@@ -12,7 +12,7 @@ function(pixel_app TARGET)
   add_custom_target(pixel_app_snapshot_${TARGET}
     COMMENT "Snapshotting Dart for ${TARGET}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${ARGN} .packages
+    COMMAND ${FLUTTER_ENGINE_DIR}/dart pub get
     COMMAND ${FLUTTER_ENGINE_DIR}/dart
               --disable-dart-dev
               ${FLUTTER_ENGINE_DIR}/frontend_server.dart.snapshot
@@ -27,16 +27,6 @@ function(pixel_app TARGET)
   )
 
   add_dependencies(pixel_app_${TARGET} pixel_app_snapshot_${TARGET})
-
-  # Pub Get.
-  add_custom_target(pixel_app_pub_${TARGET}
-    COMMENT "Running 'pub get' ${TARGET}"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${ARGN}
-    COMMAND ${FLUTTER_ENGINE_DIR}/dart pub get
-  )
-
-  add_dependencies(pixel_app_snapshot_${TARGET} pixel_app_pub_${TARGET})
 
   # Copy Flutter Engine.
   copy_flutter_engine_resources("${TARGET}")

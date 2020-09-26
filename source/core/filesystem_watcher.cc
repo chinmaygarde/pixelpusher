@@ -4,13 +4,18 @@
 
 #if P_OS_WIN
 #include "filesystem_watcher_win.h"
-#endif  // P_OS_WIN
+#elif P_OS_MAC
+#include "filesystem_watcher_darwin.h"
+#endif
 
 namespace pixel {
 
 FileSystemWatcher& FileSystemWatcher::ForProcess() {
 #if P_OS_WIN
   static FileSystemWatcherWin watcher;
+  return watcher;
+#elif P_OS_MAC
+  static FileSystemWatcherDarwin watcher;
   return watcher;
 #else
 #error This platform has no FS watcher.
