@@ -1,18 +1,16 @@
 
 #include "pixel.h"
 
+#include "object.h"
+
 namespace pixel {
 
-// static PixelRuntime* GetCurrentPixelRuntime() {
-//   return static_cast<PixelRuntime*>(Runtime::GetCurrentRuntimeData());
-// }
-
-Renderer* GetRenderer() {
-  return nullptr;
+Scene* SceneCreate() {
+  return Object<Scene>::New()->GetFFIObject();
 }
 
-Result RendererSetScene(Renderer* renderer, Scene* scene) {
-  return Result::kFailure;
+void SceneCollect(Scene* scene) {
+  ToObject(scene)->Release();
 }
 
 }  // namespace pixel

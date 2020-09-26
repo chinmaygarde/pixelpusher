@@ -4,31 +4,20 @@ namespace pixel {
     kFailure,
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// Renderer
+  //////////////////////////////////////////////////////////////////////////////
   struct Renderer {
 
   }
 
-  function GetRenderer() -> Renderer*
-
-  function RendererSetScene(Renderer* renderer, Scene* scene) -> Result
-
+  //////////////////////////////////////////////////////////////////////////////
+  /// Scene
+  //////////////////////////////////////////////////////////////////////////////
   struct Scene {
-
+    void* ffi_peer;
   }
 
-  struct Node {
-
-  }
-
-  struct Light {
-
-  }
-
-  struct Camera {
-
-  }
-
-  struct Mesh {
-
-  }
+  function SceneCreate() -> Scene*
+  function SceneCollect(Scene* scene)
 }

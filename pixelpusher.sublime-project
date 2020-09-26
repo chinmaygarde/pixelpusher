@@ -5,7 +5,7 @@
 			"file_regex": "(.+):(\\d+):(\\d+): (.+)",
 			"name": "Pixel Pusher Build All",
 			"shell": true,
-			"shell_cmd": "(cmake ../.. -G Ninja && ninja && .\\dart\\runtime\\machine.exe)",
+			"shell_cmd": "(cmake ../.. -G Ninja && ninja && ./source/runtime/runtime_unittests)",
 			"working_dir": "${project_path}/build/clang"
 		}
 	],
