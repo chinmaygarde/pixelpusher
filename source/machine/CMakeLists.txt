@@ -1,4 +1,6 @@
 add_library(machine_lib
+  application.cc
+  application.h
   asset_loader.cc
   asset_loader.h
   command_buffer.cc

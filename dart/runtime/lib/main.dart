@@ -6,5 +6,11 @@ main(List<String> args) {
   print("Pixel Runtime Initialized.");
 
   var scene = pixel.SceneCreate();
+  var application = pixel.ApplicationGetMain();
+
+  if (pixel.ApplicationSetScene(application, scene) != pixel.Result.kSuccess) {
+    throw ("Could not set scene for main renderer.");
+  }
+
   pixel.SceneCollect(scene);
 }
