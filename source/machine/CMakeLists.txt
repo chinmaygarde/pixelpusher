@@ -40,8 +40,8 @@ add_library(machine_lib
   pipeline_layout.h
   pixel.cc
   pixel.h
-  pixel_runtime.cc
-  pixel_runtime.h
+  pixel_renderer.cc
+  pixel_renderer.h
   pointer_input.cc
   pointer_input.h
   queue_selection.cc

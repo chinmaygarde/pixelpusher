@@ -51,14 +51,14 @@ class MainRenderer final : public Renderer {
                       PointerPhase phase,
                       const PointerData& data) override;
 
+  bool PushRenderer(std::unique_ptr<Renderer> renderer);
+
+  std::unique_ptr<Renderer> PopRenderer();
+
  private:
   VulkanConnection& connection_;
   std::vector<std::unique_ptr<Renderer>> renderers_;
   bool is_valid_ = false;
-
-  bool PushRenderer(std::unique_ptr<Renderer> renderer);
-
-  std::unique_ptr<Renderer> PopRenderer();
 
   P_DISALLOW_COPY_AND_ASSIGN(MainRenderer);
 };

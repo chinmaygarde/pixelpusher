@@ -1,30 +1,34 @@
-
 #include "pixel.h"
 
 #include "object.h"
 
 namespace pixel {
 
-thread_local std::unique_ptr<Application> tApplication;
+thread_local Application::Object tApplication;
 
-void SetApplicationForThread(std::unique_ptr<Application> application) {
-  tApplication.reset();
+void SetApplicationForThread(Application::Object application) {
   tApplication = std::move(application);
 }
 
-Application* ApplicationGetMain() {
-  return tApplication.get();
+CApplication* ApplicationGetMain() {
+  if (!tApplication.IsValid()) {
+    return nullptr;
+  }
+  return tApplication->Get();
 }
 
-Result ApplicationSetScene(Application* application, Scene* scene) {
-  return Result::kFailure;
+CResult ApplicationSetScene(CApplication* application, CScene* scene) {
+  if (!application || !scene) {
+    return CResult::kFailure;
+  }
+  return CResult::kSuccess;
 }
 
-Scene* SceneCreate() {
-  return Object<Scene>::New()->GetFFIObject();
+CScene* SceneCreate() {
+  return AutoObject<CScene>::Create().TakeOwnership()->Get();
 }
 
-void SceneCollect(Scene* scene) {
+void SceneCollect(CScene* scene) {
   ToObject(scene)->Release();
 }
 

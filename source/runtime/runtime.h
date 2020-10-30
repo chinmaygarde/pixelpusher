@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "closure.h"
 #include "file.h"
 #include "macros.h"
 #include "unique_object.h"
@@ -37,43 +38,33 @@ class RuntimeArgs {
 
   void AddCommandLineArg(std::string arg);
 
+  void AddRootIsolateCreateCallback(Closure callback);
+
   const std::vector<std::string>& GetCommandLineArgs() const;
+
+  std::vector<Closure> GetRootIsolateCreateCallbacks() const;
 
  private:
   std::string assets_path_;
   std::vector<std::string> command_line_args_;
+  std::vector<Closure> root_isolate_create_callbacks_;
 
   P_DISALLOW_COPY_AND_ASSIGN(RuntimeArgs);
 };
 
-class RuntimeData {
- public:
-  RuntimeData();
-
-  virtual ~RuntimeData();
-};
-
 class Runtime {
  public:
-  static void AttachToCurrentThread(std::shared_ptr<Runtime> runtime);
-
-  static void ClearCurrentThreadRuntime();
-
-  static Runtime* GetCurrentRuntime();
-
-  static RuntimeData* GetCurrentRuntimeData();
-
-  Runtime(const RuntimeArgs& args, std::unique_ptr<RuntimeData> data);
+  Runtime(const RuntimeArgs& args);
 
   ~Runtime();
 
   bool IsValid() const;
 
-  RuntimeData* GetRuntimeData() const;
-
  private:
   UniqueObject<Engine*, EngineTraits> engine_;
-  std::unique_ptr<RuntimeData> data_;
+  std::vector<Closure> root_isolate_create_callbacks_;
+
+  void DidCreateRootIsolate() const;
 
   P_DISALLOW_COPY_AND_ASSIGN(Runtime);
 };

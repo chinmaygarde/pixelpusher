@@ -19,7 +19,7 @@ TEST(ObjectTest, CanCreateObjects) {
   ASSERT_FALSE(created);
   ASSERT_FALSE(deleted);
   auto object = Object<MyStruct>::New();
-  ASSERT_NE(object->GetFFIObject(), nullptr);
+  ASSERT_NE(object->Get(), nullptr);
   ASSERT_NE(static_cast<MyStruct*>(*object), nullptr);
   ASSERT_TRUE(created);
   ASSERT_FALSE(deleted);
@@ -110,12 +110,12 @@ TEST(ObjectTest, AutoObjectsWork) {
     ASSERT_TRUE(created);
     ASSERT_FALSE(deleted);
     ASSERT_EQ(object->GetRefCount(), 1u);
-    auto released_ptr = object.Release();
+    auto taken_ptr = object.TakeOwnership();
     object.Reset();
     ASSERT_TRUE(created);
     ASSERT_FALSE(deleted);
-    AutoObject<MyStruct> object_via_adopt;
-    object_via_adopt.Reset(released_ptr, true);
+    auto object_via_adopt = AutoObject<MyStruct>::Create();
+    object_via_adopt.Reset(taken_ptr, true);
     ASSERT_EQ(object_via_adopt->GetRefCount(), 1u);
   }
   ASSERT_TRUE(created);

@@ -27,19 +27,26 @@ void RuntimeArgs::AddCommandLineArg(std::string arg) {
   command_line_args_.emplace_back(std::move(arg));
 }
 
+void RuntimeArgs::AddRootIsolateCreateCallback(Closure callback) {
+  root_isolate_create_callbacks_.emplace_back(std::move(callback));
+}
+
 const std::vector<std::string>& RuntimeArgs::GetCommandLineArgs() const {
   return command_line_args_;
 }
 
-RuntimeData::RuntimeData() = default;
+std::vector<Closure> RuntimeArgs::GetRootIsolateCreateCallbacks() const {
+  return root_isolate_create_callbacks_;
+}
 
-RuntimeData::~RuntimeData() = default;
-
-Runtime::Runtime(const RuntimeArgs& args, std::unique_ptr<RuntimeData> data)
-    : data_(std::move(data)) {
+Runtime::Runtime(const RuntimeArgs& args)
+    : root_isolate_create_callbacks_(args.GetRootIsolateCreateCallbacks()) {
   FlutterProjectArgs project_args = {};
   project_args.struct_size = sizeof(project_args);
   project_args.assets_path = args.GetAssetsPath().c_str();
+  project_args.root_isolate_create_callback = [](void* user_data) -> void {
+    reinterpret_cast<Runtime*>(user_data)->DidCreateRootIsolate();
+  };
 
   auto command_line_args = args.GetCommandLineArgs();
   std::vector<const char*> c_command_line_args;
@@ -78,28 +85,10 @@ bool Runtime::IsValid() const {
   return engine_.IsValid();
 }
 
-RuntimeData* Runtime::GetRuntimeData() const {
-  return data_.get();
-}
-
-thread_local std::shared_ptr<Runtime> tRuntime;
-
-void Runtime::AttachToCurrentThread(std::shared_ptr<Runtime> runtime) {
-  tRuntime = std::move(runtime);
-}
-
-void Runtime::ClearCurrentThreadRuntime() {
-  tRuntime.reset();
-}
-
-Runtime* Runtime::GetCurrentRuntime() {
-  P_ASSERT(static_cast<bool>(tRuntime) &&
-           "Thread must have a current runtime associated with it.");
-  return tRuntime.get();
-}
-
-RuntimeData* Runtime::GetCurrentRuntimeData() {
-  return GetCurrentRuntime()->GetRuntimeData();
+void Runtime::DidCreateRootIsolate() const {
+  for (auto callback : root_isolate_create_callbacks_) {
+    callback();
+  }
 }
 
 bool EngineTraits::IsValid(Engine* engine) {

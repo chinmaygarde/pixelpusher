@@ -1,5 +1,5 @@
 namespace pixel {
-  enum Result {
+  enum CResult {
     kSuccess,
     kFailure,
   }
@@ -7,20 +7,20 @@ namespace pixel {
   //////////////////////////////////////////////////////////////////////////////
   /// Application
   //////////////////////////////////////////////////////////////////////////////
-  struct Application {
-
+  struct CApplication {
+    void* ffi_peer;
   }
 
-  function ApplicationGetMain() -> Application*
-  function ApplicationSetScene(Application* application, Scene* scene) -> Result
+  function ApplicationGetMain() -> CApplication*
+  function ApplicationSetScene(CApplication* application, CScene* scene) -> CResult
 
   //////////////////////////////////////////////////////////////////////////////
   /// Scene
   //////////////////////////////////////////////////////////////////////////////
-  struct Scene {
+  struct CScene {
     void* ffi_peer;
   }
 
-  function SceneCreate() -> Scene*
-  function SceneCollect(Scene* scene)
+  function SceneCreate() -> CScene*
+  function SceneCollect(CScene* scene)
 }

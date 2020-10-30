@@ -2,12 +2,11 @@
 
 #include <memory>
 
+#include "application.h"
 #include "pixel_c_bindings.h"
-#include "pixel_runtime.h"
-#include "renderer.h"
 
 namespace pixel {
 
-void SetApplicationForThread(std::unique_ptr<Application> application);
+void SetApplicationForThread(Application::Object application);
 
 }  // namespace pixel

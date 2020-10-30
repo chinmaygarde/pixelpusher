@@ -4,16 +4,23 @@
 
 namespace pixel {
 
-template <class T>
+struct NullPeer {};
+
+template <class _CType, class _PeerType = NullPeer>
 class Object {
  public:
-  using FFIType = T;
+  using CType = _CType;
+  using PeerType = _PeerType;
 
-  static Object<FFIType>* New() { return new Object<FFIType>(); }
+  static Object<CType, PeerType>* New(PeerType peer = {}) {
+    return new Object<CType, PeerType>(std::move(peer));
+  }
 
-  FFIType* GetFFIObject() { return &ffi_object_; }
+  CType* Get() { return &ffi_object_; }
 
-  operator FFIType*() { return GetFFIObject(); }
+  PeerType& GetPeer() { return peer_; }
+
+  operator CType*() { return Get(); }
 
   void Retain() { ref_count_++; }
 
@@ -28,10 +35,13 @@ class Object {
   size_t GetRefCount() const { return ref_count_; }
 
  private:
-  FFIType ffi_object_ = {};
+  CType ffi_object_ = {};
   size_t ref_count_ = 1;
+  const PeerType peer_;
 
-  Object() { ffi_object_.ffi_peer = this; }
+  Object(PeerType peer) : peer_(std::move(peer)) {
+    ffi_object_.ffi_peer = this;
+  }
 
   // Must use reference counting.
   ~Object() = default;
@@ -39,17 +49,21 @@ class Object {
   P_DISALLOW_COPY_AND_ASSIGN(Object);
 };
 
-template <class FFIType>
-Object<FFIType>* ToObject(FFIType* object) {
-  return reinterpret_cast<Object<FFIType>*>(object->ffi_peer);
+template <class CType>
+Object<CType>* ToObject(CType* object) {
+  return reinterpret_cast<Object<CType>*>(object->ffi_peer);
 }
 
-template <class T>
+template <class _CType, class _PeerType = NullPeer>
 class AutoObject {
  public:
-  static AutoObject Create() {
-    AutoObject<T> object;
-    object.Reset(Object<T>::New(), true);
+  using CType = _CType;
+  using PeerType = _PeerType;
+  using ObjectType = Object<CType, PeerType>;
+
+  static AutoObject Create(PeerType peer = {}) {
+    AutoObject<CType, PeerType> object;
+    object.Reset(ObjectType::New(std::move(peer)), true);
     return object;
   }
 
@@ -65,9 +79,10 @@ class AutoObject {
 
   AutoObject& operator=(AutoObject&& other) {
     std::swap(other.object_, object_);
+    return *this;
   }
 
-  void Reset(Object<T>* other = nullptr, bool adopt = false) {
+  void Reset(ObjectType* other = nullptr, bool adopt = false) {
     if (object_) {
       object_->Release();
       object_ = nullptr;
@@ -81,18 +96,20 @@ class AutoObject {
     }
   }
 
-  [[nodiscard]] Object<T>* Release() {
+  [[nodiscard]] ObjectType* TakeOwnership() {
     auto object = object_;
     object_ = nullptr;
     return object;
   }
 
-  Object<T>* operator->() const { return object_; }
+  ObjectType* operator->() const { return object_; }
 
-  Object<T>* Get() const { return object_; }
+  ObjectType* Get() const { return object_; }
+
+  bool IsValid() const { return object_ != nullptr; }
 
  private:
-  Object<T>* object_ = nullptr;
+  ObjectType* object_ = nullptr;
 };
 
 }  // namespace pixel

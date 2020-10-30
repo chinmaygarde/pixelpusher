@@ -11,7 +11,8 @@
 #include "key_input_glfw.h"
 #include "logging.h"
 #include "main_renderer.h"
-#include "pixel_runtime.h"
+#include "pixel.h"
+#include "pixel_renderer.h"
 #include "platform.h"
 #include "pointer_input.h"
 #include "renderer.h"
@@ -126,27 +127,29 @@ static void OnGLFWCursorPosition(GLFWwindow* window, double x, double y) {
       Point{static_cast<int64_t>(x), static_cast<int64_t>(y)});
 }
 
-static bool Main(int argc, char const* argv[]) {
+std::unique_ptr<Runtime> StartRuntime(int argc,
+                                      char const* argv[],
+                                      Closure root_isolate_create_callback) {
   RuntimeArgs runtime_args;
 
   runtime_args.SetAssetsPath();
-
   runtime_args.SetCommandLineArgs(argc, argv);
   runtime_args.AddCommandLineArg("--log-tag=machine");
   runtime_args.AddCommandLineArg("--observatory-port=8080");
   runtime_args.AddCommandLineArg("--disable-service-auth-codes");
+  runtime_args.AddRootIsolateCreateCallback(root_isolate_create_callback);
 
-  auto runtime =
-      std::make_shared<Runtime>(runtime_args, std::make_unique<PixelRuntime>());
+  auto runtime = std::make_unique<Runtime>(runtime_args);
+
   if (!runtime->IsValid()) {
     P_ERROR << "Could not initialize the runtime.";
-    return false;
+    return nullptr;
   }
 
-  Runtime::AttachToCurrentThread(std::move(runtime));
-  AutoClosure clear_runtime_thread_binding(
-      []() { Runtime::ClearCurrentThreadRuntime(); });
+  return runtime;
+}
 
+static bool Main(int argc, char const* argv[]) {
   if (!::glfwInit()) {
     P_ERROR << "GLFW could not be initialized.";
     return false;
@@ -209,6 +212,23 @@ static bool Main(int argc, char const* argv[]) {
 
   MainRenderer renderer(connection, window);
 
+  auto pixel_renderer =
+      std::make_unique<PixelRenderer>(connection.GetRenderingContext());
+  if (!pixel_renderer->IsValid()) {
+    P_ERROR << "Pixel renderer was not valid.";
+    return false;
+  }
+
+  auto root_isolate_create_callback =
+      [application = pixel_renderer->GetApplicationObject()]() {
+        SetApplicationForThread(application);
+      };
+
+  if (!renderer.PushRenderer(std::move(pixel_renderer))) {
+    P_ERROR << "Could not setup pixel renderer.";
+    return false;
+  }
+
   if (!renderer.IsValid()) {
     P_ERROR << "Could not create a valid renderer.";
     return false;
@@ -225,6 +245,12 @@ static bool Main(int argc, char const* argv[]) {
   AutoClosure teardown_renderer([&renderer]() { renderer.Teardown(); });
 
   auto& loop = EventLoop::ForCurrentThread();
+
+  auto runtime = StartRuntime(argc, argv, root_isolate_create_callback);
+
+  if (!runtime) {
+    return false;
+  }
 
   while (true) {
     if (!loop.FlushTasksNow()) {
