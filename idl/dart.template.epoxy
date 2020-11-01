@@ -39,9 +39,9 @@ class {{ struct.name }} extends ffi.Struct {
 
   void set {{var.identifier}}({{var.type}} val) => enum_raw_{{var.identifier}} = val.index;
 {% else if var.is_struct %}
-  ffi.Pointer<{{var.type}}> {{var.identifier}};
+  ffi.Pointer<{{var.type}}>? {{var.identifier}};
 {% else if var.is_pointer %}
-  ffi.Pointer<ffi.{{dart_ffi_type(var.type)}}> {{var.identifier}};
+  ffi.Pointer<ffi.{{dart_ffi_type(var.type)}}>? {{var.identifier}};
 {% else %}
   @ffi.{{dart_ffi_type(var.type)}}()
   {{dart_type(var.type)}} {{var.identifier}};
@@ -112,7 +112,7 @@ Function(
 {% if not loop.is_last %},{% endif %}
 {% endfor %}
 );
-{{func.name}}DesugaredDartType _{{func.name}}Desugared;
+late {{func.name}}DesugaredDartType _{{func.name}}Desugared;
 
 {# Generate the function that calls the desugared Dart function. For now, only enums are desugared. #}
 {% if func.returns_enum %}
