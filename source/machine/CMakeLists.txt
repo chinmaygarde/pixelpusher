@@ -1,6 +1,8 @@
 add_library(machine_lib
-  application.cc
-  application.h
+  runtime/application.cc
+  runtime/application.h
+  runtime/pixel.cc
+  runtime/pixel.h
   asset_loader.cc
   asset_loader.h
   command_buffer.cc
@@ -38,8 +40,6 @@ add_library(machine_lib
   pipeline_builder.h
   pipeline_layout.cc
   pipeline_layout.h
-  pixel.cc
-  pixel.h
   pixel_renderer.cc
   pixel_renderer.h
   pointer_input.cc
@@ -71,6 +71,7 @@ add_library(machine_lib
 target_include_directories(machine_lib
   PUBLIC
     .
+    runtime
     ../../third_party/vulkan_memory_allocator/src
 )
 
@@ -83,13 +84,13 @@ compile_shaders(machine_lib
 
 epoxy(machine_lib
   ../../idl/cxx_interface.template.epoxy
-  pixel.epoxy
+  runtime/pixel.epoxy
   pixel_c_bindings.h
 )
 
 epoxy(machine_lib
   ../../idl/cxx_impl.template.epoxy
-  pixel.epoxy
+  runtime/pixel.epoxy
   pixel_c_bindings.cc
 )
 

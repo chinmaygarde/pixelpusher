@@ -6,6 +6,6 @@ pixel_app(runtime
 epoxy_dart_resource(
   runtime
   ../../idl/dart.template.epoxy
-  ../../source/machine/pixel.epoxy
+  ../../source/machine/runtime/pixel.epoxy
   pixel.dart
 )
