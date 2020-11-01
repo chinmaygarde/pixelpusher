@@ -32,6 +32,12 @@ if(NOT EXISTS ${FLUTTER_ENGINE_DIR})
   message(FATAL_ERROR "Flutter engine artifacts not specified. Use the FLUTTER_ENGINE_DIR flag.")
 endif()
 
+find_program(CCACHE_PROGRAM NAMES ccache)
+if(CCACHE_PROGRAM)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
+endif()
+
 # execute_process(
 #   COMMAND ./utils/git-sync-deps
 #   WORKING_DIRECTORY third_party/shaderc
