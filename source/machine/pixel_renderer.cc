@@ -3,7 +3,8 @@
 namespace pixel {
 
 PixelRenderer::PixelRenderer(std::shared_ptr<RenderingContext> context)
-    : Renderer(std::move(context)), application_(Application::Create()) {}
+    : Renderer(std::move(context)),
+      application_(std::make_shared<Application>()) {}
 
 // |Renderer|
 PixelRenderer::~PixelRenderer() = default;
@@ -33,8 +34,8 @@ bool PixelRenderer::Teardown() {
   return true;
 }
 
-Application::Object PixelRenderer::GetApplicationObject() const {
-  return application_->GetApplication();
+std::shared_ptr<Application> PixelRenderer::GetApplication() const {
+  return application_;
 }
 
 }  // namespace pixel

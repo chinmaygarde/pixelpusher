@@ -1,24 +1,26 @@
 #include "pixel.h"
 
+#include "application.h"
 #include "object.h"
 
 namespace pixel {
 
-thread_local Application::Object tApplication;
+thread_local std::shared_ptr<Application> tApplication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Application
 ////////////////////////////////////////////////////////////////////////////////
 
-void SetApplicationForThread(Application::Object application) {
+void SetApplicationForThread(std::shared_ptr<Application> application) {
   tApplication = std::move(application);
 }
 
 CApplication* ApplicationGetMain() {
-  if (!tApplication.IsValid()) {
+  if (!tApplication) {
     return nullptr;
   }
-  return tApplication->Get();
+
+  return tApplication->GetPeerObject().Get()->Get();
 }
 
 CResult ApplicationSetScene(CApplication* application, CScene* scene) {

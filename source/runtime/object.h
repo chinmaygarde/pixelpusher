@@ -4,6 +4,7 @@
 
 namespace pixel {
 
+// TODO: Remove this.
 struct NullPeer {};
 
 template <class _CType, class _PeerType = NullPeer>
@@ -36,8 +37,8 @@ class Object {
 
  private:
   CType ffi_object_ = {};
-  size_t ref_count_ = 1;
   const PeerType peer_;
+  size_t ref_count_ = 1;
 
   Object(PeerType peer) : peer_(std::move(peer)) {
     ffi_object_.ffi_peer = this;
@@ -75,7 +76,10 @@ class AutoObject {
 
   ~AutoObject() { Reset(); }
 
-  AutoObject& operator=(const AutoObject& other) { Reset(other.object_); }
+  AutoObject& operator=(const AutoObject& other) {
+    Reset(other.object_);
+    return *this;
+  }
 
   AutoObject& operator=(AutoObject&& other) {
     std::swap(other.object_, object_);

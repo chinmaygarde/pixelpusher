@@ -219,10 +219,10 @@ static bool Main(int argc, char const* argv[]) {
     return false;
   }
 
-  auto root_isolate_create_callback =
-      [application = pixel_renderer->GetApplicationObject()]() {
-        SetApplicationForThread(application);
-      };
+  auto root_isolate_create_callback = [application =
+                                           pixel_renderer->GetApplication()]() {
+    SetApplicationForThread(application);
+  };
 
   if (!renderer.PushRenderer(std::move(pixel_renderer))) {
     P_ERROR << "Could not setup pixel renderer.";

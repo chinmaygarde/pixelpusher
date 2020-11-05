@@ -29,7 +29,7 @@ class PixelRenderer final : public Renderer {
   // |Renderer|
   bool Teardown() override;
 
-  Application::Object GetApplicationObject() const;
+  std::shared_ptr<Application> GetApplication() const;
 
  private:
   std::shared_ptr<Application> application_;

@@ -3,6 +3,8 @@ add_library(machine_lib
   runtime/application.h
   runtime/pixel.cc
   runtime/pixel.h
+  runtime/scene.cc
+  runtime/scene.h
   asset_loader.cc
   asset_loader.h
   command_buffer.cc

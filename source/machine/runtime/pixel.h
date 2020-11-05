@@ -2,11 +2,12 @@
 
 #include <memory>
 
-#include "application.h"
 #include "pixel_c_bindings.h"
 
 namespace pixel {
 
-void SetApplicationForThread(Application::Object application);
+class Application;
+
+void SetApplicationForThread(std::shared_ptr<Application> application);
 
 }  // namespace pixel

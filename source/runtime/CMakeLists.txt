@@ -4,6 +4,8 @@ add_library(runtime
   runtime.cc
   object.h
   object.cc
+  peer_object.h
+  peer_object.cc
 )
 
 target_include_directories(runtime
@@ -21,6 +23,7 @@ depend_on_flutter_engine(runtime)
 # Unit tests.
 add_executable(runtime_unittests
   object_unittests.cc
+  peer_object_unittests.cc
 )
 
 target_link_libraries(runtime_unittests
